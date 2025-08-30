@@ -13,7 +13,8 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="POST" action="{{ route('eventos.update', $evento) }}" class="row g-3">
+            {{-- IMPORTANTE: enctype para upload --}}
+            <form method="POST" action="{{ route('eventos.update', $evento) }}" class="row g-3" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -23,8 +24,7 @@
                     <select id="eixo_id" name="eixo_id"
                             class="form-select @error('eixo_id') is-invalid @enderror" required>
                         @foreach ($eixos as $eixo)
-                            <option value="{{ $eixo->id }}"
-                                @selected(old('eixo_id', $evento->eixo_id) == $eixo->id)>{{ $eixo->nome }}</option>
+                            <option value="{{ $eixo->id }}" @selected(old('eixo_id', $evento->eixo_id) == $eixo->id)>{{ $eixo->nome }}</option>
                         @endforeach
                     </select>
                     @error('eixo_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -42,8 +42,7 @@
                 {{-- Tipo --}}
                 <div class="col-md-4">
                     <label for="tipo" class="form-label">Tipo</label>
-                    <select id="tipo" name="tipo"
-                            class="form-select @error('tipo') is-invalid @enderror">
+                    <select id="tipo" name="tipo" class="form-select @error('tipo') is-invalid @enderror">
                         <option value="">Selecione...</option>
                         <option value="Formação" @selected(old('tipo', $evento->tipo)=="Formação")>Formação</option>
                         <option value="Oficina" @selected(old('tipo', $evento->tipo)=="Oficina")>Oficina</option>
@@ -56,8 +55,7 @@
                 {{-- Modalidade --}}
                 <div class="col-md-4">
                     <label for="modalidade" class="form-label">Modalidade</label>
-                    <select id="modalidade" name="modalidade"
-                            class="form-select @error('modalidade') is-invalid @enderror">
+                    <select id="modalidade" name="modalidade" class="form-select @error('modalidade') is-invalid @enderror">
                         <option value="">Selecione...</option>
                         <option value="Presencial" @selected(old('modalidade', $evento->modalidade)=="Presencial")>Presencial</option>
                         <option value="Online" @selected(old('modalidade', $evento->modalidade)=="Online")>Online</option>
@@ -65,7 +63,6 @@
                     </select>
                     @error('modalidade') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
-
 
                 {{-- Duração (dias) --}}
                 <div class="col-md-4">
@@ -85,13 +82,50 @@
                     @error('data_horario') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
+                {{-- Local --}}
+                <div class="col-md-6">
+                    <label for="local" class="form-label">Local</label>
+                    <input id="local" name="local" type="text"
+                           value="{{ old('local', $evento->local) }}"
+                           class="form-control @error('local') is-invalid @enderror"
+                           placeholder="Auditório Central / Endereço / Campus / etc.">
+                    @error('local') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
                 {{-- Link --}}
                 <div class="col-md-6">
                     <label for="link" class="form-label">Link (se online)</label>
                     <input id="link" name="link" type="url"
                            value="{{ old('link', $evento->link) }}"
-                           class="form-control @error('link') is-invalid @enderror">
+                           class="form-control @error('link') is-invalid @enderror" placeholder="https://...">
                     @error('link') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                {{-- Imagem atual (preview) + troca --}}
+                <div class="col-md-6">
+                    <label class="form-label d-block">Imagem do evento</label>
+
+                    {{-- preview da imagem atual, se existir --}}
+                    @if ($evento->imagem)
+                        <img src="{{ asset('storage/'.$evento->imagem) }}"
+                             alt="Imagem atual"
+                             class="img-fluid rounded mb-2"
+                             style="max-height: 160px">
+                    @else
+                        <img src="{{ asset('images/engaja-bg.png') }}"
+                             alt="Sem imagem"
+                             class="img-fluid rounded mb-2"
+                             style="max-height: 160px">
+                    @endif
+
+                    <input id="imagem" name="imagem" type="file"
+                           class="form-control @error('imagem') is-invalid @enderror"
+                           accept="image/*">
+                    <div class="form-text">Deixe em branco para manter a atual. Máx. 2MB (JPG, PNG, WEBP, AVIF, SVG).</div>
+                    @error('imagem') <div class="invalid-feedback">{{ $message }}</div> @enderror
+
+                    {{-- Pré-visualização da nova imagem --}}
+                    <img id="preview-imagem" class="mt-2 img-fluid d-none rounded" alt="Pré-visualização" style="max-height: 160px">
                 </div>
 
                 {{-- Objetivo --}}
@@ -118,4 +152,16 @@
         </div>
     </div>
 </div>
+
+{{-- preview da nova imagem (JS leve) --}}
+<script>
+  document.getElementById('imagem')?.addEventListener('change', function (e) {
+      const file = e.target.files?.[0];
+      const img  = document.getElementById('preview-imagem');
+      if (file && img) {
+          img.src = URL.createObjectURL(file);
+          img.classList.remove('d-none');
+      }
+  });
+</script>
 @endsection

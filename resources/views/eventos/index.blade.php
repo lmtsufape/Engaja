@@ -55,6 +55,9 @@
                         <td>{{ $ev->data_horario ? \Carbon\Carbon::parse($ev->data_horario)->format('d/m/Y H:i') : '—' }}</td>
                         <td>{{ $ev->user->name ?? '—' }}</td>
                         <td class="text-end">
+                            <a href="{{ route('eventos.show', $ev) }}" class="btn btn-sm btn-outline-primary">
+                                Ver
+                            </a>
                             @can('update', $ev)
                                 <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
                             @endcan

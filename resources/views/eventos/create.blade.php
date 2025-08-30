@@ -15,7 +15,8 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="POST" action="{{ route('eventos.store') }}" class="row g-3">
+            {{-- IMPORTANTE: enctype para upload --}}
+            <form method="POST" action="{{ route('eventos.store') }}" class="row g-3" enctype="multipart/form-data">
                 @csrf
 
                 {{-- Eixo --}}
@@ -45,8 +46,7 @@
                 {{-- Tipo --}}
                 <div class="col-md-4">
                     <label for="tipo" class="form-label">Tipo</label>
-                    <select id="tipo" name="tipo"
-                            class="form-select @error('tipo') is-invalid @enderror">
+                    <select id="tipo" name="tipo" class="form-select @error('tipo') is-invalid @enderror">
                         <option value="">Selecione...</option>
                         <option value="Formação" @selected(old('tipo')=="Formação")>Formação</option>
                         <option value="Oficina" @selected(old('tipo')=="Oficina")>Oficina</option>
@@ -59,8 +59,7 @@
                 {{-- Modalidade --}}
                 <div class="col-md-4">
                     <label for="modalidade" class="form-label">Modalidade</label>
-                    <select id="modalidade" name="modalidade"
-                            class="form-select @error('modalidade') is-invalid @enderror">
+                    <select id="modalidade" name="modalidade" class="form-select @error('modalidade') is-invalid @enderror">
                         <option value="">Selecione...</option>
                         <option value="Presencial" @selected(old('modalidade')=="Presencial")>Presencial</option>
                         <option value="Online" @selected(old('modalidade')=="Online")>Online</option>
@@ -68,7 +67,6 @@
                     </select>
                     @error('modalidade') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
-
 
                 {{-- Duração (dias) --}}
                 <div class="col-md-4">
@@ -88,6 +86,16 @@
                     @error('data_horario') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
+                {{-- Local --}}
+                <div class="col-md-6">
+                    <label for="local" class="form-label">Local</label>
+                    <input id="local" name="local" type="text"
+                           value="{{ old('local') }}"
+                           class="form-control @error('local') is-invalid @enderror"
+                           placeholder="Auditório Central / Link da plataforma etc.">
+                    @error('local') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
                 {{-- Link (para eventos online) --}}
                 <div class="col-md-6">
                     <label for="link" class="form-label">Link (se for online)</label>
@@ -96,6 +104,19 @@
                            class="form-control @error('link') is-invalid @enderror"
                            placeholder="https://…">
                     @error('link') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+
+                {{-- Imagem do evento --}}
+                <div class="col-md-6">
+                    <label for="imagem" class="form-label">Imagem do evento</label>
+                    <input id="imagem" name="imagem" type="file"
+                           class="form-control @error('imagem') is-invalid @enderror"
+                           accept="image/*">
+                    <div class="form-text">Formatos: JPG, PNG, SVG | Tamanho máx. recomendado: 2MB</div>
+                    @error('imagem') <div class="invalid-feedback">{{ $message }}</div> @enderror>
+
+                    {{-- Preview simples --}}
+                    <img id="preview-imagem" class="mt-2 img-fluid d-none rounded" alt="Pré-visualização">
                 </div>
 
                 {{-- Objetivo --}}
@@ -124,4 +145,16 @@
         </div>
     </div>
 </div>
+
+{{-- preview da imagem (JS leve) --}}
+<script>
+  document.getElementById('imagem')?.addEventListener('change', function (e) {
+      const file = e.target.files?.[0];
+      const img  = document.getElementById('preview-imagem');
+      if (file && img) {
+          img.src = URL.createObjectURL(file);
+          img.classList.remove('d-none');
+      }
+  });
+</script>
 @endsection

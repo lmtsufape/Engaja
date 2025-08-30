@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('link')->nullable();
             $table->text('objetivo')->nullable();
             $table->text('resumo')->nullable();
+            $table->string('imagem')->nullable();
             $table->timestamps();
         });
     }
