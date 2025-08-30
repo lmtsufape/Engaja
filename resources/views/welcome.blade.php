@@ -12,7 +12,8 @@
             <a href="{{ route('login') }}" class="btn btn-engaja btn-lg me-2">Entrar</a>
             <a href="{{ route('register') }}" class="btn btn-outline-engaja btn-lg">Cadastrar</a>
         @else
-            <a href="{{ url('/dashboard') }}" class="btn btn-engaja btn-lg">Ir para o Painel</a>
+            <a href="{{ url('/dashboard') }}" class="btn btn-engaja btn-lg me-2">Ir para o Painel</a>
+            <a href="{{ route('eventos.index') }}" class="btn btn-outline-engaja btn-lg">Ver Eventos</a>
         @endguest
     </div>
 </div>
@@ -24,6 +25,7 @@
                 <div class="mb-3 text-engaja fs-1">📅</div>
                 <h5 class="card-title fw-bold">Eventos</h5>
                 <p class="card-text">Organize e acompanhe inscrições para formações, encontros e reuniões.</p>
+                <a href="{{ route('eventos.index') }}" class="btn btn-sm btn-engaja mt-2">Acessar Eventos</a>
             </div>
         </div>
     </div>
@@ -49,7 +51,7 @@
     </div>
 </div>
 
-<footer class="text-center text-muted mt-5">
+<!-- <footer class="text-center text-muted mt-5">
     <small>&copy; {{ date('Y') }} Engaja — Desenvolvido com Laravel</small>
-</footer>
+</footer> -->
 @endsection

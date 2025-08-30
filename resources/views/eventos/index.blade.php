@@ -1,0 +1,78 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 fw-bold text-engaja mb-0">Eventos</h1>
+        <a href="{{ route('eventos.create') }}" class="btn btn-engaja">Novo evento</a>
+    </div>
+
+    {{-- Flash --}}
+    @if (session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
+    {{-- Filtros / busca --}}
+    <form method="GET" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <input type="text" name="q" value="{{ request('q') }}" class="form-control"
+                   placeholder="Buscar por nome, tipo, objetivo…">
+        </div>
+        <div class="col-md-3">
+            <select name="eixo" class="form-select">
+                <option value="">Todos os eixos</option>
+                @foreach($eixos as $eixo)
+                    <option value="{{ $eixo->id }}" @selected(request('eixo')==$eixo->id)>{{ $eixo->nome }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="date" name="de" value="{{ request('de') }}" class="form-control" placeholder="de">
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-outline-secondary">Filtrar</button>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome</th>
+                    <th>Eixo</th>
+                    <th>Tipo</th>
+                    <th>Data/Hora</th>
+                    <th>Criado por</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($eventos as $ev)
+                    <tr>
+                        <td class="fw-semibold">{{ $ev->nome }}</td>
+                        <td>{{ $ev->eixo->nome ?? '—' }}</td>
+                        <td>{{ $ev->tipo ?? '—' }}</td>
+                        <td>{{ $ev->data_horario ? \Carbon\Carbon::parse($ev->data_horario)->format('d/m/Y H:i') : '—' }}</td>
+                        <td>{{ $ev->user->name ?? '—' }}</td>
+                        <td class="text-end">
+                            @can('update', $ev)
+                                <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            @endcan
+                            @can('delete', $ev)
+                                <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                                </form>
+                            @endcan
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="text-center text-muted py-4">Nenhum evento encontrado.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    {{ $eventos->withQueryString()->links() }}
+</div>
+@endsection

@@ -18,6 +18,25 @@
       body { font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
       .navbar-brand { font-weight: 700; letter-spacing: .2px; }
     </style>
+    <style>
+      .form-control {
+          border-color: #b1b6bbff !important; /* cinza escuro padrão Bootstrap */
+      }
+
+      .form-control:focus {
+          border-color: #421944 !important; /* roxo Engaja no foco */
+          box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25); /* glow roxo no foco */
+      }
+
+      .form-select {
+          border-color: #b1b6bbff !important;
+      }
+
+      .form-select:focus {
+          border-color: #421944 !important;
+          box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
+      }
+    </style>
   </head>
   <body>
     {{-- Navbar Bootstrap (substitui o include antigo do Tailwind) --}}
@@ -43,5 +62,7 @@
         @endisset
       </div>
     </main>
+    {{-- Footer --}}
+    @include('layouts.footer')
   </body>
 </html>
