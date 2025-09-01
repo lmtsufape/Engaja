@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AtividadeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,6 +22,8 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::resource('eventos', \App\Http\Controllers\EventoController::class);
 });
 
-
+Route::resource('eventos.atividades', AtividadeController::class)
+    ->parameters(['atividades' => 'atividade'])
+    ->shallow();
 
 require __DIR__.'/auth.php';

@@ -67,7 +67,7 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $evento->load(['eixo','user']);
+        $evento->load(['eixo','user', 'atividades' => fn ($q) => $q->orderBy('dia')->orderBy('hora_inicio'),]);
         return view('eventos.show', compact('evento'));
     }
 
@@ -98,7 +98,6 @@ class EventoController extends Controller
         ]));
 
         if ($request->hasFile('imagem')) {
-            
             if ($evento->imagem) {
                 Storage::disk('public')->delete($evento->imagem);
             }

@@ -113,7 +113,7 @@
                            class="form-control @error('imagem') is-invalid @enderror"
                            accept="image/*">
                     <div class="form-text">Formatos: JPG, PNG, SVG | Tamanho máx. recomendado: 2MB</div>
-                    @error('imagem') <div class="invalid-feedback">{{ $message }}</div> @enderror>
+                    @error('imagem') <div class="invalid-feedback">{{ $message }}</div> @enderror
 
                     {{-- Preview simples --}}
                     <img id="preview-imagem" class="mt-2 img-fluid d-none rounded" alt="Pré-visualização">
