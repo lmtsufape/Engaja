@@ -14,10 +14,11 @@ return new class extends Migration
         Schema::create('atividades', function (Blueprint $table) {
             $table->id();
             $table->foreignId('evento_id')->constrained()->cascadeOnDelete();
-            $table->date('dia');                
-            $table->time('hora_inicio');         
-            $table->unsignedInteger('carga_horaria'); 
+            $table->date('dia');
+            $table->time('hora_inicio');
+            $table->unsignedInteger('carga_horaria');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

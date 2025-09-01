@@ -17,10 +17,11 @@ class EventoController extends Controller
     {
         $q = Evento::with(['eixo','user'])
             ->when($r->q, function ($qq) use ($r) {
-                $qq->where(function ($w) use ($r) {
-                    $w->where('nome', 'ilike', '%'.$r->q.'%')
-                      ->orWhere('tipo', 'ilike', '%'.$r->q.'%')
-                      ->orWhere('objetivo', 'ilike', '%'.$r->q.'%');
+                $search = mb_strtolower($r->q);
+                $qq->where(function ($w) use ($search) {
+                    $w->whereRaw('LOWER(nome) LIKE ?', ['%'.$search.'%'])
+                      ->orWhereRaw('LOWER(tipo) LIKE ?', ['%'.$search.'%'])
+                      ->orWhereRaw('LOWER(objetivo) LIKE ?', ['%'.$search.'%']);
                 });
             })
             ->when($r->eixo, fn($qq) => $qq->where('eixo_id', $r->eixo))
