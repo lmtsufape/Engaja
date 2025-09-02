@@ -188,6 +188,47 @@ class InscricaoController extends Controller
             ->with('success', 'Importação confirmada e salva com sucesso!');
     }
 
+    public function inscritos(Request $request, \App\Models\Evento $evento)
+    {
+        $search      = $request->query('q');
+        $municipioId = $request->query('municipio_id');
+        $perPage     = (int) $request->query('per_page', 50);
+
+        $municipios = \App\Models\Municipio::with('estado')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'estado_id']);
+
+        $inscritos = $evento->participantes()
+            ->with([
+                'user:id,name,email',
+                'municipio.estado:id,nome,sigla',
+            ])
+            ->wherePivotNull('deleted_at')
+            ->when($search, function ($q) use ($search) {
+                $q->whereHas('user', function ($uq) use ($search) {
+                    $uq->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('email', 'ilike', "%{$search}%");
+                })->orWhere('cpf', 'ilike', "%{$search}%")
+                    ->orWhere('telefone', 'ilike', "%{$search}%")
+                    ->orWhereHas('municipio', function ($mq) use ($search) {
+                        $mq->where('nome', 'ilike', "%{$search}%");
+                    });
+            })
+            ->when($municipioId, fn($q) => $q->where('municipio_id', $municipioId))
+            ->orderByDesc('participantes.id')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('inscricoes.index', [
+            'evento'     => $evento,
+            'inscritos'  => $inscritos,
+            'municipios' => $municipios,
+            'search'     => $search,
+            'municipioId' => $municipioId,
+            'perPage'    => $perPage,
+        ]);
+    }
+
     public function create()
     { /* ... */
     }

@@ -181,6 +181,10 @@
 
         <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-engaja">Inscrever participantes</a>
 
+        <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">
+          Ver inscritos
+        </a>
+
         @can('update', $evento)
         <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
         @endcan
@@ -195,6 +199,9 @@
   </div>
 
   {{-- Chips --}}
+  @php
+    $totalInscritos = $evento->participantes()->wherePivotNull('deleted_at')->count();
+  @endphp
   <div class="mb-4">
     <div class="d-flex flex-wrap gap-2">
       @if($evento->eixo?->nome)
@@ -209,6 +216,7 @@
       @if($evento->modalidade)
       <span class="ev-chip">Modalidade: <strong class="ms-1">{{ $evento->modalidade }}</strong></span>
       @endif
+      <span class="ev-chip">Inscritos: <strong class="ms-1">{{ $totalInscritos }}</strong></span>
     </div>
   </div>
 

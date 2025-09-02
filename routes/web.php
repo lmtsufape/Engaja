@@ -23,6 +23,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/eventos/{evento}/inscricoes/preview', [InscricaoController::class, 'preview'])->name('inscricoes.preview');
     Route::post('/eventos/{evento}/inscricoes/preview/save', [InscricaoController::class, 'savePage'])->name('inscricoes.preview.save');
     Route::post('/eventos/{evento}/inscricoes/confirmar', [InscricaoController::class, 'confirmar'])->name('inscricoes.confirmar');
+    Route::get('/eventos/{evento}/inscritos', [\App\Http\Controllers\InscricaoController::class, 'inscritos'])->name('inscricoes.inscritos');
 });
 
 Route::middleware(['auth','verified'])->group(function () {
