@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('cpf');
             $table->string('telefone');
             $table->string('escola_unidade');
-            $table->date('data_entrada');
+            $table->date('data_entrada')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class InscricaoController extends Controller
 {
@@ -37,7 +39,6 @@ class InscricaoController extends Controller
             $import = new ParticipantesPreviewImport();
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('your_file'));
 
-            // array indexado 0..N (cada item é um array com as colunas)
             $rows = $import->rows->values()->all();
 
             $sessionKey = "import_preview_evento_{$evento->id}";
@@ -70,7 +71,6 @@ class InscricaoController extends Controller
 
         $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
 
-        // usamos LengthAwarePaginator para ter links de paginação
         $rowsPaginator = new LengthAwarePaginator(
             $slice,
             $total,
@@ -79,15 +79,13 @@ class InscricaoController extends Controller
             ['path' => route('inscricoes.preview', $evento), 'query' => ['session_key' => $sessionKey, 'per_page' => $perPage]]
         );
 
-        // importante: passamos também o "offset" para manter os índices globais no form
         $globalOffset = ($page - 1) * $perPage;
 
-        // lista de municípios (select)
         $municipios = \App\Models\Municipio::with('estado')->orderBy('nome')->get(['id', 'nome', 'estado_id']);
 
         return view('inscricoes.preview', [
             'evento'       => $evento,
-            'rows'         => $rowsPaginator, // paginator
+            'rows'         => $rowsPaginator,
             'globalOffset' => $globalOffset,
             'sessionKey'   => $sessionKey,
             'municipios'   => $municipios,
@@ -95,7 +93,7 @@ class InscricaoController extends Controller
     }
 
     /**
-     * Salva as edições da PÁGINA ATUAL na sessão e volta para a prévia (pode mudar de página em seguida).
+     * Salva as edições da PÁGINA ATUAL na sessão.
      */
     public function savePage(Request $request, Evento $evento)
     {
@@ -111,11 +109,9 @@ class InscricaoController extends Controller
             return back()->withErrors(['rows' => 'Sessão expirada. Reenvie o arquivo.']);
         }
 
-        // rows vem no formato rows[<global_index>] = [...campos...]
         foreach ($request->input('rows') as $globalIndex => $data) {
             $globalIndex = (int) $globalIndex;
             if ($allRows->has($globalIndex)) {
-                // substitui a linha na sessão pela edição do usuário
                 $allRows[$globalIndex] = array_merge($allRows[$globalIndex], $data);
             }
         }
@@ -134,7 +130,7 @@ class InscricaoController extends Controller
     }
 
     /**
-     * Confirma TUDO: lê as linhas da SESSÃO (todas as páginas), grava no banco e vincula ao evento.
+     * Confirma TUDO: lê as linhas da sessão e grava no banco.
      */
     public function confirmar(Request $request, Evento $evento)
     {
@@ -152,7 +148,6 @@ class InscricaoController extends Controller
         DB::transaction(function () use ($rows, $evento) {
             $ids = [];
 
-            // 1. Coleta todos os emails únicos
             $emails = collect($rows)->pluck('email')->map(fn($e) => strtolower(trim((string)$e)))->unique()->filter()->values();
             $usersExistentes = User::whereIn('email', $emails)->get()->keyBy(fn($u) => strtolower($u->email));
 
@@ -169,49 +164,66 @@ class InscricaoController extends Controller
             }
             if (count($novosUsuarios)) {
                 User::insert($novosUsuarios);
-                // Atualiza a lista de usuários existentes
                 $usersExistentes = User::whereIn('email', $emails)->get()->keyBy(fn($u) => strtolower($u->email));
             }
 
-            // 2. Participantes: busca todos existentes por user_id
             $userIds = $usersExistentes->pluck('id')->values();
             $participantesExistentes = Participante::whereIn('user_id', $userIds)->get()->keyBy('user_id');
 
             $novosParticipantes = [];
             $atualizacoes = [];
+
+            // helper para normalizar data
+            $toDate = function ($raw) {
+                if ($raw === null) return null;
+                $s = trim((string)$raw);
+                if ($s === '') return null;
+                try {
+                    if (is_numeric($s)) {
+                        return Carbon::instance(ExcelDate::excelToDateTimeObject($s))->format('Y-m-d');
+                    }
+                    if (preg_match('~^\d{2}/\d{2}/\d{4}$~', $s)) {
+                        return Carbon::createFromFormat('d/m/Y', $s)->format('Y-m-d');
+                    }
+                    return Carbon::parse($s)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            };
+
             foreach ($rows as $row) {
                 $email = strtolower(trim((string)($row['email'] ?? '')));
                 if (!$email) continue;
                 $user = $usersExistentes[$email] ?? null;
                 if (!$user) continue;
                 $userId = $user->id;
+
                 $dados = [
-                    'municipio_id'   => $row['municipio_id'] ?? null,
-                    'cpf'            => $row['cpf'] ?? null,
-                    'telefone'       => $row['telefone'] ?? null,
-                    'escola_unidade' => $row['escola_unidade'] ?? null,
-                    'data_entrada'   => $row['data_entrada'] ?? null,
+                    'municipio_id'   => ($row['municipio_id'] ?? null) ?: null,
+                    'cpf'            => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
+                    'telefone'       => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
+                    'escola_unidade' => (($row['escola_unidade'] ?? '') !== '') ? trim((string)$row['escola_unidade']) : null,
+                    'data_entrada'   => $toDate($row['data_entrada'] ?? null),
                 ];
+
                 if ($participantesExistentes->has($userId)) {
-                    // Atualização em lote depois
                     $atualizacoes[] = ['user_id' => $userId] + $dados;
                     $ids[] = $participantesExistentes[$userId]->id;
                 } else {
-                    $dados['user_id'] = $userId;
+                    $dados['user_id']    = $userId;
                     $dados['created_at'] = now();
                     $novosParticipantes[] = $dados;
                 }
             }
-            // Insert em lote
+
             if (count($novosParticipantes)) {
                 Participante::insert($novosParticipantes);
-                // Atualiza lista de participantes existentes
                 $participantesExistentes = Participante::whereIn('user_id', $userIds)->get()->keyBy('user_id');
                 foreach ($novosParticipantes as $np) {
                     $ids[] = $participantesExistentes[$np['user_id']]->id ?? null;
                 }
             }
-            // Update em lote
+
             if (count($atualizacoes)) {
                 $idsToUpdate = array_column($atualizacoes, 'user_id');
                 $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'data_entrada'];
@@ -230,9 +242,7 @@ class InscricaoController extends Controller
                 DB::statement("UPDATE participantes SET $setSql WHERE user_id IN ($idsStr)");
             }
 
-            // Remove nulls do array de ids
             $ids = array_filter($ids);
-            // Insere os novos vínculos (sem duplicatas)
             $existingIds = $evento->participantes()->pluck('participante_id')->all();
             $newIds = array_diff($ids, $existingIds);
             $evento->participantes()->attach($newIds);
@@ -245,7 +255,7 @@ class InscricaoController extends Controller
             ->with('success', 'Importação confirmada e salva com sucesso!');
     }
 
-    public function inscritos(Request $request, \App\Models\Evento $evento)
+    public function inscritos(Request $request, Evento $evento)
     {
         $search      = $request->query('q');
         $municipioId = $request->query('municipio_id');
@@ -277,12 +287,12 @@ class InscricaoController extends Controller
             ->appends($request->query());
 
         return view('inscricoes.index', [
-            'evento'     => $evento,
-            'inscritos'  => $inscritos,
-            'municipios' => $municipios,
-            'search'     => $search,
+            'evento'      => $evento,
+            'inscritos'   => $inscritos,
+            'municipios'  => $municipios,
+            'search'      => $search,
             'municipioId' => $municipioId,
-            'perPage'    => $perPage,
+            'perPage'     => $perPage,
         ]);
     }
 

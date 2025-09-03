@@ -53,7 +53,7 @@
           <th style="min-width:120px;">CPF</th>
           <th style="min-width:120px;">Telefone</th>
           <th style="min-width:220px;">Município</th>
-          <th style="min-width:140px;">Data entrada</th>
+          <!-- <th style="min-width:140px;">Data entrada</th> -->
           <th style="min-width:160px;">Inscrito em</th>
           {{-- Opcional: ações (ver, remover, etc.) --}}
           {{-- <th style="width:110px;">Ações</th> --}}
@@ -74,7 +74,7 @@
                 —
               @endif
             </td>
-            <td>{{ $p->data_entrada ?? '—' }}</td>
+            <!-- <td>{{ $p->data_entrada ?? '—' }}</td> -->
             <td>
               {{-- se você definiu ->as('inscricao') na relação --}}
               {{ optional($p->inscricao->created_at ?? $p->pivot->created_at ?? null)->format('d/m/Y H:i') ?? '—' }}

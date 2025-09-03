@@ -52,7 +52,8 @@
           <div class="ev-card p-3">
             <div class="fw-semibold mb-2">Formato sugerido (colunas):</div>
             <div class="small text-muted">
-              <code>nome</code>, <code>email</code>, <code>cpf</code>, <code>telefone</code>, <code>municipio</code>, <code>escola_unidade</code>, <code>data_entrada</code>
+              <code>nome</code>, <code>email</code>, <code>cpf</code>, <code>telefone</code>, <code>municipio</code>, <code>escola_unidade</code>, 
+              <!-- <code>data_entrada</code> -->
             </div>
           </div>
         </div>

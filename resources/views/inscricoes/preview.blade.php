@@ -55,7 +55,7 @@
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
             <th style="min-width:220px;">Escola/Unidade</th>
-            <th style="min-width:140px;">Data de entrada</th>
+            <!-- <th style="min-width:140px;">Data de entrada</th> -->
           </tr>
         </thead>
         <tbody id="preview-tbody">
@@ -79,7 +79,7 @@
               </td>
 
               <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][escola_unidade]" value="{{ old("rows.$idx.escola_unidade", $r['escola_unidade']) }}"></td>
-              <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][data_entrada]" value="{{ old("rows.$idx.data_entrada", $r['data_entrada']) }}" placeholder="YYYY-MM-DD"></td>
+              <!-- <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][data_entrada]" value="{{ old("rows.$idx.data_entrada", $r['data_entrada']) }}" placeholder="YYYY-MM-DD"></td> -->
             </tr>
           @endforeach
         </tbody>
