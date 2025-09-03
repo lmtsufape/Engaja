@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('presencas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('inscricao_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('atividade')->constrained()->cascadeOnDelete();
+            $table->foreignId('atividade_id')->constrained()->cascadeOnDelete();
             $table->string('status')->default('presente'); // presente, justificado
             $table->text('justificativa')->nullable();
             $table->softDeletes();
