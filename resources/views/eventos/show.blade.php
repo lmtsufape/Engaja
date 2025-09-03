@@ -325,6 +325,9 @@
 
                 @can('update', $evento)
                 <div class="actions d-flex gap-2">
+                  <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
+                      Ver
+                  </a>
                   <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
                     Editar
                   </a>

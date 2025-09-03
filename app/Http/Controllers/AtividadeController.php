@@ -75,4 +75,11 @@ class AtividadeController extends Controller
 
         return back()->with('success','Atividade removida.');
     }
+
+    public function show(Atividade $atividade)
+    {
+        $atividade->load('evento.participantes.user','presencas.inscricao.participante.user');
+
+        return view('atividades.show', compact('atividade'));
+    }
 }
