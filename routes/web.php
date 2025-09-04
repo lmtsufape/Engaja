@@ -18,7 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth','role:administrador'])->group(function () {
+Route::middleware(['auth','verified'])->group(function () {
     Route::resource('eventos', \App\Http\Controllers\EventoController::class);
 });
 
