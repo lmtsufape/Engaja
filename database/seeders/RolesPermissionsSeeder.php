@@ -19,7 +19,7 @@ class RolesPermissionsSeeder extends Seeder
             'participante.ver','participante.criar','participante.editar','participante.excluir',
             'evento.ver','evento.criar','evento.editar','evento.excluir',
             'inscricao.ver','inscricao.criar','inscricao.editar','inscricao.excluir',
-            'presenca.registrar', 'relatorio.ver',
+            'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir'
         ];
 
         foreach ($permissoes as $p) {
@@ -36,7 +36,7 @@ class RolesPermissionsSeeder extends Seeder
             'participante.ver','participante.criar','participante.editar','participante.excluir',
             'evento.ver','evento.criar','evento.editar','evento.excluir',
             'inscricao.ver','inscricao.criar','inscricao.editar','inscricao.excluir',
-            'presenca.registrar', 'relatorio.ver',
+            'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir'
         ]);
 
         // GESTOR
@@ -49,7 +49,7 @@ class RolesPermissionsSeeder extends Seeder
             'evento.ver','evento.criar','evento.editar','evento.excluir',
             'participante.ver','participante.criar','participante.editar','participante.excluir',
             'inscricao.ver','inscricao.criar','inscricao.editar','inscricao.excluir',
-            'presenca.registrar', 
+            'presenca.registrar', 'presenca.import', 'presenca.abrir'
         ]);
 
         // PARTICIPANTE

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Evento;
 use App\Models\Atividade;
+use App\Models\Presenca;
+use App\Models\Participante;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -77,10 +80,81 @@ class AtividadeController extends Controller
         return back()->with('success', 'Atividade removida.');
     }
 
-    public function show(Atividade $atividade)
+    public function show(\App\Models\Atividade $atividade)
     {
-        $atividade->load('evento.participantes.user', 'presencas.inscricao.participante.user');
+        $atividade->load('evento');
 
-        return view('atividades.show', compact('atividade'));
+        $presencas = $atividade->presencas()
+            ->with([
+                'inscricao.participante.user:id,name,email',
+                'inscricao.participante.municipio.estado:id,nome,sigla',
+            ])
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+        $user = auth()->user();
+        $podeImportar = $user?->can('presenca.import') ?? false;
+        $podeAbrir    = $user?->can('presenca.abrir')   ?? false;
+
+        return view('atividades.show', compact('atividade', 'presencas', 'podeImportar', 'podeAbrir'));
+    }
+
+    public function togglePresenca(Atividade $atividade)
+    {
+        // Permissão já garantida pela middleware 'permission:presenca.abrir'
+        $atividade->presenca_ativa = ! $atividade->presenca_ativa;
+        $atividade->save();
+
+        return back()->with(
+            'success',
+            $atividade->presenca_ativa ? 'Presença aberta para esta atividade.' : 'Presença fechada para esta atividade.'
+        );
+    }
+
+    public function checkin(Atividade $atividade)
+    {
+        if (! $atividade->presenca_ativa) {
+            return back()->withErrors(['checkin' => 'Presença não está aberta para esta atividade.']);
+        }
+
+        $user = auth()->user();
+
+        // 1) Garante Participante para o usuário
+        $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
+
+        // 2) Garante Inscrição no evento (cria/reativa)
+        $evento = $atividade->evento;
+
+        $inscricao = DB::table('inscricaos')
+            ->where('evento_id', $evento->id)
+            ->where('participante_id', $participante->id)
+            ->first();
+
+        if (! $inscricao) {
+            DB::table('inscricaos')->insert([
+                'evento_id'       => $evento->id,
+                'participante_id' => $participante->id,
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+            $inscricaoId = DB::table('inscricaos')
+                ->where('evento_id', $evento->id)
+                ->where('participante_id', $participante->id)
+                ->value('id');
+        } else {
+            if ($inscricao->deleted_at !== null) {
+                DB::table('inscricaos')->where('id', $inscricao->id)
+                    ->update(['deleted_at' => null, 'updated_at' => now()]);
+            }
+            $inscricaoId = $inscricao->id;
+        }
+
+        // 3) Marca presença (idempotente)
+        Presenca::updateOrCreate(
+            ['inscricao_id' => $inscricaoId, 'atividade_id' => $atividade->id],
+            ['status_participacao' => 'presente', 'justificativa' => null]
+        );
+
+        return back()->with('success', 'Presença confirmada com sucesso!');
     }
 }

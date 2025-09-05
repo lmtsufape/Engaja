@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\InscricaoController;
+use App\Http\Controllers\PresencaImportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -17,9 +18,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     Route::post('/eventos/{evento}/inscrever', [InscricaoController::class, 'inscrever'])->name('inscricoes.inscrever');
     Route::delete('/eventos/{evento}/cancelar', [InscricaoController::class, 'cancelar'])->name('inscricoes.cancelar');
+
+    Route::post('/atividades/{atividade}/presenca/checkin', [AtividadeController::class, 'checkin'])->name('atividades.presenca.checkin');
+});
+
+Route::middleware(['auth', 'permission:presenca.abrir'])->group(function () {
+    Route::patch('/atividades/{atividade}/presenca/toggle', [AtividadeController::class, 'togglePresenca'])->name('atividades.presenca.toggle');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/atividades/{atividade}/presencas/import',    [PresencaImportController::class, 'import'])->name('atividades.presencas.import');
+    Route::post('/atividades/{atividade}/presencas/import',    [PresencaImportController::class, 'cadastro'])->name('atividades.presencas.cadastro');
+
+    Route::get('/atividades/{atividade}/presencas/preview',   [PresencaImportController::class, 'preview'])->name('atividades.presencas.preview');
+    Route::post('/atividades/{atividade}/presencas/savepage',  [PresencaImportController::class, 'savePage'])->name('atividades.presencas.savepage');
+    Route::post('/atividades/{atividade}/presencas/confirmar', [PresencaImportController::class, 'confirmar'])->name('atividades.presencas.confirmar');
 });
 
 Route::middleware(['auth', 'role:administrador'])->group(function () {
