@@ -65,7 +65,15 @@
             <!-- <td>{{ $p->id }}</td> -->
             <td>{{ $p->user->name ?? '-' }}</td>
             <td>{{ $p->user->email ?? '-' }}</td>
-            <td>{{ $p->cpf ?? '-' }}</td>
+            <td>
+              @if(!$p->cpf_valido)
+                <span class="text-danger" data-bs-toggle="tooltip" title="CPF não passou na validação">
+                  {{ $p->cpf }}
+                </span>
+              @else
+                {{ $p->cpf }}
+              @endif
+            </td>
             <td>{{ $p->telefone ?? '-' }}</td>
             <td>
               @if($p->municipio)
