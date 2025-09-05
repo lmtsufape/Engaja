@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Evento;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 
@@ -17,10 +18,12 @@ class DatabaseSeeder extends Seeder
             RolesPermissionsSeeder::class,
         ]);
 
-        $administrador = User::factory()->create([
-            'name'  => 'Admin Engaja',
-            'email' => 'admin@engaja.local',
-        ]);
+        $administrador = User::factory()
+            ->has(Evento::factory()->count(4)->hasAtividades(3))
+            ->create([
+                'name'  => 'Admin Engaja',
+                'email' => 'admin@engaja.local',
+            ]);
 
         $administrador->assignRole('administrador');
     }
