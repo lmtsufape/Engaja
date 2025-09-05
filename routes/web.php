@@ -40,6 +40,8 @@ Route::resource('eventos.atividades', AtividadeController::class)
     ->parameters(['atividades' => 'atividade'])
     ->shallow();
 
+Route::get('eventos/{evento}', [EventoController::class, 'show'])->name('eventos.show');
+
 Route::get('/eventos/{evento}/cadastro-e-inscricao', [EventoController::class, 'cadastro_inscricao'])->name('evento.cadastro_inscricao');
 Route::post('/eventos/cadastro-e-inscricao/store', [EventoController::class, 'store_cadastro_inscricao'])->name('evento.store_cadastro_inscricao');
 

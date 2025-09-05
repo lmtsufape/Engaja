@@ -201,6 +201,8 @@ class EventoController extends Controller
 
             DB::commit();
 
+            Auth::login($user);
+
             return redirect()->route('eventos.show', $evento->id)->with('success', 'Cadastro, inscrição e presença realizados!');
         } catch (\Throwable $e) {
             DB::rollBack();
