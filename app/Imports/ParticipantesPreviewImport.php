@@ -24,7 +24,7 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
         $this->municipiosCache = Municipio::query()
             ->select('id', 'nome')
             ->get()
-            ->mapWithKeys(fn ($m) => [mb_strtolower(trim($m->nome)) => $m->id])
+            ->mapWithKeys(fn($m) => [mb_strtolower(trim($m->nome)) => $m->id])
             ->all();
     }
 
@@ -42,7 +42,7 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
     {
         $this->rows = $rows->map(function ($row) {
             // Normaliza strings
-            $map = collect($row)->map(fn ($v) => is_string($v) ? trim($v) : $v);
+            $map = collect($row)->map(fn($v) => is_string($v) ? trim($v) : $v);
 
             // Resolve municipio_id via cache (se existir)
             $municipioNome = (string) ($map['municipio'] ?? '');
@@ -56,8 +56,8 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
             return [
                 'nome'           => (string) ($map['nome'] ?? ''),
                 'email'          => (string) ($map['email'] ?? ''),
-                'cpf'            => (string) ($map['cpf'] ?? ''),
-                'telefone'       => (string) ($map['telefone'] ?? ''),
+                'cpf'            => preg_replace('/\D+/', '', (string)($map['cpf'] ?? '')) ?: null,
+                'telefone'       => preg_replace('/\D+/', '', (string)($map['telefone'] ?? '')) ?: null,
                 'municipio'      => $municipioNome,
                 'municipio_id'   => $municipioId,              // ajuda a montar <select> se quiser
                 'escola_unidade' => (string) ($map['escola_unidade'] ?? ''),

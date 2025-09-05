@@ -203,10 +203,10 @@
                 </form>
               @endif
             @else
-              <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary"
+              <!-- <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary"
                 title="Complete seu cadastro de participante para se inscrever">
                 Completar cadastro para se inscrever
-              </a>
+              </a> -->
             @endif
           @endauth
 
@@ -358,11 +358,11 @@
                           @endif
                         </div>
 
-                        @hasanyrole('administrador|formador')
                         <div class="actions d-flex gap-2">
                           <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
                             Ver
                           </a>
+                          @hasanyrole('administrador|formador')
                           <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
                             Editar
                           </a>
@@ -371,8 +371,8 @@
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger">Excluir</button>
                           </form>
+                          @endhasanyrole
                         </div>
-                        @endhasanyrole
                       </div>
                     </div>
                   </div>

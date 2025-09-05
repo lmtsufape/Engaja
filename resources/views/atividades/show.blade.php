@@ -11,16 +11,6 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, .06);
   }
 
-  .ev-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: .75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #eef2e6;
-  }
-
   .ev-chip {
     display: inline-block;
     padding: .35rem .65rem;
@@ -29,74 +19,11 @@
     font-size: .85rem;
   }
 
-  .nav-day .nav-link {
-    border-radius: 999px;
-  }
-
-  .nav-day .nav-link.active {
-    background: var(--engaja);
-    color: #fff;
-  }
-
-  .program-sec {
-    position: relative;
-  }
-
-  .day-tabs {
-    overflow: auto;
-    white-space: nowrap;
-    gap: .5rem;
-  }
-
-  .day-tabs .nav-link {
-    border-radius: 999px;
-    padding: .4rem .9rem;
-    font-weight: 600;
-    border: 1px solid #e7e7e7;
-    color: #333;
-  }
-
-  .day-tabs .nav-link.active {
-    background: var(--engaja);
-    color: #fff;
-    border-color: var(--engaja);
-  }
-
-  .timeline {
-    position: relative;
-    padding-left: 2.25rem;
-  }
-
-  .timeline::before {
-    content: "";
-    position: absolute;
-    left: 1rem;
-    top: .25rem;
-    bottom: .25rem;
-    width: 2px;
-    background: linear-gradient(#ececec, #d9d9d9);
-  }
-
-  .t-item {
-    position: relative;
-    margin-bottom: 1rem;
-  }
-
-  .t-dot {
-    display: none;
-  }
-
   .program-card {
     border: 1px solid #ececec;
     border-radius: .9rem;
     padding: 1rem;
-    transition: transform .15s ease, box-shadow .15s ease;
     background: #fff;
-  }
-
-  .program-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
   }
 
   .program-time {
@@ -106,124 +33,81 @@
     letter-spacing: .3px;
   }
 
-  .program-title {
-    font-weight: 700;
-    margin: .15rem 0 .35rem;
-  }
-
-  .program-meta {
-    font-size: .85rem;
-    color: #6c757d;
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-  }
-
   .chip {
     border: 1px solid #e6e6e6;
     border-radius: 999px;
     padding: .2rem .55rem;
     font-size: .8rem;
   }
-
-  .actions .btn {
-    padding: .25rem .5rem;
-  }
-
-  .empty-state {
-    border: 1px dashed #d8d8d8;
-    border-radius: .9rem;
-    padding: 1.25rem;
-    text-align: center;
-    color: #6c757d;
-  }
 </style>
 
-<div class="container">
+@php
+$ini = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
+$dia = \Carbon\Carbon::parse($atividade->dia)
+->locale('pt_BR')->translatedFormat('l, d \\d\\e F \\d\\e Y');
+@endphp
+<div class="container py-4">
 
-  {{-- Cabeçalho --}}
-  <div class="row g-4 align-items-center mb-4">
-    <div class="col-md-5">
-      <div class="ev-card bg-light p-4 text-center">
-        <img
-          src="{{ $atividade->evento->imagem ? asset('storage/'.$atividade->evento->imagem) : asset('images/engaja-bg.png') }}"
-          class="img-fluid rounded" alt="Capa do evento">
-      </div>
+  {{-- Cabeçalho do momento --}}
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h1 class="h4 fw-bold text-engaja mb-1">{{ $atividade->descricao ?? 'Momento' }}</h1>
+      @php
+      $dia = \Carbon\Carbon::parse($atividade->dia)->locale('pt_BR')
+      ->translatedFormat('l, d \\d\\e F \\d\\e Y');
+      $hora = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
+      @endphp
+      <p class="text-muted mb-1">🗓️ {{ $dia }} • {{ $hora }}</p>
+
+      @if($atividade->local)
+      <p class="text-muted mb-1">📍 {{ $atividade->local }}</p>
+      @endif
+      @if($atividade->carga_horaria)
+      <p class="text-muted mb-0">⏱️ {{ $atividade->carga_horaria }}h</p>
+      @endif
     </div>
 
-    <div class="col-md-7">
-      <h1 class="h3 fw-bold text-engaja mb-2">{{ $atividade->evento->nome }}</h1>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      @if($podeImportar)
+      <a href="{{ route('atividades.presencas.import', $atividade) }}" class="btn btn-engaja btn-sm">
+        Importar presenças
+      </a>
+      @endif
 
-      <ul class="list-unstyled mb-3">
-        @if($atividade->evento->data_horario)
-        <li class="mb-1">📅
-          {{ \Carbon\Carbon::parse($atividade->evento->data_horario)->locale('pt_BR')->translatedFormat('l, d \d\e F \à\s H\hi') }}
-        </li>
+      @can('presenca.abrir')
+      <form action="{{ route('atividades.presenca.toggle', $atividade) }}" method="POST" class="d-inline">
+        @csrf @method('PATCH')
+        <button class="btn {{ $atividade->presenca_ativa ? 'btn-danger' : 'btn-success' }} btn-sm">
+          {{ $atividade->presenca_ativa ? 'Fechar presença' : 'Abrir presença' }}
+        </button>
+      </form>
+      @endcan
+
+      @auth
+      <form action="{{ route('atividades.presenca.checkin', $atividade) }}" method="POST" class="d-inline">
+        @csrf
+        <button class="btn btn-primary btn-sm" {{ $atividade->presenca_ativa ? '' : 'disabled' }}>
+          Confirmar minha presença
+        </button>
+      </form>
+
+      @else
+      @if($atividade->presenca_ativa)
+        <a class="btn btn-primary btn-sm" href="{{ route('presenca.confirmar', $atividade) }}">
+          Confirmar presença
+        </a>
         @endif
-
-        @if(!empty($atividade->evento->local))
-        <li class="mb-1">📍 {{ $atividade->evento->local }}</li>
-        @endif
-
-        @if($atividade->evento->modalidade)
-        <li class="mb-1">🛰️ {{ ucfirst($atividade->evento->modalidade) }}</li>
-        @endif
-
-        @if($atividade->evento->user?->name)
-        <li class="mb-1">👤 Organizado por: {{ $atividade->evento->user->name }}</li>
-        @endif
-      </ul>
-
-      <div class="d-flex gap-2 flex-wrap">
-      </div>
+      @endauth
     </div>
+
   </div>
 
-
+  {{-- QR Code de presença (mantido) --}}
   <div class="mb-4">
-    <div class="d-flex flex-wrap gap-2">
-      @if($atividade->evento->eixo?->nome)
-      <span class="ev-chip">Eixo: <strong class="ms-1">{{ $atividade->evento->eixo->nome }}</strong></span>
-      @endif
-      @if($atividade->evento->tipo)
-      <span class="ev-chip">Tipo: <strong class="ms-1">{{ $atividade->evento->tipo }}</strong></span>
-      @endif
-      @if(!is_null($atividade->evento->duracao))
-      <span class="ev-chip">Duração: <strong class="ms-1">{{ $atividade->evento->duracao }} dias</strong></span>
-      @endif
-      @if($atividade->evento->modalidade)
-      <span class="ev-chip">Modalidade: <strong class="ms-1">{{ $atividade->evento->modalidade }}</strong></span>
-      @endif
-    </div>
-  </div>
-
-  {{-- Descrição / Objetivo --}}
-  @if($atividade->evento->resumo)
-  <div class="mb-4">
-    <h2 class="h5 fw-bold mb-2">Descrição da ação pedagógica</h2>
-    <div class="ev-card p-3">
-      <p class="mb-0">{{ $atividade->evento->resumo }}</p>
-    </div>
-  </div>
-  @endif
-
-  @if($atividade->evento->objetivo)
-  <div class="mb-4">
-    <h2 class="h5 fw-bold mb-2">Objetivos da ação pedagógica</h2>
-    <div class="ev-card p-3">
-      <p class="mb-0">{{ $atividade->evento->objetivo }}</p>
-    </div>
-  </div>
-  @endif
-
-
-
-  {{-- TODO --}}
-  {{-- Link com formulário --}}
-  {{-- QR Code para presença --}}
-  <div class="mb-3">
-      <h5 class="h5 fw-bold mb-2">Confirmação de presença</h5>
-      <img src="data:image/png;base64, {!! base64_encode(
+    <h2 class="h6 fw-bold mb-2">Confirmação de presença (QR)</h2>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="p-2 border rounded bg-white">
+        <img src="data:image/png;base64, {!! base64_encode(
           QrCode::format('png')
               ->style('round')
               ->color(129,18,131)
@@ -235,34 +119,86 @@
               ->margin(0)
               ->merge(public_path('/images/engaja-qr.png'), 0.3, true)
               ->errorCorrection('H')
-              ->generate(route('atividades.show', $atividade->id))
-      ) !!}" alt="QR Code">
+              ->generate(route('atividades.show', $atividade))
+        ) !!}" alt="QR Code">
+      </div>
+
+      {{-- Botão ativar/desativar presença — ajuste a rota/coluna conforme seu modelo --}}
+      {{--
+      <form action="{{ route('atividades.toggle-presenca', $atividade) }}" method="POST">
+      @csrf @method('PATCH')
+      <button type="submit" class="btn {{ $atividade->presenca_ativa ? 'btn-danger' : 'btn-success' }}">
+        {{ $atividade->presenca_ativa ? 'Desativar presença' : 'Ativar presença' }}
+      </button>
+      </form>
+      --}}
+    </div>
   </div>
 
-  {{-- TODO --}}
-  {{-- Botão ativar/desativar presença --}}
-  <form action="/" method="POST" class="mb-3">
-      @csrf
-      @method('PATCH')
-      <button type="submit" class="btn {{ $atividade->presenca_ativa ? 'btn-danger' : 'btn-success' }}">
-          {{ $atividade->presenca_ativa ? 'Desativar Presença' : 'Ativar Presença' }}
-      </button>
-  </form>
+  @can('presenca.abrir')
+  {{-- Lista de presenças --}}
+    <div class="mb-4">
+        <h2 class="h6 fw-bold mb-2">Participantes com presença registrada</h2>
 
-  {{-- Lista de participantes --}}
-  <h5 class="h6 fw-bold mb-2">Participantes que já confirmaram presença</h5>
-  <ul class="list-group">
-      @foreach($atividade->presencas as $presenca)
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-              {{ $presenca->inscricao->participante->user->name }}
-              @if($presenca->status === 'justificado')
-                  <span class="badge bg-warning text-dark">Justificado</span>
-              @else
-                  <span class="badge bg-success">Presente</span>
-              @endif
-          </li>
-      @endforeach
-  </ul>
+        @php
+        $lista = $atividade->presencas()->with([
+        'inscricao.participante.user:id,name,email',
+        'inscricao.participante.municipio.estado:id,nome,sigla'
+        ])->orderByDesc('id')->paginate(25);
+        @endphp
+
+        @if($lista->count() === 0)
+        <div class="ev-card p-3 text-muted">Nenhuma presença registrada para este momento.</div>
+        @else
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered align-middle bg-white">
+            <thead class="table-light">
+            <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Município</th>
+                <th style="min-width:140px;">Status</th>
+                <th>Justificativa</th>
+                <th style="min-width:140px;">Marcado em</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach($lista as $pr)
+            @php
+            $p = $pr->inscricao->participante ?? null;
+            $u = $p?->user;
+            $m = $p?->municipio;
+            $uf = $m?->estado?->sigla;
+            $munLabel = $m ? ($m->nome . ($uf ? " - $uf" : "")) : '—';
+            $status = $pr->status_participacao ?? $pr->status ?? null;
+            @endphp
+            <tr>
+                <td>{{ $u->name ?? '—' }}</td>
+                <td>{{ $u->email ?? '—' }}</td>
+                <td>{{ $munLabel }}</td>
+                <td>
+                @switch($status)
+                @case('presente') <span class="badge bg-success">Presente</span> @break
+                @case('ausente') <span class="badge bg-secondary">Ausente</span> @break
+                @case('justificado') <span class="badge bg-warning text-dark">Justificado</span> @break
+                @default <span class="badge bg-light text-muted">—</span>
+                @endswitch
+                </td>
+                <td>{{ $pr->justificativa ?? '—' }}</td>
+                <td>{{ optional($pr->updated_at ?? $pr->created_at)->format('d/m/Y H:i') ?? '—' }}</td>
+            </tr>
+            @endforeach
+            </tbody>
+        </table>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+        <div class="small text-muted">Exibindo {{ $lista->count() }} de {{ $lista->total() }}</div>
+        {{ $lista->links() }}
+        </div>
+        @endif
+    </div>
+  @endcan
 
 </div>
 @endsection
