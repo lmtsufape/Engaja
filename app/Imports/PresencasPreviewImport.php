@@ -15,18 +15,42 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
 
     /** @var array<string,int> nome (lower) => municipio_id */
     protected array $municipiosCache = [];
+    /** @var array<int,string> lista canônica */
+    protected array $organizacoes = [];
+
+    /** @var array<string,string> mapa lower => canônico */
+    protected array $organizacoesMap = [];
 
     public function __construct()
     {
         $this->rows = collect();
 
-        // Carrega cache de municípios (nome normalizado -> id)
         $this->municipiosCache = Municipio::with('estado')
-            ->get(['id','nome','estado_id'])
+            ->get(['id', 'nome', 'estado_id'])
             ->mapWithKeys(function ($m) {
                 return [mb_strtolower(trim($m->nome)) => (int) $m->id];
             })
             ->toArray();
+        $this->organizacoes = config('engaja.organizacoes', []);
+        $this->organizacoesMap = collect($this->organizacoes)
+            ->mapWithKeys(function ($o) {
+                return [mb_strtolower($this->slugify($o)) => $o];
+            })->toArray();
+    }
+
+    private function slugify(string $s): string
+    {
+        $s = trim(mb_strtolower($s));
+        $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s) ?: $s;
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        return trim($s);
+    }
+
+    private function normalizeOrganizacao(?string $raw): ?string
+    {
+        if (!$raw) return null;
+        $key = $this->slugify($raw);
+        return $this->organizacoesMap[$key] ?? null;
     }
 
     public function headingRow(): int
@@ -34,8 +58,7 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
         return 1;
     }
 
-    // Colunas esperadas:
-    // nome, email, cpf, telefone, municipio, escola_unidade, status, justificativa, data_entrada
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $r) {
@@ -44,11 +67,27 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
             $email    = strtolower(trim((string)($r['email'] ?? '')));
             $cpf      = preg_replace('/\D+/', '', (string)($r['cpf'] ?? '')) ?: null;
             $telefone = preg_replace('/\D+/', '', (string)($r['telefone'] ?? '')) ?: null;
+
             $munNome  = trim((string)($r['municipio'] ?? ''));
-            $escola   = trim((string)($r['escola_unidade'] ?? ''));
+            $escola   = trim((string)($r['organizacao'] ?? $r['escola_unidade'] ?? '')); // aceita ambos
             $status   = $this->mapStatus((string)($r['status'] ?? ''));
             $justif   = trim((string)($r['justificativa'] ?? '')) ?: null;
             $entrada  = $this->parseDate($r['data_entrada'] ?? null);
+
+            $linhaVazia = (
+                $nome === '' &&
+                $email === '' &&
+                $cpf === null &&
+                $telefone === null &&
+                $munNome === '' &&
+                $escola === '' &&
+                $status === null &&
+                $justif === null &&
+                $entrada === null
+            );
+            if ($linhaVazia) {
+                continue;
+            }
 
             // Resolve municipio_id (se nome existir)
             $municipioId = null;
@@ -57,6 +96,10 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 $municipioId = $this->municipiosCache[$key] ?? null;
             }
 
+            $orgCanon = $this->normalizeOrganizacao($escola);
+            $organizacaoOk = $escola === '' ? true : ($orgCanon !== null);
+            $escolaOut = $orgCanon ?? $escola;
+
             $this->rows->push([
                 'nome'           => $nome,
                 'email'          => $email,
@@ -64,7 +107,8 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 'telefone'       => $telefone,
                 'municipio'      => $munNome,      // para exibir no input
                 'municipio_id'   => $municipioId,  // para pré-selecionar no <select>
-                'escola_unidade' => $escola,
+                'organizacao'    => $escolaOut,    // canônico se reconhecido
+                'organizacao_ok' => $organizacaoOk,
                 'status'         => $status,
                 'justificativa'  => $justif,
                 'data_entrada'   => $entrada,
@@ -72,13 +116,14 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
         }
     }
 
+
     private function mapStatus(string $raw): ?string
     {
         $s = mb_strtolower(trim($raw));
         return match ($s) {
-            'presente','p','present'      => 'presente',
-            'ausente','a','absent'        => 'ausente',
-            'justificado','j','justify'   => 'justificado',
+            'presente', 'p', 'present'      => 'presente',
+            'ausente', 'a', 'absent'        => 'ausente',
+            'justificado', 'j', 'justify'   => 'justificado',
             default                       => null,
         };
     }

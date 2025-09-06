@@ -6,14 +6,14 @@
   <h1 class="h4 mb-3">Pré-visualização da Importação — {{ $evento->nome }}</h1>
 
   @if ($errors->any())
-    <div class="alert alert-danger">
-      <strong>Corrija os erros antes de confirmar:</strong>
-      <ul class="mb-0">
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </div>
+  <div class="alert alert-danger">
+    <strong>Corrija os erros antes de confirmar:</strong>
+    <ul class="mb-0">
+      @foreach ($errors->all() as $error)
+      <li>{{ $error }}</li>
+      @endforeach
+    </ul>
+  </div>
   @endif
 
   <div class="d-flex align-items-center justify-content-between mb-3">
@@ -37,7 +37,7 @@
 
   {{-- Salvar alterações da página atual na sessão --}}
   <form id="form-save-page" method="POST"
-        action="{{ route('inscricoes.preview.save', [
+    action="{{ route('inscricoes.preview.save', [
             'evento' => $evento,
             'page' => $rows->currentPage(),
             'per_page' => $rows->perPage()
@@ -54,33 +54,52 @@
             <th style="min-width:140px;">CPF</th>
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
-            <th style="min-width:220px;">Escola/Unidade</th>
+            <th style="min-width:220px;">Organização</th>
             <!-- <th style="min-width:140px;">Data de entrada</th> -->
           </tr>
         </thead>
         <tbody id="preview-tbody">
           @foreach($rows as $i => $r)
-            @php $idx = $globalOffset + $loop->index; @endphp
-            <tr>
-              <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required></td>
-              <td><input type="email" class="form-control form-control-sm" name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}" required></td>
-              <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}"></td>
-              <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][telefone]" value="{{ old("rows.$idx.telefone", $r['telefone']) }}"></td>
+          @php $idx = $globalOffset + $loop->index; @endphp
+          <tr>
+            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required></td>
+            <td><input type="email" class="form-control form-control-sm" name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}" required></td>
+            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}"></td>
+            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][telefone]" value="{{ old("rows.$idx.telefone", $r['telefone']) }}"></td>
 
-              <td>
-                <select class="form-select form-select-sm" name="rows[{{ $idx }}][municipio_id]">
-                  <option value="">-- Nenhum --</option>
-                  @foreach($municipios as $m)
-                    <option value="{{ $m->id }}" @selected(old("rows.$idx.municipio_id", $r['municipio_id']) == $m->id)>
-                      {{ $m->nome_com_estado }}
-                    </option>
-                  @endforeach
-                </select>
-              </td>
+            <td>
+              <select class="form-select form-select-sm" name="rows[{{ $idx }}][municipio_id]">
+                <option value="">-- Nenhum --</option>
+                @foreach($municipios as $m)
+                <option value="{{ $m->id }}" @selected(old("rows.$idx.municipio_id", $r['municipio_id'])==$m->id)>
+                  {{ $m->nome_com_estado }}
+                </option>
+                @endforeach
+              </select>
+            </td>
 
-              <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][escola_unidade]" value="{{ old("rows.$idx.escola_unidade", $r['escola_unidade']) }}"></td>
-              <!-- <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][data_entrada]" value="{{ old("rows.$idx.data_entrada", $r['data_entrada']) }}" placeholder="YYYY-MM-DD"></td> -->
-            </tr>
+            <td>
+              @php
+              // Valor já vem como canônico ou null pela prévia
+              $valor = $r['organizacao'] ?? $r['escola_unidade'] ?? null;
+              @endphp
+
+              <select
+                name="rows[{{ $globalOffset + $loop->index }}][organizacao]"
+                class="form-select form-select-sm {{ (!empty($r['organizacao']) && empty($r['organizacao_ok'])) ? 'is-invalid' : '' }}">
+                <option value="">Selecione...</option>
+                @foreach($organizacoes as $org)
+                <option value="{{ $org }}" @selected($valor===$org)>{{ $org }}</option>
+                @endforeach
+              </select>
+
+              @if(!empty($r['organizacao']) && empty($r['organizacao_ok']))
+              <div class="invalid-feedback">Selecione uma organização válida.</div>
+              @endif
+            </td>
+
+            <!-- <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][data_entrada]" value="{{ old("rows.$idx.data_entrada", $r['data_entrada']) }}" placeholder="YYYY-MM-DD"></td> -->
+          </tr>
           @endforeach
         </tbody>
       </table>

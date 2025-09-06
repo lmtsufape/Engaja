@@ -15,6 +15,10 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
 
     /** @var array<string,int> Cache: nome_do_municipio_lower => id */
     protected array $municipiosCache = [];
+    /** @var array<int,string> */
+    protected array $organizacoes = [];
+    /** @var array<string,string> */
+    protected array $organizacoesMap = [];
 
     public function __construct()
     {
@@ -25,6 +29,11 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
             ->select('id', 'nome')
             ->get()
             ->mapWithKeys(fn($m) => [mb_strtolower(trim($m->nome)) => $m->id])
+            ->all();
+
+        $this->organizacoes = config('engaja.organizacoes', []);
+        $this->organizacoesMap = collect($this->organizacoes)
+            ->mapWithKeys(fn($o) => [$this->slugify($o) => $o])
             ->all();
     }
 
@@ -41,7 +50,6 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
     public function collection(Collection $rows): void
     {
         $this->rows = $rows->map(function ($row) {
-            // Normaliza strings
             $map = collect($row)->map(fn($v) => is_string($v) ? trim($v) : $v);
 
             // Resolve municipio_id via cache (se existir)
@@ -52,17 +60,41 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
                 $municipioId = $this->municipiosCache[$key] ?? null;
             }
 
-            // Retorna array "editável" para a view
+            // Aceita "organizacao" OU "escola_unidade"
+            $orgRaw   = (string) ($map['organizacao'] ?? $map['escola_unidade'] ?? '');
+            $orgCanon = $this->normalizeOrganizacao($orgRaw); // null se não bater com a lista
+
+            // ⚠️ Sem fallback: se não for canônico, fica null (ou string vazia na view)
+            $orgOut   = $orgCanon;                // <<-- aqui mudou
+            $orgOk    = ($orgRaw === '') ? true : ($orgCanon !== null);
+
             return [
                 'nome'           => (string) ($map['nome'] ?? ''),
                 'email'          => (string) ($map['email'] ?? ''),
                 'cpf'            => preg_replace('/\D+/', '', (string)($map['cpf'] ?? '')) ?: null,
                 'telefone'       => preg_replace('/\D+/', '', (string)($map['telefone'] ?? '')) ?: null,
                 'municipio'      => $municipioNome,
-                'municipio_id'   => $municipioId,              // ajuda a montar <select> se quiser
-                'escola_unidade' => (string) ($map['escola_unidade'] ?? ''),
-                'data_entrada'   => (string) ($map['data_entrada'] ?? ''), // fica string p/ usuário ajustar
+                'municipio_id'   => $municipioId,
+                'organizacao'     => $orgOut,      // se sua view usa 'organizacao'
+                'organizacao_ok'  => $orgOk,
+                'escola_unidade'  => $orgOut,      // se sua view usa 'escola_unidade'
+                'data_entrada'   => (string) ($map['data_entrada'] ?? ''),
             ];
         })->values();
+    }
+
+    private function slugify(string $s): string
+    {
+        $s = trim(mb_strtolower($s));
+        $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s) ?: $s;
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        return trim($s);
+    }
+
+    private function normalizeOrganizacao(?string $raw): ?string
+    {
+        if (!$raw) return null;
+        $key = $this->slugify($raw);
+        return $this->organizacoesMap[$key] ?? null;
     }
 }

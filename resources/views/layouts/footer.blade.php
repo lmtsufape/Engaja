@@ -1,4 +1,4 @@
-<footer class="bg-primary border-top mt-auto pt-5">
+<footer class="bg-primary border-top mt-5 pt-5">
   <div class="container">
 
     <!-- Logo + Links  -->

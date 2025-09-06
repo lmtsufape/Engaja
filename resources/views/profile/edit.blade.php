@@ -132,12 +132,31 @@
                             </div> -->
 
                             <div class="col-md-6">
-                                <label for="escola_unidade" class="form-label">Escola/Unidade</label>
-                                <input id="escola_unidade" type="text" name="escola_unidade"
-                                    value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
-                                    class="form-control @error('escola_unidade') is-invalid @enderror">
-                                @error('escola_unidade') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <label for="escola_unidade" class="form-label">Organização</label>
+
+                                @php
+                                $currentOrg = old('escola_unidade', $participante->escola_unidade ?? '');
+                                @endphp
+
+                                <select id="escola_unidade" name="escola_unidade"
+                                    class="form-select @error('escola_unidade') is-invalid @enderror">
+                                    <option value="">Selecione...</option>
+
+                                    @foreach($organizacoes as $org)
+                                    <option value="{{ $org }}" @selected($currentOrg===$org)>{{ $org }}</option>
+                                    @endforeach
+
+                                    {{-- Preserva um valor antigo que não esteja mais na lista (opcional) --}}
+                                    @if($currentOrg && !in_array($currentOrg, $organizacoes, true))
+                                    <option value="{{ $currentOrg }}" selected>{{ $currentOrg }} (valor anterior)</option>
+                                    @endif
+                                </select>
+
+                                @error('escola_unidade')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
+
 
                             <div class="col-md-6">
                                 <label for="municipio_id" class="form-label">Município</label>

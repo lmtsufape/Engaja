@@ -19,6 +19,10 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
 
     /** @var array<string,int> */
     protected array $municipiosCache = [];
+    /** @var array<int,string> */
+    protected array $organizacoes = [];
+    /** @var array<string,string> */
+    protected array $organizacoesMap = [];
 
     public function __construct()
     {
@@ -28,7 +32,12 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         $this->municipiosCache = Municipio::query()
             ->select('id', 'nome')
             ->get()
-            ->mapWithKeys(fn ($m) => [mb_strtolower(trim($m->nome)) => $m->id])
+            ->mapWithKeys(fn($m) => [mb_strtolower(trim($m->nome)) => $m->id])
+            ->all();
+
+        $this->organizacoes = config('engaja.organizacoes', []);
+        $this->organizacoesMap = collect($this->organizacoes)
+            ->mapWithKeys(fn($o) => [$this->slugify($o) => $o])
             ->all();
     }
 
@@ -70,6 +79,8 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             }
         }
 
+        $orgRaw   = trim((string)($row['organizacao'] ?? $row['escola_unidade'] ?? ''));
+        $orgCanon = $this->normalizeOrganizacao($orgRaw);
         // Cria ou atualiza participante
         $participante = Participante::updateOrCreate(
             [
@@ -79,7 +90,7 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
                 'municipio_id'   => $municipioId,
                 'cpf'            => $row['cpf'] ?? null,
                 'telefone'       => $row['telefone'] ?? null,
-                'escola_unidade' => $row['escola_unidade'] ?? null,
+                'escola_unidade' => $orgCanon ?? ($row['escola_unidade'] ?? ($orgRaw ?: null)),
                 'data_entrada'   => $dataEntrada,
             ]
         );
@@ -87,5 +98,20 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         $this->importados->push($participante);
 
         return $participante;
+    }
+    
+    private function slugify(string $s): string
+    {
+        $s = trim(mb_strtolower($s));
+        $s = iconv('UTF-8', 'ASCII//TRANSLIT', $s) ?: $s; // remove acentos
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        return trim($s);
+    }
+
+    private function normalizeOrganizacao(?string $raw): ?string
+    {
+        if (!$raw) return null;
+        $key = $this->slugify($raw);
+        return $this->organizacoesMap[$key] ?? null;
     }
 }

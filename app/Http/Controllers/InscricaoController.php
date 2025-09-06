@@ -83,12 +83,15 @@ class InscricaoController extends Controller
 
         $municipios = \App\Models\Municipio::with('estado')->orderBy('nome')->get(['id', 'nome', 'estado_id']);
 
+        $organizacoes = config('engaja.organizacoes', []);
+
         return view('inscricoes.preview', [
             'evento'       => $evento,
             'rows'         => $rowsPaginator,
             'globalOffset' => $globalOffset,
             'sessionKey'   => $sessionKey,
             'municipios'   => $municipios,
+            'organizacoes' => $organizacoes,
         ]);
     }
 
@@ -173,7 +176,6 @@ class InscricaoController extends Controller
             $novosParticipantes = [];
             $atualizacoes = [];
 
-            // helper para normalizar data
             $toDate = function ($raw) {
                 if ($raw === null) return null;
                 $s = trim((string)$raw);
@@ -198,11 +200,15 @@ class InscricaoController extends Controller
                 if (!$user) continue;
                 $userId = $user->id;
 
+                // 👇 NOVO: aceita 'organizacao' ou mantém 'escola_unidade'
+                $orgRaw = ($row['organizacao'] ?? $row['escola_unidade'] ?? null);
+                $org    = is_string($orgRaw) ? trim($orgRaw) : null;
+
                 $dados = [
                     'municipio_id'   => ($row['municipio_id'] ?? null) ?: null,
                     'cpf'            => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
                     'telefone'       => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
-                    'escola_unidade' => (($row['escola_unidade'] ?? '') !== '') ? trim((string)$row['escola_unidade']) : null,
+                    'escola_unidade' => ($org !== '') ? $org : null, // 👈 só altera aqui
                     'data_entrada'   => $toDate($row['data_entrada'] ?? null),
                 ];
 
@@ -255,6 +261,7 @@ class InscricaoController extends Controller
             ->with('success', 'Importação confirmada e salva com sucesso!');
     }
 
+    
     public function inscritos(Request $request, Evento $evento)
     {
         $search      = $request->query('q');

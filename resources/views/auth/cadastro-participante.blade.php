@@ -107,7 +107,7 @@
                                         </div>
 
                                         <div class="col-md-6">
-                                            <label for="escola_unidade" class="form-label">Escola/Unidade</label>
+                                            <label for="escola_unidade" class="form-label">Organização</label>
                                             <input id="escola_unidade" type="text" name="escola_unidade"
                                                 value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
                                                 class="form-control @error('escola_unidade') is-invalid @enderror">

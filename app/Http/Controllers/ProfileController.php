@@ -22,10 +22,13 @@ class ProfileController extends Controller
         $municipios = \App\Models\Municipio::with('estado')
             ->orderBy('nome')
             ->get(['id','nome','estado_id']);
+        
+        $organizacoes = config('engaja.organizacoes', []);
 
         return view('profile.edit', [
             'user'       => $user,
             'municipios' => $municipios,
+            'organizacoes' => $organizacoes,
         ]);
     }
 

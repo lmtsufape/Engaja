@@ -64,29 +64,39 @@ class PresencaImportController extends Controller
 
         $slice = $allRows->slice(($page - 1) * $perPage, $perPage)->values();
 
-        $rowsPaginator = new LengthAwarePaginator(
-            $slice, $total, $perPage, $page,
-            ['path' => route('atividades.presencas.preview', $atividade),
-             'query'=> ['session_key'=>$sessionKey,'per_page'=>$perPage]]
+        $rowsPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $slice,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path'  => route('atividades.presencas.preview', $atividade),
+                'query' => ['session_key' => $sessionKey, 'per_page' => $perPage],
+            ]
         );
 
         $globalOffset = ($page - 1) * $perPage;
-        $municipios = Municipio::with('estado')->orderBy('nome')->get(['id','nome','estado_id']);
+
+        $municipios = \App\Models\Municipio::with('estado')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'estado_id']);
+
+        $organizacoes = config('engaja.organizacoes', []);
 
         return view('presencas.preview', [
-            'evento'       => $evento,
-            'atividade'    => $atividade,
-            'rows'         => $rowsPaginator,
-            'globalOffset' => $globalOffset,
-            'sessionKey'   => $sessionKey,
-            'municipios'   => $municipios,
+            'evento'        => $evento,
+            'atividade'     => $atividade,
+            'rows'          => $rowsPaginator,
+            'globalOffset'  => $globalOffset,
+            'sessionKey'    => $sessionKey,
+            'municipios'    => $municipios,
+            'organizacoes'  => $organizacoes,
         ]);
     }
 
     public function savePage(Request $request, Atividade $atividade)
     {
         $evento = $atividade->evento;
-        // $this->authorize('update', $evento);
 
         $request->validate([
             'session_key' => 'required|string',
@@ -128,15 +138,22 @@ class PresencaImportController extends Controller
         }
 
         DB::transaction(function () use ($rows, $evento, $atividade) {
-            $munCache = Municipio::pluck('id','nome')
-                ->mapWithKeys(fn($id,$nome)=>[mb_strtolower(trim($nome))=>$id])->toArray();
+            $munCache = Municipio::pluck('id', 'nome')
+                ->mapWithKeys(fn($id, $nome) => [mb_strtolower(trim($nome)) => $id])
+                ->toArray();
 
             foreach ($rows as $row) {
                 $email = strtolower(trim((string)($row['email'] ?? '')));
                 $nome  = trim((string)($row['nome']  ?? ''));
                 $cpf   = $row['cpf'] ?? null;
                 $tel   = $row['telefone'] ?? null;
-                $escola= $row['escola_unidade'] ?? null;
+
+                if ($nome === '' && $email === '' && $cpf === null && $tel === null) {
+                    continue; // não cria user/inscrição pra linha vazia
+                }
+
+                // 👇 agora aceita tanto "organizacao" quanto "escola_unidade"
+                $org   = $row['organizacao'] ?? $row['escola_unidade'] ?? null;
 
                 $munId = null;
                 if (!empty($row['municipio'])) {
@@ -147,27 +164,31 @@ class PresencaImportController extends Controller
                 // 1) User
                 $user = $email
                     ? User::firstOrCreate(
-                        ['email'=>$email],
-                        ['name'=>$nome !== '' ? $nome : ($cpf ?: 'Participante'),
-                         'password'=>Hash::make(Str::random(12))]
-                      )
+                        ['email' => $email],
+                        [
+                            'name' => $nome !== '' ? $nome : ($cpf ?: 'Participante'),
+                            'password' => Hash::make(Str::random(12))
+                        ]
+                    )
                     : User::firstOrCreate(
-                        ['email'=>Str::uuid().'@placeholder.local'],
-                        ['name'=>$nome !== '' ? $nome : ($cpf ?: 'Participante'),
-                         'password'=>Hash::make(Str::random(12))]
-                      );
+                        ['email' => Str::uuid() . '@placeholder.local'],
+                        [
+                            'name' => $nome !== '' ? $nome : ($cpf ?: 'Participante'),
+                            'password' => Hash::make(Str::random(12))
+                        ]
+                    );
 
                 // 2) Participante
-                $participante = Participante::firstOrCreate(['user_id'=>$user->id], []);
+                $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
                 $participante->fill([
                     'municipio_id'   => $munId,
                     'cpf'            => $cpf ?: null,
                     'telefone'       => $tel ?: null,
-                    'escola_unidade' => $escola ?: null,
+                    'escola_unidade' => $org ?: null,   // 👈 grava a organização
                     'data_entrada'   => $row['data_entrada'] ?? null,
                 ])->save();
 
-                // 3) Inscrição no evento (cria/reativa)
+                // 3) Inscrição no evento
                 $inscricao = DB::table('inscricaos')
                     ->where('evento_id', $evento->id)
                     ->where('participante_id', $participante->id)
@@ -180,26 +201,25 @@ class PresencaImportController extends Controller
                         'created_at'      => now(),
                         'updated_at'      => now(),
                     ]);
-                    // em pgsql, use returning ou recarregue
                     $inscricaoId = DB::table('inscricaos')
-                        ->where('evento_id',$evento->id)
-                        ->where('participante_id',$participante->id)
+                        ->where('evento_id', $evento->id)
+                        ->where('participante_id', $participante->id)
                         ->value('id');
                 } else {
                     if ($inscricao->deleted_at !== null) {
-                        DB::table('inscricaos')->where('id',$inscricao->id)
-                          ->update(['deleted_at'=>null,'updated_at'=>now()]);
+                        DB::table('inscricaos')->where('id', $inscricao->id)
+                            ->update(['deleted_at' => null, 'updated_at' => now()]);
                     }
                     $inscricaoId = $inscricao->id;
                 }
 
-                // 4) Presença na atividade
+                // 4) Presença
                 $status = $row['status'] ?? null;
                 $just   = $row['justificativa'] ?? null;
 
                 Presenca::updateOrCreate(
-                    ['inscricao_id'=>$inscricaoId, 'atividade_id'=>$atividade->id],
-                    ['status_participacao'=>$status, 'justificativa'=>$just]
+                    ['inscricao_id' => $inscricaoId, 'atividade_id' => $atividade->id],
+                    ['status_participacao' => $status, 'justificativa' => $just]
                 );
             }
         });

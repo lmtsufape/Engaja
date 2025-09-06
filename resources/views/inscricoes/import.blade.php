@@ -9,7 +9,7 @@
       <div class="text-muted small">
         Ação pedagógica: <strong>{{ $evento->nome }}</strong>
         @if($evento->data_horario)
-          • {{ \Carbon\Carbon::parse($evento->data_horario)->format('d/m/Y H:i') }}
+        • {{ \Carbon\Carbon::parse($evento->data_horario)->format('d/m/Y H:i') }}
         @endif
       </div>
     </div>
@@ -20,41 +20,40 @@
   </div>
 
   @if ($errors->any())
-    <div class="alert alert-danger">
-      <strong>Ops!</strong> Verifique o arquivo e tente novamente.
-    </div>
+  <div class="alert alert-danger">
+    <strong>Ops!</strong> Verifique o arquivo e tente novamente.
+  </div>
   @endif
 
   {{-- Card do Formulário --}}
   <div class="card shadow-sm">
     <div class="card-body">
       <form method="POST"
-            action="{{ route('inscricoes.cadastro', $evento) }}"
-            enctype="multipart/form-data"
-            class="row g-3">
+        action="{{ route('inscricoes.cadastro', $evento) }}"
+        enctype="multipart/form-data"
+        class="row g-3">
         @csrf
 
         <div class="col-12">
           <label class="form-label">Arquivo Excel (.xlsx) <span class="text-danger">*</span></label>
           <input type="file"
-                 name="your_file"
-                 class="form-control @error('your_file') is-invalid @enderror"
-                 accept=".xlsx,.xls"
-                 required>
+            name="your_file"
+            class="form-control @error('your_file') is-invalid @enderror"
+            accept=".xlsx,.xls"
+            required>
           @error('your_file') <div class="invalid-feedback">{{ $message }}</div> @enderror
           <div class="form-text">
             Envie um arquivo Excel com a primeira linha como cabeçalho.
           </div>
         </div>
-
-        {{-- (Opcional) Pré-visualização das colunas esperadas --}}
-        <div class="col-12">
-          <div class="ev-card p-3">
-            <div class="fw-semibold mb-2">Formato sugerido (colunas):</div>
-            <div class="small text-muted">
-              <code>nome</code>, <code>email</code>, <code>cpf</code>, <code>telefone</code>, <code>municipio</code>, <code>escola_unidade</code>, 
-              <!-- <code>data_entrada</code> -->
-            </div>
+        <div class="mb-3">
+          <div class="form-text">
+            Colunas: nome, email, cpf, telefone, municipio, organizacao
+          </div>
+          <div class="mt-2">
+            <a href="{{ asset('modelos/modelo_inscricoes_engaja.xlsx') }}" class="btn btn-sm btn-outline-primary">
+              📥 Baixar modelo de planilha
+            </a>
           </div>
         </div>
 
