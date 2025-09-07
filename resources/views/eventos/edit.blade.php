@@ -122,7 +122,7 @@
                              class="img-fluid rounded mb-2"
                              style="max-height: 160px">
                     @else
-                        <img src="{{ asset('images/engaja-bg.png') }}"
+                        <img src="{{ asset('images/logo-aeb.png') }}"
                              alt="Sem imagem"
                              class="img-fluid rounded mb-2"
                              style="max-height: 160px">
