@@ -22,7 +22,7 @@
           <tr>
             <th>Dia</th>
             <th>Hora início</th>
-            <th>Carga horária</th>
+            <th>Hora de término</th>
             @hasanyrole('administrador|formador')
             <th class="text-end">Ações</th>
             @endhasanyrole
@@ -33,7 +33,7 @@
             <tr>
               <td>{{ \Carbon\Carbon::parse($at->dia)->format('d/m/Y') }}</td>
               <td>{{ \Carbon\Carbon::parse($at->hora_inicio)->format('H:i') }}</td>
-              <td>{{ $at->carga_horaria }} min</td>
+              <td>{{ \Carbon\Carbon::parse($at->hora_fim)->format('H:i') }}</td>
               @hasanyrole('administrador|formador')
               <td class="text-end">
                 <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>

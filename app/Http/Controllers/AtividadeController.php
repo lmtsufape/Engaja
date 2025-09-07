@@ -33,7 +33,7 @@ class AtividadeController extends Controller
             'descricao'     => 'required|string',
             'dia'           => 'required|date',
             'hora_inicio'   => 'required|date_format:H:i',
-            'carga_horaria' => 'required|integer|min:1',
+            'hora_fim'      => 'required|date_format:H:i|after:hora_inicio',
         ]);
 
         $evento->atividades()->create($dados);
@@ -60,7 +60,7 @@ class AtividadeController extends Controller
             'descricao'     => 'required|string',
             'dia'           => 'required|date',
             'hora_inicio'   => 'required|date_format:H:i',
-            'carga_horaria' => 'required|integer|min:1',
+            'hora_fim'      => 'required|date_format:H:i|after:hora_inicio',
         ]);
 
         $atividade->update($dados);

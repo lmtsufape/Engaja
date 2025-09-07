@@ -10,11 +10,12 @@ class EixoSeeder extends Seeder
     public function run(): void
     {
         $eixos = [
-            'Educação Básica',
-            'Educação de Jovens e Adultos',
-            'Formação Continuada',
-            'Gestão Escolar',
-            'Tecnologia e Inovação',
+            'Formação e Assessoria Pedagógica',
+            'Leitura do Mundo e Escuta Territorial',
+            'Protagonismo dos Educandos e Cultura na EJA',
+            'Memória, Documentação e Referência',
+            'Comunicação, Mobilização e Visibilidade',
+            'Articulação com movimentos sociais',
         ];
 
         foreach ($eixos as $nome) {

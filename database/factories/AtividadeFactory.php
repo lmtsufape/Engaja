@@ -20,7 +20,7 @@ class AtividadeFactory extends Factory
             'descricao' => $this->faker->sentence(),
             'dia' => $this->faker->date(),
             'hora_inicio' => $this->faker->time(),
-            'carga_horaria' => $this->faker->numberBetween(1, 8),
+            'hora_fim' => $this->faker->time(),
             'presenca_ativa' => $this->faker->boolean(),
         ];
     }

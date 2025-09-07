@@ -25,13 +25,13 @@
            class="form-control @error('hora_inicio') is-invalid @enderror" required>
     @error('hora_inicio') <div class="invalid-feedback">{{ $message }}</div> @enderror
   </div>
-
+  
   <div class="col-md-4">
-    <label class="form-label">Carga horária (horas) <span class="text-danger">*</span></label>
-    <input type="number" min="1" name="carga_horaria"
-           value="{{ old('carga_horaria', $atividade->carga_horaria ?? '') }}"
-           class="form-control @error('carga_horaria') is-invalid @enderror" required>
-    @error('carga_horaria') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    <label class="form-label">Hora de término <span class="text-danger">*</span></label>
+    <input type="time" name="hora_fim"
+           value="{{ old('hora_fim', isset($atividade)? \Illuminate\Support\Str::of($atividade->hora_fim)->substr(0,5) : '') }}"
+           class="form-control @error('hora_fim') is-invalid @enderror" required>
+    @error('hora_fim') <div class="invalid-feedback">{{ $message }}</div> @enderror
   </div>
 </div>
 
