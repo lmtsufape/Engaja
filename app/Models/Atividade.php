@@ -10,7 +10,7 @@ class Atividade extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['evento_id', 'descricao','dia', 'hora_inicio', 'carga_horaria'];
+    protected $fillable = ['evento_id', 'descricao','dia', 'hora_inicio', 'hora_fim', 'presenca_ativa'];
 
     public function evento()
     {

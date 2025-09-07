@@ -52,19 +52,47 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
   <div class="d-flex justify-content-between align-items-start mb-4">
     <div>
       <h1 class="h4 fw-bold text-engaja mb-1">{{ $atividade->descricao ?? 'Momento' }}</h1>
-      @php
-      $dia = \Carbon\Carbon::parse($atividade->dia)->locale('pt_BR')
-      ->translatedFormat('l, d \\d\\e F \\d\\e Y');
-      $hora = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
-      @endphp
-      <p class="text-muted mb-1">🗓️ {{ $dia }} • {{ $hora }}</p>
 
-      @if($atividade->local)
-      <p class="text-muted mb-1">📍 {{ $atividade->local }}</p>
-      @endif
-      @if($atividade->carga_horaria)
-      <p class="text-muted mb-0">⏱️ {{ $atividade->carga_horaria }}h</p>
-      @endif
+      @php
+      use Carbon\Carbon;
+
+      $dia = Carbon::parse($atividade->dia)
+      ->locale('pt_BR')
+      ->translatedFormat('l, d \\d\\e F \\d\\e Y');
+
+      $inicio = Carbon::parse($atividade->dia.' '.$atividade->hora_inicio);
+      $fim = $atividade->hora_fim
+      ? Carbon::parse($atividade->dia.' '.$atividade->hora_fim)
+      : null;
+
+        if ($fim && $fim->lessThanOrEqualTo($inicio)) {
+        $fim->addDay();
+        }
+
+        $duracaoLabel = null;
+        if ($fim) {
+        $mins = $inicio->diffInMinutes($fim, false);
+        if ($mins < 0) { $mins +=24*60; } // segurança extra
+          $h=intdiv($mins, 60);
+          $m=$mins % 60;
+          $duracaoLabel=$h> 0 ? ($h.'h'.($m ? ' '.$m.'min' : '')) : ($m.'min');
+          }
+          @endphp
+
+          @if($fim)
+          <p class="text-muted mb-1">
+            🗓️ {{ $dia }} • {{ $inicio->format('H:i') }} – {{ $fim->format('H:i') }}
+            <br><span class="ms-1">⏱️ {{ $duracaoLabel }}</span>
+          </p>
+          @else
+          <p class="text-muted mb-1">
+            🗓️ {{ $dia }} • {{ $inicio->format('H:i') }}
+          </p>
+          @endif
+
+          @if($atividade->local)
+          <p class="text-muted mb-1">📍 {{ $atividade->local }}</p>
+          @endif
     </div>
 
     <div class="d-flex flex-wrap gap-2 mb-3">
@@ -90,19 +118,17 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
           Confirmar minha presença
         </button>
       </form>
-
       @else
       @if($atividade->presenca_ativa)
-        <a class="btn btn-primary btn-sm" href="{{ route('presenca.confirmar', $atividade) }}">
-          Confirmar presença
-        </a>
-        @endif
+      <a class="btn btn-primary btn-sm" href="{{ route('presenca.confirmar', $atividade) }}">
+        Confirmar presença
+      </a>
+      @endif
       @endauth
     </div>
-
   </div>
 
-  {{-- QR Code de presença (mantido) --}}
+  {{-- QR Code de presença --}}
   <div class="mb-4">
     <h2 class="h6 fw-bold mb-2">Confirmação de presença (QR)</h2>
     <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -123,7 +149,7 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
         ) !!}" alt="QR Code">
       </div>
 
-      {{-- Botão ativar/desativar presença — ajuste a rota/coluna conforme seu modelo --}}
+      {{-- Botão ativar/desativar presença --}}
       {{--
       <form action="{{ route('atividades.toggle-presenca', $atividade) }}" method="POST">
       @csrf @method('PATCH')
@@ -137,67 +163,67 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
 
   @can('presenca.abrir')
   {{-- Lista de presenças --}}
-    <div class="mb-4">
-        <h2 class="h6 fw-bold mb-2">Participantes com presença registrada</h2>
+  <div class="mb-4">
+    <h2 class="h6 fw-bold mb-2">Participantes com presença registrada</h2>
 
-        @php
-        $lista = $atividade->presencas()->with([
-        'inscricao.participante.user:id,name,email',
-        'inscricao.participante.municipio.estado:id,nome,sigla'
-        ])->orderByDesc('id')->paginate(25);
-        @endphp
+    @php
+    $lista = $atividade->presencas()->with([
+    'inscricao.participante.user:id,name,email',
+    'inscricao.participante.municipio.estado:id,nome,sigla'
+    ])->orderByDesc('id')->paginate(25);
+    @endphp
 
-        @if($lista->count() === 0)
-        <div class="ev-card p-3 text-muted">Nenhuma presença registrada para este momento.</div>
-        @else
-        <div class="table-responsive">
-        <table class="table table-sm table-bordered align-middle bg-white">
-            <thead class="table-light">
-            <tr>
-                <th>Nome</th>
-                <th>E-mail</th>
-                <th>Município</th>
-                <th style="min-width:140px;">Status</th>
-                <th>Justificativa</th>
-                <th style="min-width:140px;">Marcado em</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach($lista as $pr)
-            @php
-            $p = $pr->inscricao->participante ?? null;
-            $u = $p?->user;
-            $m = $p?->municipio;
-            $uf = $m?->estado?->sigla;
-            $munLabel = $m ? ($m->nome . ($uf ? " - $uf" : "")) : '—';
-            $status = $pr->status_participacao ?? $pr->status ?? null;
-            @endphp
-            <tr>
-                <td>{{ $u->name ?? '—' }}</td>
-                <td>{{ $u->email ?? '—' }}</td>
-                <td>{{ $munLabel }}</td>
-                <td>
-                @switch($status)
-                @case('presente') <span class="badge bg-success">Presente</span> @break
-                @case('ausente') <span class="badge bg-secondary">Ausente</span> @break
-                @case('justificado') <span class="badge bg-warning text-dark">Justificado</span> @break
-                @default <span class="badge bg-light text-muted">—</span>
-                @endswitch
-                </td>
-                <td>{{ $pr->justificativa ?? '—' }}</td>
-                <td>{{ optional($pr->updated_at ?? $pr->created_at)->format('d/m/Y H:i') ?? '—' }}</td>
-            </tr>
-            @endforeach
-            </tbody>
-        </table>
-        </div>
-
-        <div class="d-flex justify-content-between align-items-center">
-        <div class="small text-muted">Exibindo {{ $lista->count() }} de {{ $lista->total() }}</div>
-        {{ $lista->links() }}
-        </div>
-        @endif
+    @if($lista->count() === 0)
+    <div class="ev-card p-3 text-muted">Nenhuma presença registrada para este momento.</div>
+    @else
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered align-middle bg-white">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Município</th>
+            <th style="min-width:140px;">Status</th>
+            <th>Justificativa</th>
+            <th style="min-width:140px;">Marcado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          @foreach($lista as $pr)
+          @php
+          $p = $pr->inscricao->participante ?? null;
+          $u = $p?->user;
+          $m = $p?->municipio;
+          $uf = $m?->estado?->sigla;
+          $munLabel = $m ? ($m->nome . ($uf ? " - $uf" : "")) : '—';
+          $status = $pr->status_participacao ?? $pr->status ?? null;
+          @endphp
+          <tr>
+            <td>{{ $u->name ?? '—' }}</td>
+            <td>{{ $u->email ?? '—' }}</td>
+            <td>{{ $munLabel }}</td>
+            <td>
+              @switch($status)
+              @case('presente') <span class="badge bg-success">Presente</span> @break
+              @case('ausente') <span class="badge bg-secondary">Ausente</span> @break
+              @case('justificado') <span class="badge bg-warning text-dark">Justificado</span> @break
+              @default <span class="badge bg-light text-muted">—</span>
+              @endswitch
+            </td>
+            <td>{{ $pr->justificativa ?? '—' }}</td>
+            <td>{{ optional($pr->updated_at ?? $pr->created_at)->format('d/m/Y H:i') ?? '—' }}</td>
+          </tr>
+          @endforeach
+        </tbody>
+      </table>
     </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="small text-muted">Exibindo {{ $lista->count() }} de {{ $lista->total() }}</div>
+      {{ $lista->links() }}
+    </div>
+    @endif
+  </div>
   @endcan
 
 </div>

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('descricao');
             $table->date('dia');
             $table->time('hora_inicio');
-            $table->unsignedInteger('carga_horaria');
+            $table->time('hora_fim');
             $table->boolean('presenca_ativa')->default(false);
             $table->timestamps();
             $table->softDeletes();
