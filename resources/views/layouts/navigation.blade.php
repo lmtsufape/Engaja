@@ -17,12 +17,12 @@
 
       <ul class="navbar-nav ms-auto">
         @guest
-        @if (Route::has('login'))
+        {{-- @if (Route::has('login'))
         <li class="nav-item"><a class="nav-link text-white" href="{{ route('login') }}">Entrar</a></li>
         @endif
         @if (Route::has('register'))
         <li class="nav-item"><a class="nav-link text-white" href="{{ route('register') }}">Cadastrar</a></li>
-        @endif
+        @endif --}}
         @else
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle text-white" href="#" role="button"

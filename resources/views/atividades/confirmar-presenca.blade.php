@@ -20,12 +20,12 @@
               </div>
               <button type="submit" class="btn btn-primary">Confirmar Presença</button>
 
-              @if (session('show_register_button') && session('error'))
+              {{-- @if (session('show_register_button') && session('error'))
                   <a class="btn btn-outline-primary float-end"
                     href="{{ route('evento.cadastro_inscricao', ['evento_id' => $atividade->evento->id, 'atividade_id' => $atividade->id]) }}">
                     Cadastre-se
                   </a>
-              @endif
+              @endif --}}
             </form>
           </div>
         </div>

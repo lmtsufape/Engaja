@@ -50,22 +50,22 @@
 
                         {{-- Buttons --}}
                         <div class="d-flex justify-content-between align-items-center">
-                            @if (Route::has('password.request'))
+                            {{-- @if (Route::has('password.request'))
                                 <a class="btn btn-link p-0" href="{{ route('password.request') }}">
                                     {{ __('Esqueceu a senha?') }}
                                 </a>
-                            @endif
+                            @endif --}}
                             <button type="submit" class="btn btn-primary">
                                 {{ __('Entrar') }}
                             </button>
                         </div>
                     </form>
                 </div>
-                <div class="card-footer text-center">
+                {{-- <div class="card-footer text-center">
                     @if (Route::has('register'))
                         <a href="{{ route('register') }}">{{ __('Criar nova conta') }}</a>
                     @endif
-                </div>
+                </div> --}}
             </div>
         </div>
     </div>
