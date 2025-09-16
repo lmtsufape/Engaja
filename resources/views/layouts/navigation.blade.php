@@ -2,7 +2,7 @@
   <div class="container">
     {{-- Logo + texto --}}
     <a class="navbar-brand d-flex align-items-center text-engaja fw-bold" href="{{ url('/') }}">
-      <img src="{{ asset('images/logo-alfaeja.svg') }}" alt="Logo ALFA-EJA Brasil"
+      <img src="{{ asset('images/engaja-bg-white.png') }}" alt="Logo Engaja"
         class="me-2" style="height:40px;">
     </a>
 
