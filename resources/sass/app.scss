@@ -4,19 +4,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
 /* Paleta Engaja */
-$engaja-purple: #421944; // primária
-$engaja-blue:   #008BBC;
-$engaja-yellow: #FDB913;
-$engaja-pink:   #E62270;
-$engaja-green:  #2EB57D;
+$engaja-blue: #295184; // primária
+$engaja-dark-blue: #2092c4;
+$engaja-yellow: #e9a42d;
+$engaja-pink:   #653b10;
+$engaja-green:  #0a5109;
+
+$engaja: $engaja-pink;
 
 $font-family-sans-serif: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif !default;
-$primary:   $engaja-purple;
-$secondary: $engaja-blue;
+$primary:   $engaja-blue;
+$secondary: $engaja-dark-blue;
 $success:   $engaja-green;
 $warning:   $engaja-yellow;
 $danger:    $engaja-pink;
-$info:      $engaja-blue;
+$info:      $engaja-dark-blue;
 
 $body-color: #1f1f1f;
 $body-bg: #ffffff;
@@ -28,8 +30,8 @@ $border-radius-lg: .8rem;
 $theme-colors: map-merge(
   $theme-colors,
   (
-    "engaja": $engaja-purple,
-    "blue":   $engaja-blue,
+    "engaja": $engaja-blue,
+    "blue":   $engaja-dark-blue,
     "yellow": $engaja-yellow,
     "pink":   $engaja-pink,
     "green":  $engaja-green
@@ -38,8 +40,8 @@ $theme-colors: map-merge(
 
 
 /* Custom utilities */
-.text-engaja     { color: $engaja-purple !important; }
-.bg-engaja       { background-color: $engaja-purple !important; }
+.text-engaja     { color: $engaja-blue !important; }
+.bg-engaja       { background-color: $engaja-blue !important; }
 .btn-engaja {
-  @include button-variant($engaja-purple, $engaja-purple);
+  @include button-variant($engaja-blue, $engaja-blue);
 }

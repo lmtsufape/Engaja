@@ -2,10 +2,6 @@
 
 @section('content')
 <style>
-  :root {
-    --engaja: #421944;
-  }
-
   .ev-card {
     border-radius: .8rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, .06);
@@ -34,7 +30,7 @@
   }
 
   .nav-day .nav-link.active {
-    background: var(--engaja);
+    background: var(--bs-primary);
     color: #fff;
   }
 
@@ -57,9 +53,9 @@
   }
 
   .day-tabs .nav-link.active {
-    background: var(--engaja);
+    background: var(--bs-primary);
     color: #fff;
-    border-color: var(--engaja);
+    border-color: var(--bs-primary);
   }
 
   .timeline {
@@ -374,7 +370,7 @@
                     @hasanyrole('administrador|formador')
                     <div class="actions d-flex gap-2">
                       <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-                      
+
                       <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
                       <form action="{{ route('atividades.destroy', $at) }}" method="POST"
                         onsubmit="return confirm('Excluir momento?');" class="d-inline">

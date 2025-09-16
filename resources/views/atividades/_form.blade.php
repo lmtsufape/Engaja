@@ -25,7 +25,7 @@
            class="form-control @error('hora_inicio') is-invalid @enderror" required>
     @error('hora_inicio') <div class="invalid-feedback">{{ $message }}</div> @enderror
   </div>
-  
+
   <div class="col-md-4">
     <label class="form-label">Hora de término <span class="text-danger">*</span></label>
     <input type="time" name="hora_fim"
@@ -36,6 +36,6 @@
 </div>
 
 <div class="d-flex justify-content-end gap-2 mt-3">
-  <a href="{{ route('eventos.atividades.index', $evento) }}" class="btn btn-outline-secondary">Cancelar</a>
+  <a href="{{ route('eventos.atividades.index', $evento) }}" class="btn btn-outline-danger">Cancelar</a>
   <button class="btn btn-engaja">{{ $submitLabel ?? 'Salvar' }}</button>
 </div>

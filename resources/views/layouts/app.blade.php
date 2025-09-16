@@ -14,7 +14,6 @@
 
   <style>
     :root {
-      --engaja-purple: #421944;
     }
 
     body {
@@ -33,7 +32,6 @@
     }
 
     .form-control:focus {
-      border-color: #421944 !important;
       /* roxo Engaja no foco */
       box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
       /* glow roxo no foco */
@@ -44,7 +42,6 @@
     }
 
     .form-select:focus {
-      border-color: #421944 !important;
       box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
     }
   </style>

@@ -28,7 +28,7 @@
       </div>
     </div>
     <div class="col-12 d-flex justify-content-end gap-2">
-      <a href="{{ route('atividades.show', $atividade) }}" class="btn btn-outline-secondary">Cancelar</a>
+      <a href="{{ route('atividades.show', $atividade) }}" class="btn btn-outline-danger">Cancelar</a>
       <button class="btn btn-engaja">Enviar</button>
     </div>
   </form>

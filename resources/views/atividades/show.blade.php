@@ -2,10 +2,6 @@
 
 @section('content')
 <style>
-  :root {
-    --engaja: #421944;
-  }
-
   .ev-card {
     border-radius: .8rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, .06);
