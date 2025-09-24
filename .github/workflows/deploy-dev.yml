@@ -20,6 +20,6 @@ jobs:
           script: |
             cd /home/lmts/engaja/engaja-dev
             git fetch origin dev
-            git reset --hard origin/dev
+            git pull origin dev
             docker compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
             docker compose exec -T app php artisan migrate:fresh --seed --no-interaction
