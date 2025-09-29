@@ -76,8 +76,8 @@
                             <th>{!! sort_link('Momento','momento') !!}</th>
                             <th>{!! sort_link('Ação pedagógica','acao') !!}</th>
                             <th class="text-end" style="min-width:90px;">{!! sort_link('Presentes','presentes') !!}</th>
-                            <th class="text-end" style="min-width:90px;">{!! sort_link('Ausentes','ausentes') !!}</th>
-                            <th class="text-end" style="min-width:90px;">{!! sort_link('Total','total') !!}</th>
+                            <!-- <th class="text-end" style="min-width:90px;">{!! sort_link('Ausentes','ausentes') !!}</th>
+                            <th class="text-end" style="min-width:90px;">{!! sort_link('Total','total') !!}</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -92,8 +92,8 @@
                             <td>{{ $a->descricao ?? 'Momento' }}</td>
                             <td>{{ $a->evento_nome ?? $a->evento->nome ?? '—' }}</td>
                             <td class="text-end"><span class="badge bg-success">{{ $a->presentes_count }}</span></td>
-                            <td class="text-end"><span class="badge bg-secondary">{{ $a->ausentes_count }}</span></td>
-                            <td class="text-end fw-semibold">{{ $a->presencas_total }}</td>
+                            <!-- <td class="text-end"><span class="badge bg-secondary">{{ $a->ausentes_count }}</span></td>
+                            <td class="text-end fw-semibold">{{ $a->presencas_total }}</td> -->
                         </tr>
                         @empty
                         <tr>
