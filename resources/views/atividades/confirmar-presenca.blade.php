@@ -7,6 +7,7 @@
       <div class="col-md-8">
         <div class="card ev-card">
           <div class="card-body">
+            <x-header-atividade :atividade="$atividade" class="mb-4" />
             <h1 class="h5 fw-bold mb-3">Olá, seja bem vindo (a)!</h1>
             <p class="mb-3">Para confirmar a sua presença na atividade de hoje, basta preencher o seu E-mail, CPF ou telefone e clicar no botão.<br/></p>
             <form method="POST" action="{{ route('presenca.store', $atividade) }}">
