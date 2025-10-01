@@ -61,10 +61,7 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm js-toggle-all" data-action="hide">
                     Recolher todos
                 </button>
-                <!-- <a href="{{ route('dashboard.export', request()->query()) }}"
-                    class="btn btn-outline-primary btn-sm">
-                    Baixar PDF
-                </a> -->
+                
             </div>
 
             <div class="table-responsive">
