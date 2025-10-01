@@ -22,11 +22,11 @@
     <!-- Realização e Parceria -->
     <div class="row align-items-center text-center g-4">
       <div class="col-md-6">
-        <div class="fw-bold mb-2 text-white">Realização</div>
+        <div class="mb-3 text-white">Realização</div>
         <img src="{{ asset('images/ipf-white.png') }}" alt="Instituto" class="img-fluid" style="max-height:42px">
       </div>
       <div class="col-md-6">
-        <div class="fw-bold mb-2 text-white">Parceria</div>
+        <div class="mb-3 text-white">Parceria</div>
         <img src="{{ asset('images/petrobras-white.png') }}" alt="Parceiro" class="img-fluid" style="max-height:42px">
       </div>
     </div>
