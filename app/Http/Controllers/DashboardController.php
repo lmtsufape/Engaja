@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Atividade;
 use App\Models\Evento;
-// use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 class DashboardController extends Controller
 {
     public function index(Request $request)
@@ -78,69 +78,69 @@ class DashboardController extends Controller
         return view('dashboard', compact('atividades', 'eventos'));
     }
 
-    // public function export(Request $request)
-    // {
-    //     $eventoId   = $request->integer('evento_id');
-    //     $de         = $request->date('de');
-    //     $ate        = $request->date('ate');
-    //     $q          = trim((string)$request->get('q', ''));
+    public function export(Request $request)
+    {
+        $eventoId   = $request->integer('evento_id');
+        $de         = $request->date('de');
+        $ate        = $request->date('ate');
+        $q          = trim((string)$request->get('q', ''));
 
-    //     $sort = $request->get('sort', 'dia');
-    //     $dir  = $request->get('dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $sort = $request->get('sort', 'dia');
+        $dir  = $request->get('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
-    //     $sortable = [
-    //         'dia'       => 'atividades.dia',
-    //         'hora'      => 'atividades.hora_inicio',
-    //         'momento'   => 'atividades.descricao',
-    //         'acao'      => 'eventos.nome',
-    //         'presentes' => 'presentes_count',
-    //         'ausentes'  => 'ausentes_count',
-    //         'total'     => 'presencas_total',
-    //     ];
-    //     $orderByCol = $sortable[$sort] ?? 'atividades.dia';
+        $sortable = [
+            'dia'       => 'atividades.dia',
+            'hora'      => 'atividades.hora_inicio',
+            'momento'   => 'atividades.descricao',
+            'acao'      => 'eventos.nome',
+            'presentes' => 'presentes_count',
+            'ausentes'  => 'ausentes_count',
+            'total'     => 'presencas_total',
+        ];
+        $orderByCol = $sortable[$sort] ?? 'atividades.dia';
 
-    //     // mesma query do index, mas sem paginate() e com eager até user
-    //     $atividades = Atividade::query()
-    //         ->select([
-    //             'atividades.id',
-    //             'atividades.evento_id',
-    //             'atividades.descricao',
-    //             'atividades.dia',
-    //             'atividades.hora_inicio',
-    //             'eventos.nome as evento_nome',
-    //         ])
-    //         ->leftJoin('eventos', 'eventos.id', '=', 'atividades.evento_id')
-    //         ->with(['evento:id,nome'])
-    //         ->with([
-    //             'presencas' => fn($q) => $q
-    //                 ->where('status', 'presente')
-    //                 ->with('inscricao.participante.user'),
-    //         ])
-    //         ->withCount([
-    //             'presencas as presencas_total',
-    //             'presencas as presentes_count' => fn($q) => $q->where('status', 'presente'),
-    //             'presencas as ausentes_count'  => fn($q) => $q->where('status', 'ausente'),
-    //         ])
-    //         ->when($eventoId, fn($q) => $q->where('atividades.evento_id', $eventoId))
-    //         ->when($de && $ate, fn($q) => $q->whereBetween('atividades.dia', [$de, $ate]))
-    //         ->when($de && !$ate, fn($q) => $q->where('atividades.dia', '>=', $de))
-    //         ->when(!$de && $ate, fn($q) => $q->where('atividades.dia', '<=', $ate))
-    //         ->when($q !== '', function ($q2) use ($q) {
-    //             $like = '%'.$q.'%';
-    //             $q2->where(function ($w) use ($like) {
-    //                 $w->where('atividades.descricao', 'like', $like)
-    //                   ->orWhere('eventos.nome', 'like', $like);
-    //             });
-    //         })
-    //         ->orderBy($orderByCol, $dir)
-    //         ->orderBy('atividades.id', 'desc')
-    //         ->get();
+        // mesma query do index, mas sem paginate() e com eager até user
+        $atividades = Atividade::query()
+            ->select([
+                'atividades.id',
+                'atividades.evento_id',
+                'atividades.descricao',
+                'atividades.dia',
+                'atividades.hora_inicio',
+                'eventos.nome as evento_nome',
+            ])
+            ->leftJoin('eventos', 'eventos.id', '=', 'atividades.evento_id')
+            ->with(['evento:id,nome'])
+            ->with([
+                'presencas' => fn($q) => $q
+                    ->where('status', 'presente')
+                    ->with('inscricao.participante.user'),
+            ])
+            ->withCount([
+                'presencas as presencas_total',
+                'presencas as presentes_count' => fn($q) => $q->where('status', 'presente'),
+                'presencas as ausentes_count'  => fn($q) => $q->where('status', 'ausente'),
+            ])
+            ->when($eventoId, fn($q) => $q->where('atividades.evento_id', $eventoId))
+            ->when($de && $ate, fn($q) => $q->whereBetween('atividades.dia', [$de, $ate]))
+            ->when($de && !$ate, fn($q) => $q->where('atividades.dia', '>=', $de))
+            ->when(!$de && $ate, fn($q) => $q->where('atividades.dia', '<=', $ate))
+            ->when($q !== '', function ($q2) use ($q) {
+                $like = '%'.$q.'%';
+                $q2->where(function ($w) use ($like) {
+                    $w->where('atividades.descricao', 'like', $like)
+                      ->orWhere('eventos.nome', 'like', $like);
+                });
+            })
+            ->orderBy($orderByCol, $dir)
+            ->orderBy('atividades.id', 'desc')
+            ->get();
 
-    //     $pdf = PDF::loadView('dashboard_pdf', [
-    //         'atividades' => $atividades,
-    //         'filtros'    => $request->query(), // só se quiser exibir no cabeçalho do PDF
-    //     ])->setPaper('a4', 'portrait');
+        $pdf = PDF::loadView('dashboard_pdf', [
+            'atividades' => $atividades,
+            'filtros'    => $request->query(), // só se quiser exibir no cabeçalho do PDF
+        ])->setPaper('a4', 'portrait');
 
-    //     return $pdf->download('dashboard-presencas-'.now()->format('Ymd_His').'.pdf');
-    // }
+        return $pdf->download('dashboard-presencas-'.now()->format('Ymd_His').'.pdf');
+    }
 }
