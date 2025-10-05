@@ -114,6 +114,17 @@
                                             @error('escola_unidade') <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
+                                        <div class="col-md-6">
+                                            <label for="tag" class="form-label">Tag</label>
+                                            <select id="tag" name="tag"
+                                                class="form-select @error('tag') is-invalid @enderror">
+                                                <option value="">Selecione...</option>
+                                                @foreach(($participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS)) as $tagOption)
+                                                <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? "") === $tagOption)>{{ $tagOption }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('tag') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
 
                                         <div class="col-md-6">
                                             <label for="municipio_id" class="form-label">Município</label>

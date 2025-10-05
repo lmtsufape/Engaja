@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Participante;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,6 +29,7 @@ class ProfileUpdateRequest extends FormRequest
             'telefone'       => $toNull($telDigits ?: null),
             'municipio_id'   => $toNull($this->municipio_id ?? null),
             'escola_unidade' => $toNull(isset($this->escola_unidade) ? trim((string)$this->escola_unidade) : null),
+            'tag'            => $toNull(isset($this->tag) ? trim((string)$this->tag) : null),
             'data_entrada'   => $toNull($this->data_entrada ?? null),
         ]);
     }
@@ -47,6 +49,7 @@ class ProfileUpdateRequest extends FormRequest
             'telefone'       => ['nullable','regex:/^\d{10,11}$/'],
             'municipio_id'   => ['nullable','exists:municipios,id'],
             'escola_unidade' => ['nullable','string','max:255'],
+            'tag'            => ['nullable', Rule::in(Participante::TAGS)],
             'data_entrada'   => ['nullable','date'],
         ];
     }
@@ -75,7 +78,7 @@ class ProfileUpdateRequest extends FormRequest
         if (strlen($cpf) !== 11) return false;
 
         // elimina CPFs repetidos
-        if (preg_match('/^(\\d)\\1{10}$/', $cpf)) return false;
+        if (preg_match('/^(\d)\1{10}$/', $cpf)) return false;
 
         // cálculo DV1
         $sum = 0;
@@ -102,6 +105,7 @@ class ProfileUpdateRequest extends FormRequest
             'cpf.digits'          => 'CPF deve conter 11 dígitos.',
             'telefone.regex'      => 'Telefone deve ter DDD e 10 ou 11 dígitos.',
             'municipio_id.exists' => 'Município inválido.',
+            'tag.in'              => 'Selecione uma tag válida.',
             'data_entrada.date'   => 'Data de entrada inválida.',
         ];
     }

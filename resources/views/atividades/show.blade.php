@@ -142,7 +142,7 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
             <th>E-mail</th>
             <th>Município</th>
             <th style="min-width:140px;">Status</th>
-            <th>Justificativa</th>
+            <!-- <th>Justificativa</th> -->
             <th style="min-width:140px;">Marcado em</th>
           </tr>
         </thead>
@@ -168,7 +168,7 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
               @default <span class="badge bg-light text-muted">—</span>
               @endswitch
             </td>
-            <td>{{ $pr->justificativa ?? '—' }}</td>
+            <!-- <td>{{ $pr->justificativa ?? '—' }}</td> -->
             <td>{{ optional($pr->updated_at ?? $pr->created_at)->format('d/m/Y H:i') ?? '—' }}</td>
           </tr>
           @endforeach

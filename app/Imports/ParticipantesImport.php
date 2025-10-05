@@ -23,6 +23,10 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
     protected array $organizacoes = [];
     /** @var array<string,string> */
     protected array $organizacoesMap = [];
+    /** @var array<int,string> */
+    protected array $tags = [];
+    /** @var array<string,string> */
+    protected array $tagsMap = [];
 
     public function __construct()
     {
@@ -38,6 +42,11 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         $this->organizacoes = config('engaja.organizacoes', []);
         $this->organizacoesMap = collect($this->organizacoes)
             ->mapWithKeys(fn($o) => [$this->slugify($o) => $o])
+            ->all();
+
+        $this->tags = config('engaja.participante_tags', Participante::TAGS);
+        $this->tagsMap = collect($this->tags)
+            ->mapWithKeys(fn($t) => [$this->slugify($t) => $t])
             ->all();
     }
 
@@ -81,6 +90,8 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
 
         $orgRaw   = trim((string)($row['organizacao'] ?? $row['escola_unidade'] ?? ''));
         $orgCanon = $this->normalizeOrganizacao($orgRaw);
+        $tagCanon = $this->normalizeTag($row['tag'] ?? null);
+
         // Cria ou atualiza participante
         $participante = Participante::updateOrCreate(
             [
@@ -91,6 +102,7 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
                 'cpf'            => $row['cpf'] ?? null,
                 'telefone'       => $row['telefone'] ?? null,
                 'escola_unidade' => $orgCanon ?? ($row['escola_unidade'] ?? ($orgRaw ?: null)),
+                'tag'            => $tagCanon,
                 'data_entrada'   => $dataEntrada,
             ]
         );
@@ -99,7 +111,7 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
 
         return $participante;
     }
-    
+
     private function slugify(string $s): string
     {
         $s = trim(mb_strtolower($s));
@@ -113,5 +125,19 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         if (!$raw) return null;
         $key = $this->slugify($raw);
         return $this->organizacoesMap[$key] ?? null;
+    }
+
+    private function normalizeTag($raw): ?string
+    {
+        if (!$raw) {
+            return null;
+        }
+
+        if (is_string($raw)) {
+            $key = $this->slugify($raw);
+            return $this->tagsMap[$key] ?? null;
+        }
+
+        return null;
     }
 }

@@ -82,15 +82,17 @@ class PresencaImportController extends Controller
             ->get(['id', 'nome', 'estado_id']);
 
         $organizacoes = config('engaja.organizacoes', []);
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
 
         return view('presencas.preview', [
-            'evento'        => $evento,
-            'atividade'     => $atividade,
-            'rows'          => $rowsPaginator,
-            'globalOffset'  => $globalOffset,
-            'sessionKey'    => $sessionKey,
-            'municipios'    => $municipios,
-            'organizacoes'  => $organizacoes,
+            'evento'           => $evento,
+            'atividade'        => $atividade,
+            'rows'             => $rowsPaginator,
+            'globalOffset'     => $globalOffset,
+            'sessionKey'       => $sessionKey,
+            'municipios'       => $municipios,
+            'organizacoes'     => $organizacoes,
+            'participanteTags' => $participanteTags,
         ]);
     }
 
@@ -142,6 +144,9 @@ class PresencaImportController extends Controller
                 ->mapWithKeys(fn($id, $nome) => [mb_strtolower(trim($nome)) => $id])
                 ->toArray();
 
+            $tagOptions = config('engaja.participante_tags', Participante::TAGS);
+            $tagLookup = array_fill_keys($tagOptions, true);
+
             foreach ($rows as $row) {
                 $email = strtolower(trim((string)($row['email'] ?? '')));
                 $nome  = trim((string)($row['nome']  ?? ''));
@@ -152,7 +157,7 @@ class PresencaImportController extends Controller
                     continue; // não cria user/inscrição pra linha vazia
                 }
 
-                // 👇 agora aceita tanto "organizacao" quanto "escola_unidade"
+                // agora aceita tanto "organizacao" quanto "escola_unidade"
                 $org   = $row['organizacao'] ?? $row['escola_unidade'] ?? null;
 
                 $munId = null;
@@ -179,12 +184,20 @@ class PresencaImportController extends Controller
                     );
 
                 // 2) Participante
+                $tag = isset($row['tag']) ? trim((string)$row['tag']) : null;
+                if ($tag === '') {
+                    $tag = null;
+                } elseif (!isset($tagLookup[$tag])) {
+                    $tag = null;
+                }
+
                 $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
                 $participante->fill([
                     'municipio_id'   => $munId,
                     'cpf'            => $cpf ?: null,
                     'telefone'       => $tel ?: null,
-                    'escola_unidade' => $org ?: null,   // 👈 grava a organização
+                    'escola_unidade' => $org ?: null,   // grava a organização
+                    'tag'            => $tag,
                     'data_entrada'   => $row['data_entrada'] ?? null,
                 ])->save();
 

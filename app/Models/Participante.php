@@ -8,23 +8,40 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Participante extends Model
 {
     use SoftDeletes;
-    protected $table = 'participantes';
-    protected $fillable = ['user_id', 'municipio_id', 'cpf', 'telefone', 'escola_unidade', 'data_entrada'];
 
-    public function user(){
-        return $this->belongsTo(User::class, 'user_id');
-    }
-    public function municipio(){
-        return $this->belongsTo(Municipio::class, 'municipio_id');
-    }
-    public function inscricoes(){
-        return $this->hasMany(Inscricao::class, 'participante_id');
-    }
-    public function eventos(){
-        return $this->belongsToMany(Evento::class, 'inscricaos')->withTimestamps();
-    }
+    public const TAG_REDE_ENSINO = 'Rede de Ensino';
+    public const TAG_MOVIMENTO_SOCIAL = 'Movimento Social';
+
+    public const TAGS = [
+        self::TAG_REDE_ENSINO,
+        self::TAG_MOVIMENTO_SOCIAL,
+    ];
+
+    protected $table = 'participantes';
+
+    protected $fillable = ['user_id', 'municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tag', 'data_entrada'];
 
     protected $appends = ['cpf_valido'];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function municipio()
+    {
+        return $this->belongsTo(Municipio::class, 'municipio_id');
+    }
+
+    public function inscricoes()
+    {
+        return $this->hasMany(Inscricao::class, 'participante_id');
+    }
+
+    public function eventos()
+    {
+        return $this->belongsToMany(Evento::class, 'inscricaos')->withTimestamps();
+    }
 
     public function getCpfValidoAttribute()
     {
@@ -52,5 +69,4 @@ class Participante extends Model
         }
         return true;
     }
-
 }

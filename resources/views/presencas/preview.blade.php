@@ -16,6 +16,7 @@
     <input type="hidden" name="session_key" value="{{ $sessionKey }}">
 
     <div class="table-responsive">
+      @php $tagOptions = $participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS); @endphp
       <table class="table table-sm table-bordered align-middle bg-white">
         <thead class="table-light">
           <tr>
@@ -25,8 +26,9 @@
             <th>Telefone</th>
             <th>Município</th>
             <th>Organização</th>
+            <th>Tag</th>
             <th style="min-width:150px;">Status</th>
-            <th>Justificativa</th>
+            <!-- <th>Justificativa</th> -->
             <!-- <th>Data entrada</th> -->
           </tr>
         </thead>
@@ -67,6 +69,20 @@
               @endif
             </td>
             <td>
+              <select
+                name="rows[{{ $gi }}][tag]"
+                class="form-select form-select-sm {{ (!empty($r['tag']) && empty($r['tag_ok'])) ? 'is-invalid' : '' }}">
+                <option value="">Selecione...</option>
+                @foreach($tagOptions as $tagOption)
+                <option value="{{ $tagOption }}" @selected(($r['tag'] ?? '')===$tagOption)>{{ $tagOption }}</option>
+                @endforeach
+              </select>
+
+              @if(!empty($r['tag']) && empty($r['tag_ok']))
+              <div class="invalid-feedback">Selecione uma tag válida.</div>
+              @endif
+            </td>
+            <td>
               <select name="rows[{{ $gi }}][status]" class="form-select form-select-sm">
                 <option value="">— Selecionar —</option>
                 <option value="presente" @selected($r['status']==='presente' )>Presente</option>
@@ -74,7 +90,7 @@
                 <option value="justificado" @selected($r['status']==='justificado' )>Justificado</option>
               </select>
             </td>
-            <td><input name="rows[{{ $gi }}][justificativa]" class="form-control form-control-sm" value="{{ $r['justificativa'] }}"></td>
+            <!-- <td><input name="rows[{{ $gi }}][justificativa]" class="form-control form-control-sm" value="{{ $r['justificativa'] }}"></td> -->
             <!-- <td><input type="date" name="rows[{{ $gi }}][data_entrada]" class="form-control form-control-sm" value="{{ $r['data_entrada'] }}"></td> -->
           </tr>
           @endforeach

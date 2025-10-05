@@ -20,8 +20,13 @@ return [
         'Grupos de teatro comunitário',
         'Bibliotecas comunitárias e pontos de leitura',
         'Redes de educadores populares',
-        'Associações de artesões e artesãs',
+        'Associações de artesãos e artesãs',
         'Feiras de economia solidária',
         'Conselhos comunitários (saúde, educação, meio ambiente)',
+    ],
+
+    'participante_tags' => [
+        'Rede de Ensino',
+        'Movimento Social',
     ],
 ];

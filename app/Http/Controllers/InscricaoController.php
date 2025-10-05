@@ -84,14 +84,16 @@ class InscricaoController extends Controller
         $municipios = \App\Models\Municipio::with('estado')->orderBy('nome')->get(['id', 'nome', 'estado_id']);
 
         $organizacoes = config('engaja.organizacoes', []);
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
 
         return view('inscricoes.preview', [
-            'evento'       => $evento,
-            'rows'         => $rowsPaginator,
-            'globalOffset' => $globalOffset,
-            'sessionKey'   => $sessionKey,
-            'municipios'   => $municipios,
-            'organizacoes' => $organizacoes,
+            'evento'           => $evento,
+            'rows'             => $rowsPaginator,
+            'globalOffset'     => $globalOffset,
+            'sessionKey'       => $sessionKey,
+            'municipios'       => $municipios,
+            'organizacoes'     => $organizacoes,
+            'participanteTags' => $participanteTags,
         ]);
     }
 
@@ -193,6 +195,9 @@ class InscricaoController extends Controller
                 }
             };
 
+            $tagOptions = config('engaja.participante_tags', Participante::TAGS);
+            $tagLookup = array_fill_keys($tagOptions, true);
+
             foreach ($rows as $row) {
                 $email = strtolower(trim((string)($row['email'] ?? '')));
                 if (!$email) continue;
@@ -200,15 +205,24 @@ class InscricaoController extends Controller
                 if (!$user) continue;
                 $userId = $user->id;
 
-                // 👇 NOVO: aceita 'organizacao' ou mantém 'escola_unidade'
+                // Aceita 'organizacao' ou mantém 'escola_unidade'
                 $orgRaw = ($row['organizacao'] ?? $row['escola_unidade'] ?? null);
                 $org    = is_string($orgRaw) ? trim($orgRaw) : null;
+
+                $tagRaw = $row['tag'] ?? null;
+                $tag    = is_string($tagRaw) ? trim($tagRaw) : null;
+                if ($tag === '') {
+                    $tag = null;
+                } elseif (!isset($tagLookup[$tag])) {
+                    $tag = null;
+                }
 
                 $dados = [
                     'municipio_id'   => ($row['municipio_id'] ?? null) ?: null,
                     'cpf'            => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
                     'telefone'       => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
-                    'escola_unidade' => ($org !== '') ? $org : null, // 👈 só altera aqui
+                    'escola_unidade' => ($org !== '') ? $org : null,
+                    'tag'            => $tag,
                     'data_entrada'   => $toDate($row['data_entrada'] ?? null),
                 ];
 
@@ -232,7 +246,7 @@ class InscricaoController extends Controller
 
             if (count($atualizacoes)) {
                 $idsToUpdate = array_column($atualizacoes, 'user_id');
-                $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'data_entrada'];
+                $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tag', 'data_entrada'];
                 $cases = [];
                 foreach ($campos as $field) {
                     $sql = "$field = CASE user_id\n";

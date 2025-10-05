@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Municipio;
+use App\Models\Participante;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -21,6 +22,11 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
     /** @var array<string,string> mapa lower => canônico */
     protected array $organizacoesMap = [];
 
+    /** @var array<int,string> */
+    protected array $tags = [];
+    /** @var array<string,string> */
+    protected array $tagsMap = [];
+
     public function __construct()
     {
         $this->rows = collect();
@@ -36,6 +42,11 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
             ->mapWithKeys(function ($o) {
                 return [mb_strtolower($this->slugify($o)) => $o];
             })->toArray();
+
+        $this->tags = config('engaja.participante_tags', Participante::TAGS);
+        $this->tagsMap = collect($this->tags)
+            ->mapWithKeys(fn($tag) => [mb_strtolower($this->slugify($tag)) => $tag])
+            ->toArray();
     }
 
     private function slugify(string $s): string
@@ -53,11 +64,17 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
         return $this->organizacoesMap[$key] ?? null;
     }
 
+    private function normalizeTag(?string $raw): ?string
+    {
+        if (!$raw) return null;
+        $key = $this->slugify($raw);
+        return $this->tagsMap[$key] ?? null;
+    }
+
     public function headingRow(): int
     {
         return 1;
     }
-
 
     public function collection(Collection $rows): void
     {
@@ -70,6 +87,7 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
 
             $munNome  = trim((string)($r['municipio'] ?? ''));
             $escola   = trim((string)($r['organizacao'] ?? $r['escola_unidade'] ?? '')); // aceita ambos
+            $tagRaw   = trim((string)($r['tag'] ?? ''));
             $status   = $this->mapStatus((string)($r['status'] ?? ''));
             $justif   = trim((string)($r['justificativa'] ?? '')) ?: null;
             $entrada  = $this->parseDate($r['data_entrada'] ?? null);
@@ -81,6 +99,7 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 $telefone === null &&
                 $munNome === '' &&
                 $escola === '' &&
+                $tagRaw === '' &&
                 $status === null &&
                 $justif === null &&
                 $entrada === null
@@ -100,6 +119,10 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
             $organizacaoOk = $escola === '' ? true : ($orgCanon !== null);
             $escolaOut = $orgCanon ?? $escola;
 
+            $tagCanon = $this->normalizeTag($tagRaw);
+            $tagOk = $tagRaw === '' ? true : ($tagCanon !== null);
+            $tagOut = $tagCanon ?? $tagRaw;
+
             $this->rows->push([
                 'nome'           => $nome,
                 'email'          => $email,
@@ -109,13 +132,14 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 'municipio_id'   => $municipioId,  // para pré-selecionar no <select>
                 'organizacao'    => $escolaOut,    // canônico se reconhecido
                 'organizacao_ok' => $organizacaoOk,
+                'tag'            => $tagOut,
+                'tag_ok'         => $tagOk,
                 'status'         => $status,
                 'justificativa'  => $justif,
                 'data_entrada'   => $entrada,
             ]);
         }
     }
-
 
     private function mapStatus(string $raw): ?string
     {

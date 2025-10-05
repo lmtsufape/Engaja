@@ -154,7 +154,7 @@ class EventoController extends Controller
         return redirect()->route('eventos.index')->with('success', 'Evento excluído.');
     }
 
-    public function cadastro_inscricao($evento_id, $atividade_id)
+        public function cadastro_inscricao($evento_id, $atividade_id)
     {
         $evento = Evento::findOrFail($evento_id);
         $atividade = Atividade::findOrFail($atividade_id);
@@ -163,7 +163,9 @@ class EventoController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome', 'estado_id']);
 
-        return view('auth.cadastro-participante', compact('evento', 'municipios', 'atividade'));
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
+
+        return view('auth.cadastro-participante', compact('evento', 'municipios', 'atividade', 'participanteTags'));
     }
 
     public function store_cadastro_inscricao(CadastroParticipanteStoreRequest $request)
@@ -195,6 +197,7 @@ class EventoController extends Controller
                 'telefone'       => $data['telefone']   ?? null,
                 'municipio_id'   => $data['municipio_id']   ?? null,
                 'escola_unidade' => $data['escola_unidade'] ?? null,
+                'tag'            => $data['tag']            ?? null,
             ];
 
             $user->participante()->updateOrCreate(

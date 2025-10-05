@@ -46,6 +46,7 @@
     <input type="hidden" name="session_key" value="{{ $sessionKey }}">
 
     <div class="table-responsive">
+      @php $tagOptions = $participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS); @endphp
       <table class="table table-sm align-middle table-bordered bg-white">
         <thead class="table-light">
           <tr>
@@ -55,6 +56,7 @@
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
             <th style="min-width:220px;">Organização</th>
+            <th style="min-width:200px;">Tag</th>
             <!-- <th style="min-width:140px;">Data de entrada</th> -->
           </tr>
         </thead>
@@ -95,6 +97,22 @@
 
               @if(!empty($r['organizacao']) && empty($r['organizacao_ok']))
               <div class="invalid-feedback">Selecione uma organização válida.</div>
+              @endif
+            </td>
+
+
+            <td>
+              <select
+                name="rows[{{ $idx }}][tag]"
+                class="form-select form-select-sm {{ (!empty($r['tag']) && empty($r['tag_ok'])) ? 'is-invalid' : '' }}">
+                <option value="">Selecione...</option>
+                @foreach($tagOptions as $tagOption)
+                <option value="{{ $tagOption }}" @selected(old("rows.$idx.tag", $r['tag']) === $tagOption)>{{ $tagOption }}</option>
+                @endforeach
+              </select>
+
+              @if(!empty($r['tag']) && empty($r['tag_ok']))
+              <div class="invalid-feedback">Selecione uma tag válida.</div>
               @endif
             </td>
 
