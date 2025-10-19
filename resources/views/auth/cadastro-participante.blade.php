@@ -52,9 +52,8 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-
-                                        {{-- Password --}}
-                                        <div class="col-md-6">
+                                        
+                                        {{-- <div class="col-md-6">
                                             <label for="password" class="form-label">{{ __('Senha') }}</label>
                                             <input id="password" type="password"
                                                 class="form-control @error('password') is-invalid @enderror" name="password"
@@ -67,13 +66,12 @@
                                             </div>
                                         </div>
 
-                                        {{-- Confirm Password --}}
                                         <div class="col-md-6">
                                             <label for="password_confirmation"
                                                 class="form-label">{{ __('Confirmar senha') }}</label>
                                             <input id="password_confirmation" type="password" class="form-control"
                                                 name="password_confirmation" required autocomplete="new-password">
-                                        </div>
+                                        </div> --}}
                                     </div>
                                 </div>
                             </div>

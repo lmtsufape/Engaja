@@ -18,6 +18,7 @@ use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\CadastroParticipanteStoreRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class EventoController extends Controller
 {
@@ -154,7 +155,7 @@ class EventoController extends Controller
         return redirect()->route('eventos.index')->with('success', 'Evento excluído.');
     }
 
-        public function cadastro_inscricao($evento_id, $atividade_id)
+    public function cadastro_inscricao($evento_id, $atividade_id)
     {
         $evento = Evento::findOrFail($evento_id);
         $atividade = Atividade::findOrFail($atividade_id);
@@ -173,7 +174,7 @@ class EventoController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . \App\Models\User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            //'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $data = $request->validated();
@@ -187,7 +188,7 @@ class EventoController extends Controller
             $user = \App\Models\User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => Hash::make(Str::random(8)),
             ]);
 
             $user->assignRole('participante');
@@ -210,7 +211,7 @@ class EventoController extends Controller
 
             DB::commit();
 
-            Auth::login($user);
+            //Auth::login($user);
 
             return redirect()->route('eventos.show', $evento->id)->with('success', 'Cadastro, inscrição e presença realizados!');
         } catch (\Throwable $e) {
