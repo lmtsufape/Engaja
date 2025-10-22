@@ -16,7 +16,7 @@
             $opcoes = collect([$escala->opcao1, $escala->opcao2, $escala->opcao3, $escala->opcao4, $escala->opcao5]);
           @endphp
           @forelse ($opcoes->filter() as $opcao)
-          <li class="list-group-item px-0">{{ $opcao }}</li>
+          <li class="list-group-item px-0">{!! $opcao !!}</li>
           @empty
           <li class="list-group-item px-0 text-muted">Nenhuma opção configurada.</li>
           @endforelse

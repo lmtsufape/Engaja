@@ -41,7 +41,7 @@
                     <input class="form-check-input" type="radio"
                       name="respostas[{{ $questao->id }}]" id="{{ $inputId }}"
                       value="{{ $opcao }}" {{ (string)$valor === (string)$opcao ? 'checked' : '' }}>
-                    <label class="form-check-label" for="{{ $inputId }}">{{ $opcao }}</label>
+                    <label class="form-check-label" for="{{ $inputId }}">{!! $opcao !!}</label>
                   </div>
                 @endforeach
               </div>

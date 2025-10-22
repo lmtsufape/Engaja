@@ -48,6 +48,7 @@
       box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
     }
   </style>
+  @stack('styles')
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -76,6 +77,7 @@
   </main>
 
   @include('layouts.footer') {{-- <footer class="bg-primary border-top mt-auto pt-5"> ... --}}
+  @stack('scripts')
 </body>
 
 </html>

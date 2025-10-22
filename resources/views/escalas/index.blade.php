@@ -23,8 +23,9 @@
           <td>
             @php
               $opcoes = collect([$escala->opcao1, $escala->opcao2, $escala->opcao3, $escala->opcao4, $escala->opcao5])->filter()->values();
+              $opcoesPreview = $opcoes->map(fn($texto) => trim(strip_tags($texto)))->filter()->implode(' | ');
             @endphp
-            {{ $opcoes->isEmpty() ? '—' : $opcoes->implode(' • ') }}
+            {{ $opcoes->isEmpty() ? '-' : $opcoesPreview }}
           </td>
           <td class="text-end">
             <a href="{{ route('escalas.show', $escala) }}" class="btn btn-sm btn-outline-primary">Ver</a>

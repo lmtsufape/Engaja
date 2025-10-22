@@ -32,16 +32,16 @@
           <span class="fw-semibold d-block text-muted text-uppercase small">Escala</span>
           @if ($questao->escala)
           <p class="mb-1">{{ $questao->escala->descricao }}</p>
-          <ul class="list-inline">
-            @php
-              $opcoes = collect([$questao->escala->opcao1, $questao->escala->opcao2, $questao->escala->opcao3, $questao->escala->opcao4, $questao->escala->opcao5])->filter();
-            @endphp
+          @php
+            $opcoes = collect([$questao->escala->opcao1, $questao->escala->opcao2, $questao->escala->opcao3, $questao->escala->opcao4, $questao->escala->opcao5])->filter();
+          @endphp
+          <div class="vstack gap-2">
             @foreach ($opcoes as $opcao)
-            <li class="list-inline-item badge bg-light text-dark border">{{ $opcao }}</li>
+            <div class="border rounded p-2 bg-light">{!! $opcao !!}</div>
             @endforeach
-          </ul>
+          </div>
           @else
-          <span class="text-muted">—</span>
+          <span class="text-muted">-</span>
           @endif
         </div>
 

@@ -24,11 +24,11 @@
           <div class="row g-3">
             @for ($i = 1; $i <= 5; $i++)
             @php $campo = 'opcao'.$i; @endphp
-            <div class="col-md-6">
+            <div class="col-12">
               <label for="opcao{{ $i }}" class="form-label">Opção {{ $i }}</label>
-              <input type="text" id="opcao{{ $i }}" name="opcao{{ $i }}"
-                class="form-control @error($campo) is-invalid @enderror"
-                value="{{ old($campo, $escala->$campo) }}">
+              <textarea id="opcao{{ $i }}" name="opcao{{ $i }}" rows="3"
+                class="form-control wysiwyg-field @error($campo) is-invalid @enderror"
+                data-wysiwyg>{{ old($campo, $escala->$campo) }}</textarea>
               @error($campo)
               <div class="invalid-feedback">{{ $message }}</div>
               @enderror
@@ -46,3 +46,5 @@
   </div>
 </div>
 @endsection
+
+@include('escalas.partials.wysiwyg')
