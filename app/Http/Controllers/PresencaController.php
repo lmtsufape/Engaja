@@ -40,11 +40,38 @@ class PresencaController extends Controller
             $participante = Participante::where('user_id', $usuario->id)->first();
         }
         $evento = $atividade->evento;
-        if (Inscricao::where('evento_id', $evento->id)->where('participante_id', $participante->id)->doesntExist()) {
-            $evento->participantes()->attach($participante->id);
+
+        $inscricao = Inscricao::withTrashed()
+            ->where('participante_id', $participante->id)
+            ->where('atividade_id', $atividade->id)
+            ->first();
+
+        if (!$inscricao) {
+            $inscricao = Inscricao::withTrashed()
+                ->where('participante_id', $participante->id)
+                ->where('evento_id', $evento->id)
+                ->whereNull('atividade_id')
+                ->first();
         }
+
+        if ($inscricao) {
+            $inscricao->fill([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+            $inscricao->deleted_at = null;
+            $inscricao->save();
+        } else {
+            $inscricao = Inscricao::create([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+        }
+
         $atividade->presencas()->updateOrCreate(
-            ['inscricao_id' => $participante->inscricoes()->where('evento_id', $atividade->evento->id)->first()->id],
+            ['inscricao_id' => $inscricao->id],
             ['status' => 'presente']
         );
         $dia = \Carbon\Carbon::parse($atividade->dia)

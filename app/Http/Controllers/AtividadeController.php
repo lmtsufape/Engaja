@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Evento;
 use App\Models\Atividade;
+use App\Models\Inscricao;
 use App\Models\Presenca;
 use App\Models\Participante;
 use Illuminate\Support\Facades\DB;
@@ -125,34 +126,39 @@ class AtividadeController extends Controller
         // 2) Garante Inscrição no evento (cria/reativa)
         $evento = $atividade->evento;
 
-        $inscricao = DB::table('inscricaos')
-            ->where('evento_id', $evento->id)
+        $inscricao = Inscricao::withTrashed()
             ->where('participante_id', $participante->id)
+            ->where('atividade_id', $atividade->id)
             ->first();
 
         if (! $inscricao) {
-            DB::table('inscricaos')->insert([
-                'evento_id'       => $evento->id,
-                'participante_id' => $participante->id,
-                'created_at'      => now(),
-                'updated_at'      => now(),
-            ]);
-            $inscricaoId = DB::table('inscricaos')
-                ->where('evento_id', $evento->id)
+            $inscricao = Inscricao::withTrashed()
                 ->where('participante_id', $participante->id)
-                ->value('id');
-        } else {
-            if ($inscricao->deleted_at !== null) {
-                DB::table('inscricaos')->where('id', $inscricao->id)
-                    ->update(['deleted_at' => null, 'updated_at' => now()]);
-            }
-            $inscricaoId = $inscricao->id;
+                ->where('evento_id', $evento->id)
+                ->whereNull('atividade_id')
+                ->first();
         }
 
-        // 3) Marca presença (idempotente)
+        if ($inscricao) {
+            $inscricao->fill([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+            $inscricao->deleted_at = null;
+            $inscricao->save();
+        } else {
+            $inscricao = Inscricao::create([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+        }
+
+        // 3) Marca presenca (idempotente)
         Presenca::updateOrCreate(
-            ['inscricao_id' => $inscricaoId, 'atividade_id' => $atividade->id],
-            ['status_participacao' => 'presente', 'justificativa' => null]
+            ['inscricao_id' => $inscricao->id, 'atividade_id' => $atividade->id],
+            ['status' => 'presente', 'justificativa' => null]
         );
 
         return back()->with('success', 'Presença confirmada com sucesso!');

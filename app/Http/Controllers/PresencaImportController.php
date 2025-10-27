@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Imports\PresencasPreviewImport;
 use App\Models\Atividade;
+use App\Models\Inscricao;
 use App\Models\User;
 use App\Models\Participante;
 use App\Models\Municipio;
@@ -82,15 +83,17 @@ class PresencaImportController extends Controller
             ->get(['id', 'nome', 'estado_id']);
 
         $organizacoes = config('engaja.organizacoes', []);
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
 
         return view('presencas.preview', [
-            'evento'        => $evento,
-            'atividade'     => $atividade,
-            'rows'          => $rowsPaginator,
-            'globalOffset'  => $globalOffset,
-            'sessionKey'    => $sessionKey,
-            'municipios'    => $municipios,
-            'organizacoes'  => $organizacoes,
+            'evento'           => $evento,
+            'atividade'        => $atividade,
+            'rows'             => $rowsPaginator,
+            'globalOffset'     => $globalOffset,
+            'sessionKey'       => $sessionKey,
+            'municipios'       => $municipios,
+            'organizacoes'     => $organizacoes,
+            'participanteTags' => $participanteTags,
         ]);
     }
 
@@ -142,6 +145,9 @@ class PresencaImportController extends Controller
                 ->mapWithKeys(fn($id, $nome) => [mb_strtolower(trim($nome)) => $id])
                 ->toArray();
 
+            $tagOptions = config('engaja.participante_tags', Participante::TAGS);
+            $tagLookup = array_fill_keys($tagOptions, true);
+
             foreach ($rows as $row) {
                 $email = strtolower(trim((string)($row['email'] ?? '')));
                 $nome  = trim((string)($row['nome']  ?? ''));
@@ -152,7 +158,7 @@ class PresencaImportController extends Controller
                     continue; // não cria user/inscrição pra linha vazia
                 }
 
-                // 👇 agora aceita tanto "organizacao" quanto "escola_unidade"
+                // agora aceita tanto "organizacao" quanto "escola_unidade"
                 $org   = $row['organizacao'] ?? $row['escola_unidade'] ?? null;
 
                 $munId = null;
@@ -179,47 +185,59 @@ class PresencaImportController extends Controller
                     );
 
                 // 2) Participante
+                $tag = isset($row['tag']) ? trim((string)$row['tag']) : null;
+                if ($tag === '') {
+                    $tag = null;
+                } elseif (!isset($tagLookup[$tag])) {
+                    $tag = null;
+                }
+
                 $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
                 $participante->fill([
                     'municipio_id'   => $munId,
                     'cpf'            => $cpf ?: null,
                     'telefone'       => $tel ?: null,
-                    'escola_unidade' => $org ?: null,   // 👈 grava a organização
+                    'escola_unidade' => $org ?: null,   // grava a organização
+                    'tag'            => $tag,
                     'data_entrada'   => $row['data_entrada'] ?? null,
                 ])->save();
 
-                // 3) Inscrição no evento
-                $inscricao = DB::table('inscricaos')
-                    ->where('evento_id', $evento->id)
+                // 3) Inscrição no momento
+                $inscricao = Inscricao::withTrashed()
                     ->where('participante_id', $participante->id)
+                    ->where('atividade_id', $atividade->id)
                     ->first();
 
                 if (!$inscricao) {
-                    DB::table('inscricaos')->insert([
-                        'evento_id'       => $evento->id,
-                        'participante_id' => $participante->id,
-                        'created_at'      => now(),
-                        'updated_at'      => now(),
-                    ]);
-                    $inscricaoId = DB::table('inscricaos')
-                        ->where('evento_id', $evento->id)
+                    $inscricao = Inscricao::withTrashed()
                         ->where('participante_id', $participante->id)
-                        ->value('id');
-                } else {
-                    if ($inscricao->deleted_at !== null) {
-                        DB::table('inscricaos')->where('id', $inscricao->id)
-                            ->update(['deleted_at' => null, 'updated_at' => now()]);
-                    }
-                    $inscricaoId = $inscricao->id;
+                        ->where('evento_id', $evento->id)
+                        ->whereNull('atividade_id')
+                        ->first();
                 }
 
-                // 4) Presença
+                if ($inscricao) {
+                    $inscricao->fill([
+                        'evento_id'       => $evento->id,
+                        'atividade_id'    => $atividade->id,
+                        'participante_id' => $participante->id,
+                    ]);
+                    $inscricao->deleted_at = null;
+                    $inscricao->save();
+                } else {
+                    $inscricao = Inscricao::create([
+                        'evento_id'       => $evento->id,
+                        'atividade_id'    => $atividade->id,
+                        'participante_id' => $participante->id,
+                    ]);
+                }
+                // 4) Presenca
                 $status = $row['status'] ?? null;
                 $just   = $row['justificativa'] ?? null;
 
                 Presenca::updateOrCreate(
-                    ['inscricao_id' => $inscricaoId, 'atividade_id' => $atividade->id],
-                    ['status_participacao' => $status, 'justificativa' => $just]
+                    ['inscricao_id' => $inscricao->id, 'atividade_id' => $atividade->id],
+                    ['status' => $status, 'justificativa' => $just]
                 );
             }
         });

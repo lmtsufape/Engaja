@@ -18,6 +18,7 @@ use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\CadastroParticipanteStoreRequest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class EventoController extends Controller
 {
@@ -163,7 +164,9 @@ class EventoController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome', 'estado_id']);
 
-        return view('auth.cadastro-participante', compact('evento', 'municipios', 'atividade'));
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
+
+        return view('auth.cadastro-participante', compact('evento', 'municipios', 'atividade', 'participanteTags'));
     }
 
     public function store_cadastro_inscricao(CadastroParticipanteStoreRequest $request)
@@ -171,7 +174,7 @@ class EventoController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . \App\Models\User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            //'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $data = $request->validated();
@@ -185,7 +188,7 @@ class EventoController extends Controller
             $user = \App\Models\User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => Hash::make(Str::random(8)),
             ]);
 
             $user->assignRole('participante');
@@ -195,6 +198,7 @@ class EventoController extends Controller
                 'telefone'       => $data['telefone']   ?? null,
                 'municipio_id'   => $data['municipio_id']   ?? null,
                 'escola_unidade' => $data['escola_unidade'] ?? null,
+                'tag'            => $data['tag']            ?? null,
             ];
 
             $user->participante()->updateOrCreate(
@@ -202,12 +206,12 @@ class EventoController extends Controller
                 $participanteData
             );
 
-            $this->inscricao($user, $evento);
-            $this->presenca($user->participante, $atividade);
+            $inscricao = $this->inscricao($user, $evento, $atividade);
+            $this->presenca($inscricao, $atividade);
 
             DB::commit();
 
-            Auth::login($user);
+            //Auth::login($user);
 
             return redirect()->route('eventos.show', $evento->id)->with('success', 'Cadastro, inscrição e presença realizados!');
         } catch (\Throwable $e) {
@@ -217,34 +221,46 @@ class EventoController extends Controller
         }
     }
 
-    public function inscricao(User $user, Evento $evento)
+    public function inscricao(User $user, Evento $evento, Atividade $atividade)
     {
         $participante = $user->participante;
 
-        $exists = \DB::table('inscricaos')
-            ->where('evento_id', $evento->id)
+        $inscricao = Inscricao::withTrashed()
             ->where('participante_id', $participante->id)
-            ->whereNull('deleted_at')
-            ->exists();
+            ->where('atividade_id', $atividade->id)
+            ->first();
 
-        if (!$exists) {
-            $inscricao = \DB::table('inscricaos')->insert([
-                'evento_id'       => $evento->id,
-                'participante_id' => $participante->id,
-                'created_at'      => now(),
-                'updated_at'      => now(),
-            ]);
-
-            return $inscricao;
-        } else {
-            return $exists;
+        if (!$inscricao) {
+            $inscricao = Inscricao::withTrashed()
+                ->where('participante_id', $participante->id)
+                ->where('evento_id', $evento->id)
+                ->whereNull('atividade_id')
+                ->first();
         }
+
+        if ($inscricao) {
+            $inscricao->fill([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+            $inscricao->deleted_at = null;
+            $inscricao->save();
+        } else {
+            $inscricao = Inscricao::create([
+                'evento_id'       => $evento->id,
+                'atividade_id'    => $atividade->id,
+                'participante_id' => $participante->id,
+            ]);
+        }
+
+        return $inscricao;
     }
 
-    public function presenca(Participante $participante, Atividade $atividade)
+    public function presenca(Inscricao $inscricao, Atividade $atividade)
     {
         $atividade->presencas()->updateOrCreate(
-            ['inscricao_id' => $participante->inscricoes()->where('evento_id', $atividade->evento->id)->first()->id],
+            ['inscricao_id' => $inscricao->id, 'atividade_id' => $atividade->id],
             ['status' => 'presente']
         );
     }

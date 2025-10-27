@@ -19,7 +19,7 @@
       <label class="form-label">Arquivo Excel (.xlsx)</label>
       <input type="file" name="your_file" class="form-control" accept=".xlsx,.xls" required>
       <div class="form-text">
-        Colunas: nome, email, cpf, telefone, municipio, escola_unidade, status, justificativa, data_entrada
+        Colunas: nome, email, cpf, telefone, municipio, organização, tag, status, data_entrada
       </div>
       <div class="mt-2">
         <a href="{{ asset('modelos/modelo_presencas_engaja.xlsx') }}" class="btn btn-sm btn-outline-primary">

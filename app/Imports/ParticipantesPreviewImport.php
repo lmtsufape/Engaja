@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Municipio;
+use App\Models\Participante;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -19,6 +20,10 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
     protected array $organizacoes = [];
     /** @var array<string,string> */
     protected array $organizacoesMap = [];
+    /** @var array<int,string> */
+    protected array $tags = [];
+    /** @var array<string,string> */
+    protected array $tagsMap = [];
 
     public function __construct()
     {
@@ -34,6 +39,11 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
         $this->organizacoes = config('engaja.organizacoes', []);
         $this->organizacoesMap = collect($this->organizacoes)
             ->mapWithKeys(fn($o) => [$this->slugify($o) => $o])
+            ->all();
+
+        $this->tags = config('engaja.participante_tags', Participante::TAGS);
+        $this->tagsMap = collect($this->tags)
+            ->mapWithKeys(fn($t) => [$this->slugify($t) => $t])
             ->all();
     }
 
@@ -63,22 +73,27 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
             // Aceita "organizacao" OU "escola_unidade"
             $orgRaw   = (string) ($map['organizacao'] ?? $map['escola_unidade'] ?? '');
             $orgCanon = $this->normalizeOrganizacao($orgRaw); // null se não bater com a lista
-
-            // ⚠️ Sem fallback: se não for canônico, fica null (ou string vazia na view)
-            $orgOut   = $orgCanon;                // <<-- aqui mudou
+            $orgOut   = $orgCanon;
             $orgOk    = ($orgRaw === '') ? true : ($orgCanon !== null);
 
+            $tagRaw = (string)($map['tag'] ?? '');
+            $tagCanon = $this->normalizeTag($tagRaw);
+            $tagOut = $tagCanon;
+            $tagOk = ($tagRaw === '') ? true : ($tagCanon !== null);
+
             return [
-                'nome'           => (string) ($map['nome'] ?? ''),
-                'email'          => (string) ($map['email'] ?? ''),
-                'cpf'            => preg_replace('/\D+/', '', (string)($map['cpf'] ?? '')) ?: null,
-                'telefone'       => preg_replace('/\D+/', '', (string)($map['telefone'] ?? '')) ?: null,
-                'municipio'      => $municipioNome,
-                'municipio_id'   => $municipioId,
-                'organizacao'     => $orgOut,      // se sua view usa 'organizacao'
+                'nome'            => (string) ($map['nome'] ?? ''),
+                'email'           => (string) ($map['email'] ?? ''),
+                'cpf'             => preg_replace('/\D+/', '', (string)($map['cpf'] ?? '')) ?: null,
+                'telefone'        => preg_replace('/\D+/', '', (string)($map['telefone'] ?? '')) ?: null,
+                'municipio'       => $municipioNome,
+                'municipio_id'    => $municipioId,
+                'organizacao'     => $orgOut,
                 'organizacao_ok'  => $orgOk,
-                'escola_unidade'  => $orgOut,      // se sua view usa 'escola_unidade'
-                'data_entrada'   => (string) ($map['data_entrada'] ?? ''),
+                'escola_unidade'  => $orgOut,
+                'tag'             => $tagOut,
+                'tag_ok'          => $tagOk,
+                'data_entrada'    => (string) ($map['data_entrada'] ?? ''),
             ];
         })->values();
     }
@@ -96,5 +111,14 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
         if (!$raw) return null;
         $key = $this->slugify($raw);
         return $this->organizacoesMap[$key] ?? null;
+    }
+
+    private function normalizeTag(?string $raw): ?string
+    {
+        if (!$raw) {
+            return null;
+        }
+        $key = $this->slugify($raw);
+        return $this->tagsMap[$key] ?? null;
     }
 }

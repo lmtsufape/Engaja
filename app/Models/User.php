@@ -68,7 +68,10 @@ class User extends Authenticatable
                 'telefone'       => null,
                 'municipio_id'   => null,
                 'escola_unidade' => null,
+                'tag' => null,
             ]);
         });
     }
 }
+
+

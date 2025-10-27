@@ -2,6 +2,7 @@
 
 @section('content')
 <div class="container">
+  @php $disableImport = $atividades->isEmpty(); @endphp
   {{-- Cabeçalho --}}
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -35,11 +36,40 @@
         @csrf
 
         <div class="col-12">
+          <label class="form-label">Momento <span class="text-danger">*</span></label>
+          @if($disableImport)
+          <div class="alert alert-warning mb-2">
+            Nenhum momento cadastrado para este evento. Cadastre um momento antes de importar as inscrições.
+          </div>
+          <select class="form-select" disabled>
+            <option>Cadastre um momento antes de prosseguir</option>
+          </select>
+          @else
+          <select
+            name="atividade_id"
+            class="form-select @error('atividade_id') is-invalid @enderror"
+            required>
+            <option value="">Selecione um momento...</option>
+            @foreach($atividades as $at)
+            @php
+              $dia = \Carbon\Carbon::parse($at->dia)->format('d/m/Y');
+              $hora = $at->hora_inicio ? \Carbon\Carbon::parse($at->hora_inicio)->format('H:i') : null;
+              $label = trim(($at->descricao ?: 'Momento') . ' — ' . $dia . ($hora ? ' ' . $hora : ''));
+            @endphp
+            <option value="{{ $at->id }}" @selected(old('atividade_id') == $at->id)>{{ $label }}</option>
+            @endforeach
+          </select>
+          @error('atividade_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+          @endif
+        </div>
+
+        <div class="col-12">
           <label class="form-label">Arquivo Excel (.xlsx) <span class="text-danger">*</span></label>
           <input type="file"
             name="your_file"
             class="form-control @error('your_file') is-invalid @enderror"
             accept=".xlsx,.xls"
+            @if($disableImport) disabled @endif
             required>
           @error('your_file') <div class="invalid-feedback">{{ $message }}</div> @enderror
           <div class="form-text">
@@ -48,7 +78,7 @@
         </div>
         <div class="mb-3">
           <div class="form-text">
-            Colunas: nome, email, cpf, telefone, municipio, organizacao
+            Colunas: nome, email, cpf, telefone, municipio, organizacao, tag
           </div>
           <div class="mt-2">
             <a href="{{ asset('modelos/modelo_inscricoes_engaja.xlsx') }}" class="btn btn-sm btn-outline-primary">

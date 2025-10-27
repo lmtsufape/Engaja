@@ -52,9 +52,8 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-
-                                        {{-- Password --}}
-                                        <div class="col-md-6">
+                                        
+                                        {{-- <div class="col-md-6">
                                             <label for="password" class="form-label">{{ __('Senha') }}</label>
                                             <input id="password" type="password"
                                                 class="form-control @error('password') is-invalid @enderror" name="password"
@@ -67,13 +66,12 @@
                                             </div>
                                         </div>
 
-                                        {{-- Confirm Password --}}
                                         <div class="col-md-6">
                                             <label for="password_confirmation"
                                                 class="form-label">{{ __('Confirmar senha') }}</label>
                                             <input id="password_confirmation" type="password" class="form-control"
                                                 name="password_confirmation" required autocomplete="new-password">
-                                        </div>
+                                        </div> --}}
                                     </div>
                                 </div>
                             </div>
@@ -113,6 +111,17 @@
                                                 class="form-control @error('escola_unidade') is-invalid @enderror">
                                             @error('escola_unidade') <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="tag" class="form-label">Tag</label>
+                                            <select id="tag" name="tag"
+                                                class="form-select @error('tag') is-invalid @enderror">
+                                                <option value="">Selecione...</option>
+                                                @foreach(($participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS)) as $tagOption)
+                                                <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? "") === $tagOption)>{{ $tagOption }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('tag') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
 
                                         <div class="col-md-6">

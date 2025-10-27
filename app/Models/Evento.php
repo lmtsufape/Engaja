@@ -44,6 +44,8 @@ class Evento extends Model
     }
 
     public function participantes(){
-        return $this->belongsToMany(Participante::class, 'inscricaos')->withTimestamps();
+        return $this->belongsToMany(Participante::class, 'inscricaos')
+            ->withPivot(['atividade_id'])
+            ->withTimestamps();
     }
 }

@@ -9,11 +9,16 @@ class Inscricao extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['evento_id', 'participante_id'];
+    protected $fillable = ['evento_id', 'atividade_id', 'participante_id'];
 
     public function evento()
     {
         return $this->belongsTo(Evento::class);
+    }
+
+    public function atividade()
+    {
+        return $this->belongsTo(Atividade::class);
     }
     public function participante()
     {

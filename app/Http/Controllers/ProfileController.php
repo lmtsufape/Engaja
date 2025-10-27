@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Participante;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,13 +23,15 @@ class ProfileController extends Controller
         $municipios = \App\Models\Municipio::with('estado')
             ->orderBy('nome')
             ->get(['id','nome','estado_id']);
-        
+
         $organizacoes = config('engaja.organizacoes', []);
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
 
         return view('profile.edit', [
-            'user'       => $user,
-            'municipios' => $municipios,
-            'organizacoes' => $organizacoes,
+            'user'             => $user,
+            'municipios'       => $municipios,
+            'organizacoes'     => $organizacoes,
+            'participanteTags' => $participanteTags,
         ]);
     }
 
@@ -58,6 +61,7 @@ class ProfileController extends Controller
             'telefone'       => $data['telefone']       ?? null,
             'municipio_id'   => $data['municipio_id']   ?? null,
             'escola_unidade' => $data['escola_unidade'] ?? null,
+            'tag'            => $data['tag']            ?? null,
             // 'data_entrada'   => $data['data_entrada']   ?? null, // já 'Y-m-d' de <input type="date">
         ];
 
