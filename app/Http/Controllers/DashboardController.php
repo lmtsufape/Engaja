@@ -80,6 +80,9 @@ class DashboardController extends Controller
                   AND presencas.deleted_at IS NULL
             ) as ausentes_count');
 
+        $query->whereNull('atividades.deleted_at')
+              ->whereHas('evento');
+
         $query->when($eventoId, fn($q) => $q->where('atividades.evento_id', $eventoId));
         $query->when($de && $ate, fn($q) => $q->whereBetween('atividades.dia', [$de, $ate]));
         $query->when($de && !$ate, fn($q) => $q->where('atividades.dia', '>=', $de));
@@ -180,6 +183,8 @@ class DashboardController extends Controller
                   AND presencas.status = \'presente\'
                   AND presencas.deleted_at IS NULL
             ) as ausentes_count')
+            ->whereNull('atividades.deleted_at')
+            ->whereHas('evento')
             ->when($eventoId, fn($q) => $q->where('atividades.evento_id', $eventoId))
             ->when($de && $ate, fn($q) => $q->whereBetween('atividades.dia', [$de, $ate]))
             ->when($de && !$ate, fn($q) => $q->where('atividades.dia', '>=', $de))
