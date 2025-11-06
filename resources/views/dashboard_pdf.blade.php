@@ -37,6 +37,10 @@
         .small { font-size: 11px; }
         .section-title { background:#f7f7f7; padding:6px 8px; border:1px solid #ccc; margin:10px 0 6px; }
         .empty-state { border:1px dashed #d0d7e6; padding:16px; border-radius:6px; text-align:center; color:#6b7a99; margin-top:20px; }
+        .filters-applied { border:1px dashed #d8c3f7; background:#fcfaff; padding:10px 12px; border-radius:6px; margin-bottom:18px; font-size:11px; }
+        .filters-applied .title { display:block; font-weight:700; color:#681170; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; font-size:10px; }
+        .filters-applied .chip { display:inline-block; margin:0 6px 6px 0; padding:4px 8px; border-radius:4px; border:1px solid #edd7fc; background:#fff; color:#4a1768; font-size:11px; }
+        .filters-applied .chip strong { margin-right:4px; }
     </style>
 </head>
 <body>
@@ -51,6 +55,17 @@
             </div>
         </div>
     </header>
+
+    @if(!empty($filtroResumo ?? []))
+        <div class="filters-applied">
+            <span class="title">Filtros aplicados</span>
+            <div>
+                @foreach($filtroResumo as $label => $value)
+                    <span class="chip"><strong>{{ $label }}:</strong> {{ $value }}</span>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     @forelse($atividades as $index => $a)
         @php

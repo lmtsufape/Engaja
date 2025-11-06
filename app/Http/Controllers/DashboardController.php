@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Atividade;
 use App\Models\Evento;
+use App\Models\Municipio;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 class DashboardController extends Controller
 {
@@ -117,16 +118,35 @@ class DashboardController extends Controller
         });
 
         $eventos = Evento::query()->orderBy('nome')->pluck('nome', 'id');
+        $municipioIds = Atividade::query()
+            ->whereNotNull('municipio_id')
+            ->distinct()
+            ->pluck('municipio_id');
+        $municipios = Municipio::query()
+            ->with('estado:id,sigla')
+            ->whereIn('id', $municipioIds)
+            ->orderBy('nome')
+            ->get();
+        $momentos = Atividade::query()
+            ->select('descricao')
+            ->whereNotNull('descricao')
+            ->where('descricao', '!=', '')
+            ->distinct()
+            ->orderBy('descricao')
+            ->pluck('descricao');
 
-        return view('dashboard', compact('atividades', 'eventos'));
+        return view('dashboard', compact('atividades', 'eventos', 'municipios', 'momentos'));
     }
 
     public function export(Request $request)
     {
-        $eventoId   = $request->integer('evento_id');
-        $de         = $request->date('de');
-        $ate        = $request->date('ate');
-        $q          = trim((string)$request->get('q', ''));
+        $pdfEventoId   = $request->integer('pdf_evento_id');
+        $eventoId      = $pdfEventoId ?? $request->integer('evento_id');
+        $municipioId   = $request->integer('pdf_municipio_id');
+        $momento       = trim((string)$request->get('pdf_momento', ''));
+        $de            = $request->date('pdf_de') ?? $request->date('de');
+        $ate           = $request->date('pdf_ate') ?? $request->date('ate');
+        $q             = trim((string)$request->get('q', ''));
 
         $sort = $request->get('sort', 'dia');
         $dir  = $request->get('dir', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -196,6 +216,8 @@ class DashboardController extends Controller
             ->whereNull('atividades.deleted_at')
             ->whereHas('evento')
             ->when($eventoId, fn($q) => $q->where('atividades.evento_id', $eventoId))
+            ->when($municipioId, fn($q) => $q->where('atividades.municipio_id', $municipioId))
+            ->when($momento !== '', fn($q) => $q->where('atividades.descricao', $momento))
             ->when($de && $ate, fn($q) => $q->whereBetween('atividades.dia', [$de, $ate]))
             ->when($de && !$ate, fn($q) => $q->where('atividades.dia', '>=', $de))
             ->when(!$de && $ate, fn($q) => $q->where('atividades.dia', '<=', $ate))
@@ -222,9 +244,30 @@ class DashboardController extends Controller
             return $atividade;
         });
 
+        $eventoSelecionado = $eventoId ? Evento::find($eventoId) : null;
+        $municipioSelecionado = $municipioId
+            ? Municipio::with('estado:id,sigla')->find($municipioId)
+            : null;
+        $periodo = null;
+        if ($de && $ate) {
+            $periodo = $de->format('d/m/Y') . ' - ' . $ate->format('d/m/Y');
+        } elseif ($de) {
+            $periodo = 'A partir de ' . $de->format('d/m/Y');
+        } elseif ($ate) {
+            $periodo = 'Até ' . $ate->format('d/m/Y');
+        }
+
+        $filtroResumo = array_filter([
+            'Ação pedagógica' => $eventoSelecionado?->nome,
+            'Município'       => $municipioSelecionado?->nome_com_estado,
+            'Momento'         => $momento ?: null,
+            'Período'         => $periodo,
+        ]);
+
         $pdf = PDF::loadView('dashboard_pdf', [
             'atividades' => $atividades,
-            'filtros'    => $request->query(), // só se quiser exibir no cabeçalho do PDF
+            'filtroResumo' => $filtroResumo,
+            'filtros'    => $request->query(),
         ])->setPaper('a4', 'portrait');
 
         return $pdf->download('dashboard-presencas-'.now()->format('Ymd_His').'.pdf');
