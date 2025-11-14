@@ -61,10 +61,12 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm js-toggle-all" data-action="hide">
                     Recolher todos
                 </button>
-                <a href="{{ route('dashboard.export', request()->query()) }}"
-                    class="btn btn-outline-primary btn-sm">
+                <button type="button"
+                    class="btn btn-outline-primary btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#exportPdfModal">
                     Baixar PDF
-                </a>
+                </button>
             </div>
 
             <div class="table-responsive">
@@ -244,6 +246,66 @@
         @endif
     </div>
     @endcan
+</div>
+
+<div class="modal fade" id="exportPdfModal" tabindex="-1" aria-labelledby="exportPdfModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="{{ route('dashboard.export') }}" target="_blank">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="exportPdfModalLabel">Gerar PDF do dashboard</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">Ação pedagógica</label>
+                            <select name="pdf_evento_id" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                @foreach($eventos as $id => $nome)
+                                    <option value="{{ $id }}">{{ $nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">Município</label>
+                            <select name="pdf_municipio_id" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                @foreach(($municipios ?? collect()) as $municipio)
+                                    <option value="{{ $municipio->id }}">{{ $municipio->nome_com_estado ?? $municipio->nome }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">Momento</label>
+                            <select name="pdf_momento" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                @foreach(($momentos ?? collect()) as $momento)
+                                    <option value="{{ $momento }}">{{ $momento }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">De</label>
+                            <input type="date" name="pdf_de" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Até</label>
+                            <input type="date" name="pdf_ate" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="d-flex gap-2">
+                        <button type="reset" class="btn btn-light btn-sm">Limpar</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Gerar PDF</button>
+                    </div>
+                </div>
+                <input type="hidden" name="sort" value="{{ request('sort', 'dia') }}">
+                <input type="hidden" name="dir" value="{{ request('dir', 'desc') }}">
+            </form>
+        </div>
+    </div>
 </div>
 
 {{-- Script para expandir/recolher todos --}}

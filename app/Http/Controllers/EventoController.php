@@ -92,7 +92,14 @@ class EventoController extends Controller
 
     public function show(Evento $evento)
     {
-        $evento->load(['eixo', 'user', 'atividades' => fn($q) => $q->orderBy('dia')->orderBy('hora_inicio'),]);
+        $evento->load([
+            'eixo',
+            'user',
+            'atividades' => fn($q) => $q
+                ->with('municipio.estado')
+                ->orderBy('dia')
+                ->orderBy('hora_inicio'),
+        ]);
         return view('eventos.show', compact('evento'));
     }
 

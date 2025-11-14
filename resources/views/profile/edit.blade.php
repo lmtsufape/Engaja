@@ -256,7 +256,7 @@
                         Esta ação é irreversível. Todos os seus dados serão removidos.
                     </p>
 
-                    <form method="POST" action="{{ route('profile.destroy') }}" onsubmit="return confirm('Tem certeza que deseja excluir sua conta?');">
+                    <form method="POST" action="{{ route('profile.destroy') }}" data-confirm="Tem certeza que deseja excluir sua conta?">
                         @csrf
                         @method('delete')
 

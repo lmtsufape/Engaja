@@ -23,6 +23,7 @@
             <th>Dia</th>
             <th>Hora início</th>
             <th>Hora de término</th>
+            <th>Município</th>
             @hasanyrole('administrador|formador')
             <th class="text-end">Ações</th>
             @endhasanyrole
@@ -34,12 +35,13 @@
               <td>{{ \Carbon\Carbon::parse($at->dia)->format('d/m/Y') }}</td>
               <td>{{ \Carbon\Carbon::parse($at->hora_inicio)->format('H:i') }}</td>
               <td>{{ \Carbon\Carbon::parse($at->hora_fim)->format('H:i') }}</td>
+              <td>{{ $at->municipio?->nome_com_estado ?? '-' }}</td>
               @hasanyrole('administrador|formador')
               <td class="text-end">
                 <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
                 <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
                 <form class="d-inline" method="POST" action="{{ route('atividades.destroy', $at) }}"
-                  onsubmit="return confirm('Remover momento?');">
+                  data-confirm="Tem certeza que deseja excluir este momento?">
                   @csrf @method('DELETE')
                   <button class="btn btn-sm btn-outline-danger">Excluir</button>
                 </form>
@@ -48,7 +50,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">Nenhum momento cadastrada.</td>
+              <td colspan="5" class="text-center text-muted py-4">Nenhum momento cadastrada.</td>
             </tr>
           @endforelse
         </tbody>

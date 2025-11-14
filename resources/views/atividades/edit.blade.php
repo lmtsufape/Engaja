@@ -15,7 +15,12 @@
     <div class="card-body">
       <form method="POST" action="{{ route('atividades.update', $atividade) }}">
         @method('PUT')
-        @include('atividades._form', ['evento'=>$evento, 'atividade'=>$atividade, 'submitLabel'=>'Salvar alterações'])
+        @include('atividades._form', [
+          'evento' => $evento,
+          'atividade' => $atividade,
+          'municipios' => $municipios,
+          'submitLabel' => 'Salvar alterações'
+        ])
       </form>
     </div>
   </div>

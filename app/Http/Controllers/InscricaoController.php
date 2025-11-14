@@ -450,6 +450,223 @@ class InscricaoController extends Controller
         ]);
     }
 
+    public function selecionar(Request $request, Evento $evento)
+    {
+        $search      = trim((string) $request->query('q', ''));
+        $municipioId = $request->query('municipio_id');
+        $tagSelecionada = $request->query('tag');
+        $atividadeId = $request->query('atividade_id');
+        $perPage     = (int) $request->query('per_page', 25);
+
+        if (!in_array($perPage, [25, 50, 100, 200], true)) {
+            $perPage = 25;
+        }
+
+        $municipios = \App\Models\Municipio::with('estado')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'estado_id']);
+
+        $atividades = $evento->atividades()
+            ->orderBy('dia')
+            ->orderBy('hora_inicio')
+            ->get(['id', 'descricao', 'dia', 'hora_inicio']);
+
+        $atividadeSelecionada = null;
+        if ($atividadeId) {
+            $atividadeSelecionada = $atividades->firstWhere('id', (int) $atividadeId);
+            if (!$atividadeSelecionada) {
+                $atividadeId = null;
+            }
+        }
+
+        $apenasDisponiveis = $request->has('apenas_disponiveis')
+            ? $request->boolean('apenas_disponiveis')
+            : (bool) $atividadeId;
+
+        if (!$atividadeId) {
+            $apenasDisponiveis = false;
+        }
+
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
+
+        $inscricoesAtivas = Inscricao::query()
+            ->where('evento_id', $evento->id)
+            ->whereNull('deleted_at')
+            ->get(['participante_id', 'atividade_id']);
+
+        $inscritosEvento = $inscricoesAtivas
+            ->pluck('participante_id')
+            ->unique()
+            ->all();
+
+        $inscritosAtividade = $atividadeId
+            ? $inscricoesAtivas
+                ->filter(fn($item) => (int) $item->atividade_id === (int) $atividadeId)
+                ->pluck('participante_id')
+                ->unique()
+                ->all()
+            : [];
+
+        $participantesQuery = Participante::query()
+            ->with([
+                'user:id,name,email',
+                'municipio.estado:id,nome,sigla',
+            ])
+            ->whereNull('participantes.deleted_at')
+            ->when($municipioId, fn($q) => $q->where('municipio_id', $municipioId))
+            ->when($tagSelecionada, fn($q) => $q->where('tag', $tagSelecionada))
+            ->when($search, function ($query) use ($search) {
+                $like = '%' . $search . '%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('cpf', 'ilike', $like)
+                        ->orWhere('telefone', 'ilike', $like)
+                        ->orWhereHas('user', function ($uq) use ($like) {
+                            $uq->where('name', 'ilike', $like)
+                                ->orWhere('email', 'ilike', $like);
+                        })
+                        ->orWhereHas('municipio', function ($mq) use ($like) {
+                            $mq->where('nome', 'ilike', $like);
+                        });
+                });
+            });
+
+        if ($atividadeId && $apenasDisponiveis) {
+            $participantesQuery->whereDoesntHave('inscricoes', function ($q) use ($evento, $atividadeId) {
+                $q->where('evento_id', $evento->id)
+                    ->where('atividade_id', $atividadeId)
+                    ->whereNull('deleted_at');
+            });
+        }
+
+        $participantes = $participantesQuery
+            ->leftJoin('users as users_order', 'users_order.id', '=', 'participantes.user_id')
+            ->select('participantes.*')
+            ->orderByRaw('LOWER(users_order.name) ASC NULLS LAST')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return view('inscricoes.selecionar', [
+            'evento'               => $evento,
+            'participantes'        => $participantes,
+            'municipios'           => $municipios,
+            'atividades'           => $atividades,
+            'participanteTags'     => $participanteTags,
+            'search'               => $search,
+            'municipioId'          => $municipioId,
+            'tagSelecionada'       => $tagSelecionada,
+            'atividadeId'          => $atividadeId,
+            'atividadeSelecionada' => $atividadeSelecionada,
+            'apenasDisponiveis'    => $apenasDisponiveis,
+            'perPage'              => $perPage,
+            'inscritosNaAtividade' => $inscritosAtividade,
+            'inscritosNoEvento'    => $inscritosEvento,
+        ]);
+    }
+
+    public function selecionarStore(Request $request, Evento $evento)
+    {
+        $validated = $request->validate([
+            'atividade_id' => [
+                'required',
+                'integer',
+                Rule::exists('atividades', 'id')->where('evento_id', $evento->id),
+            ],
+            'participantes'   => ['required', 'array', 'min:1'],
+            'participantes.*' => [
+                'integer',
+                Rule::exists('participantes', 'id'),
+            ],
+        ], [
+            'participantes.required' => 'Selecione pelo menos um participante.',
+            'participantes.min'      => 'Selecione pelo menos um participante.',
+        ]);
+
+        $atividade = $evento->atividades()
+            ->whereKey($validated['atividade_id'])
+            ->firstOrFail();
+
+        $participanteIds = array_values(array_unique($validated['participantes']));
+
+        $participantes = Participante::whereIn('id', $participanteIds)->get();
+
+        if ($participantes->isEmpty()) {
+            return back()->withErrors(['participantes' => 'Nenhum participante v�lido foi selecionado.']);
+        }
+
+        $resultado = DB::transaction(function () use ($participantes, $evento, $atividade) {
+            $totais = [
+                'adicionados' => 0,
+                'ignorados'   => 0,
+            ];
+
+            foreach ($participantes as $participante) {
+                $inscricao = Inscricao::withTrashed()
+                    ->where('participante_id', $participante->id)
+                    ->where('atividade_id', $atividade->id)
+                    ->where('evento_id', $evento->id)
+                    ->first();
+
+                if ($inscricao && $inscricao->deleted_at === null) {
+                    $totais['ignorados']++;
+                    continue;
+                }
+
+                if (!$inscricao) {
+                    $inscricao = Inscricao::withTrashed()
+                        ->where('participante_id', $participante->id)
+                        ->where('evento_id', $evento->id)
+                        ->whereNull('atividade_id')
+                        ->first();
+                }
+
+                if ($inscricao) {
+                    $inscricao->fill([
+                        'evento_id'       => $evento->id,
+                        'atividade_id'    => $atividade->id,
+                        'participante_id' => $participante->id,
+                    ]);
+                    $inscricao->deleted_at = null;
+                    $inscricao->save();
+                } else {
+                    Inscricao::create([
+                        'evento_id'       => $evento->id,
+                        'atividade_id'    => $atividade->id,
+                        'participante_id' => $participante->id,
+                    ]);
+                }
+
+                $totais['adicionados']++;
+            }
+
+            return $totais;
+        });
+
+        $mensagem = "{$resultado['adicionados']} participante(s) inscrito(s).";
+        if ($resultado['ignorados'] > 0) {
+            $mensagem .= " {$resultado['ignorados']} j� estavam inscritos neste momento.";
+        }
+
+        $queryParams = [
+            'atividade_id'       => $validated['atividade_id'],
+            'q'                  => $request->input('q'),
+            'municipio_id'       => $request->input('municipio_id'),
+            'tag'                => $request->input('tag'),
+            'per_page'           => $request->input('per_page'),
+            'apenas_disponiveis' => $request->has('apenas_disponiveis')
+                ? ($request->boolean('apenas_disponiveis') ? 1 : 0)
+                : 1,
+        ];
+
+        $queryParams = array_filter(
+            $queryParams,
+            fn($value) => $value !== null && $value !== ''
+        );
+
+        return redirect()
+            ->route('inscricoes.selecionar', array_merge(['evento' => $evento->id], $queryParams))
+            ->with('success', $mensagem);
+    }
+
 
     public function inscrever(Request $request, \App\Models\Evento $evento)
     {
@@ -533,6 +750,5 @@ class InscricaoController extends Controller
     { /* ... */
     }
 }
-
 
 

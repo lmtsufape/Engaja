@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Inscricao extends Model
@@ -27,5 +28,10 @@ class Inscricao extends Model
     public function presencas()
     {
         return $this->hasMany(Presenca::class);
+    }
+
+    public function avaliacoes(): HasMany
+    {
+        return $this->hasMany(Avaliacao::class);
     }
 }

@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary border-bottom">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary border-bottom sticky-top shadow-sm">
   <div class="container">
     {{-- Logo + texto --}}
     <a class="navbar-brand d-flex align-items-center text-engaja fw-bold" href="{{ url('/') }}">
@@ -11,8 +11,38 @@
     </button>
 
     <div id="mainNav" class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+        @auth
+        @hasanyrole('administrador|participante')
+        <li class="nav-item">
+          <a class="nav-link text-white" href="{{ route('eventos.index') }}">
+            Ações Pedagógicas
+          </a>
+        </li>
+        @endhasanyrole
+        @role('administrador')
+        <li class="nav-item">
+          <a class="nav-link text-white" href="{{ route('dashboard') }}">
+            Dashboard
+          </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            Avaliações
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ route('dimensaos.index') }}">Dimensões</a></li>
+            <li><a class="dropdown-item" href="{{ route('indicadors.index') }}">Indicadores</a></li>
+            <li><a class="dropdown-item" href="{{ route('evidencias.index') }}">Evidências</a></li>
+            <li><a class="dropdown-item" href="{{ route('escalas.index') }}">Escalas</a></li>
+            <li><a class="dropdown-item" href="{{ route('templates-avaliacao.index') }}">Modelos de avaliação</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{{ route('avaliacoes.index') }}">Avaliações</a></li>
+          </ul>
+        </li>
+        @endrole
+        @endauth
       </ul>
 
       <ul class="navbar-nav ms-auto">
@@ -47,3 +77,10 @@
     </div>
   </div>
 </nav>
+<style>
+.navbar-nav.mx-auto {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+</style>

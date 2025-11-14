@@ -184,7 +184,7 @@
         <a href="{{ $evento->link }}" target="_blank" class="btn btn-outline-secondary">Acessar link</a>
         @endif
 
-        @auth
+        <!-- @auth
         @if($participanteId)
         @if(!$jaInscrito)
         <form method="POST" action="{{ route('inscricoes.inscrever', $evento) }}">
@@ -193,22 +193,22 @@
         </form>
         @else
         <form method="POST" action="{{ route('inscricoes.cancelar', $evento) }}"
-          onsubmit="return confirm('Deseja cancelar sua inscrição?');">
+          data-confirm="Deseja cancelar sua inscrição?">
           @csrf @method('DELETE')
           <button class="btn btn-outline-danger">Cancelar minha inscrição</button>
         </form>
         @endif
         @else
-        <!-- <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary"
+        <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary"
                 title="Complete seu cadastro de participante para se inscrever">
                 Completar cadastro para se inscrever
-              </a> -->
+              </a>
         @endif
-        @endauth
+        @endauth -->
 
         @hasanyrole('administrador|formador')
-        <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-engaja">Inscrever participantes</a>
-
+        <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
+        <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
         <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">
           Ver inscritos
         </a>
@@ -218,7 +218,7 @@
         <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
 
         <form action="{{ route('eventos.destroy', $evento) }}" method="POST"
-          onsubmit="return confirm('Excluir este evento?');" class="d-inline">
+          class="d-inline" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
           @csrf @method('DELETE')
           <button class="btn btn-outline-danger">Excluir</button>
         </form>
@@ -350,6 +350,7 @@
 
               $momento = trim($at->descricao ?? '') !== '' ? $at->descricao : 'Momento';
               $local = $at->local ?? null;
+              $municipio = optional($at->municipio)->nome_com_estado;
               @endphp
 
               <div class="t-item">
@@ -360,8 +361,9 @@
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
                       <div class="program-title">{{ $momento }}</div>
 
-                      @if($local || $chLabel)
+                      @if($local || $municipio || $chLabel)
                       <div class="program-meta">
+                        @if($municipio) <span class="chip">🏙️ {{ $municipio }}</span> @endif
                         @if($local) <span class="chip">📍 {{ $local }}</span> @endif
                         @if($chLabel) <span class="chip">⏱️ {{ $chLabel }}</span> @endif
                       </div>
@@ -373,7 +375,7 @@
 
                       <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
                       <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                        onsubmit="return confirm('Excluir momento?');" class="d-inline">
+                        class="d-inline" data-confirm="Tem certeza que deseja excluir este momento?">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-danger">Excluir</button>
                       </form>
