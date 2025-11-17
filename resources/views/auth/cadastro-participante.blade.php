@@ -105,6 +105,18 @@
                                         </div>
 
                                         <div class="col-md-6">
+                                            <label for="tipo_organizacao" class="form-label">Tipo de Organização</label>
+                                            <select id="tipo_organizacao" name="tipo_organizacao"
+                                                class="form-select @error('tipo_organizacao') is-invalid @enderror">
+                                                <option value="">Selecione...</option>
+                                                @foreach(config('engaja.organizacoes', []) as $org)
+                                                <option value="{{ $org }}" @selected(old('tipo_organizacao', $participante->tipo_organizacao ?? '') === $org)>{{ $org }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('tipo_organizacao') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+
+                                        <div class="col-md-6">
                                             <label for="escola_unidade" class="form-label">Organização</label>
                                             <input id="escola_unidade" type="text" name="escola_unidade"
                                                 value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"

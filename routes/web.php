@@ -1,13 +1,20 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AvaliacaoController;
 use App\Http\Controllers\AtividadeController;
+use App\Http\Controllers\DimensaoController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EscalaController;
+use App\Http\Controllers\EventoController;
 use App\Http\Controllers\InscricaoController;
+use App\Http\Controllers\IndicadorController;
+use App\Http\Controllers\EvidenciaController;
 use App\Http\Controllers\PresencaController;
 use App\Http\Controllers\PresencaImportController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuestaoController;
+use App\Http\Controllers\TemplateAvaliacaoController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\EventoController;
-use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -47,6 +54,16 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::post('/eventos/{evento}/inscricoes/preview/save', [InscricaoController::class, 'savePage'])->name('inscricoes.preview.save');
     Route::post('/eventos/{evento}/inscricoes/confirmar', [InscricaoController::class, 'confirmar'])->name('inscricoes.confirmar');
     Route::get('/eventos/{evento}/inscritos', [InscricaoController::class, 'inscritos'])->name('inscricoes.inscritos');
+
+    Route::resource('dimensaos', DimensaoController::class);
+    Route::resource('indicadors', IndicadorController::class);
+    Route::resource('evidencias', EvidenciaController::class);
+    Route::resource('escalas', EscalaController::class);
+    Route::resource('questaos', QuestaoController::class);
+    Route::resource('templates-avaliacao', TemplateAvaliacaoController::class)
+        ->parameters(['templates-avaliacao' => 'template']);
+    Route::resource('avaliacoes', AvaliacaoController::class)
+        ->parameters(['avaliacoes' => 'avaliacao']);
 });
 
 Route::middleware(['auth', 'role:administrador|participante'])->group(function () {

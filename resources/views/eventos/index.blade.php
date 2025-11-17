@@ -59,7 +59,7 @@
                                 @can('update', $ev)
                                 <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
 
-                                <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline">
+                                <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger">Excluir</button>
                                 </form>

@@ -16,11 +16,11 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
 
     /** @var array<string,int> nome (lower) => municipio_id */
     protected array $municipiosCache = [];
-    /** @var array<int,string> lista canônica */
-    protected array $organizacoes = [];
+    /** @var array<int,string> lista can├┤nica */
+    protected array $tiposOrganizacao = [];
 
-    /** @var array<string,string> mapa lower => canônico */
-    protected array $organizacoesMap = [];
+    /** @var array<string,string> mapa lower => can├┤nico */
+    protected array $tiposOrganizacaoMap = [];
 
     /** @var array<int,string> */
     protected array $tags = [];
@@ -37,8 +37,8 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 return [mb_strtolower(trim($m->nome)) => (int) $m->id];
             })
             ->toArray();
-        $this->organizacoes = config('engaja.organizacoes', []);
-        $this->organizacoesMap = collect($this->organizacoes)
+        $this->tiposOrganizacao = config('engaja.organizacoes', []);
+        $this->tiposOrganizacaoMap = collect($this->tiposOrganizacao)
             ->mapWithKeys(function ($o) {
                 return [mb_strtolower($this->slugify($o)) => $o];
             })->toArray();
@@ -57,11 +57,11 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
         return trim($s);
     }
 
-    private function normalizeOrganizacao(?string $raw): ?string
+    private function normalizeTipoOrganizacao(?string $raw): ?string
     {
         if (!$raw) return null;
         $key = $this->slugify($raw);
-        return $this->organizacoesMap[$key] ?? null;
+        return $this->tiposOrganizacaoMap[$key] ?? null;
     }
 
     private function normalizeTag(?string $raw): ?string
@@ -79,18 +79,39 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
     public function collection(Collection $rows): void
     {
         foreach ($rows as $r) {
-            // Normaliza campos base
-            $nome     = trim((string)($r['nome'] ?? ''));
-            $email    = strtolower(trim((string)($r['email'] ?? '')));
-            $cpf      = preg_replace('/\D+/', '', (string)($r['cpf'] ?? '')) ?: null;
-            $telefone = preg_replace('/\D+/', '', (string)($r['telefone'] ?? '')) ?: null;
+            $row = is_array($r) ? $r : $r->toArray();
 
-            $munNome  = trim((string)($r['municipio'] ?? ''));
-            $escola   = trim((string)($r['organizacao'] ?? $r['escola_unidade'] ?? '')); // aceita ambos
-            $tagRaw   = trim((string)($r['tag'] ?? ''));
-            $status   = $this->mapStatus((string)($r['status'] ?? ''));
-            $justif   = trim((string)($r['justificativa'] ?? '')) ?: null;
-            $entrada  = $this->parseDate($r['data_entrada'] ?? null);
+            // Normaliza campos base
+            $nome     = trim((string)($row['nome'] ?? ''));
+            $email    = strtolower(trim((string)($row['email'] ?? '')));
+            $cpf      = preg_replace('/\\D+/', '', (string)($row['cpf'] ?? '')) ?: null;
+            $telefone = preg_replace('/\\D+/', '', (string)($row['telefone'] ?? '')) ?: null;
+
+            $munNome  = trim((string)($row['municipio'] ?? ''));
+            $tagRaw   = trim((string)($row['tag'] ?? ''));
+            $status   = $this->mapStatus((string)($row['status'] ?? ''));
+            $justif   = trim((string)($row['justificativa'] ?? '')) ?: null;
+            $entrada  = $this->parseDate($row['data_entrada'] ?? null);
+
+            $tipoColumnExists = false;
+            $tipoRaw = $this->firstValue($row, [
+                'tipo_de_organizacao',
+                'tipo_organizacao',
+                'tipo-da-organizacao',
+                'tipo_da_organizacao',
+                'tipoorganizacao',
+            ], $tipoColumnExists);
+            if (!$tipoColumnExists) {
+                $tipoRaw = $tipoRaw ?? $this->firstValue($row, ['organizacao', 'escola_unidade']);
+            }
+            $tipoRaw = $tipoRaw ?? '';
+
+            $organizacaoLivre = $this->firstValue(
+                $row,
+                $tipoColumnExists
+                    ? ['organizacao', 'organizacao_nome', 'nome_da_organizacao', 'organizacao_livre', 'escola_unidade']
+                    : ['escola_unidade', 'organizacao']
+            ) ?? '';
 
             $linhaVazia = (
                 $nome === '' &&
@@ -98,7 +119,8 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 $cpf === null &&
                 $telefone === null &&
                 $munNome === '' &&
-                $escola === '' &&
+                $tipoRaw === '' &&
+                $organizacaoLivre === '' &&
                 $tagRaw === '' &&
                 $status === null &&
                 $justif === null &&
@@ -115,30 +137,59 @@ class PresencasPreviewImport implements ToCollection, WithHeadingRow, SkipsEmpty
                 $municipioId = $this->municipiosCache[$key] ?? null;
             }
 
-            $orgCanon = $this->normalizeOrganizacao($escola);
-            $organizacaoOk = $escola === '' ? true : ($orgCanon !== null);
-            $escolaOut = $orgCanon ?? $escola;
+            $tipoCanon = $this->normalizeTipoOrganizacao($tipoRaw);
+            $tipoOk = $tipoRaw === '' ? true : ($tipoCanon !== null);
+            $tipoOut = $tipoCanon ?? $tipoRaw;
 
             $tagCanon = $this->normalizeTag($tagRaw);
             $tagOk = $tagRaw === '' ? true : ($tagCanon !== null);
             $tagOut = $tagCanon ?? $tagRaw;
 
             $this->rows->push([
-                'nome'           => $nome,
-                'email'          => $email,
-                'cpf'            => $cpf,
-                'telefone'       => $telefone,
-                'municipio'      => $munNome,      // para exibir no input
-                'municipio_id'   => $municipioId,  // para pré-selecionar no <select>
-                'organizacao'    => $escolaOut,    // canônico se reconhecido
-                'organizacao_ok' => $organizacaoOk,
-                'tag'            => $tagOut,
-                'tag_ok'         => $tagOk,
-                'status'         => $status,
-                'justificativa'  => $justif,
-                'data_entrada'   => $entrada,
+                'nome'               => $nome,
+                'email'              => $email,
+                'cpf'                => $cpf,
+                'telefone'           => $telefone,
+                'municipio'          => $munNome,
+                'municipio_id'       => $municipioId,
+                'tipo_organizacao'   => $tipoOut,
+                'tipo_organizacao_ok'=> $tipoOk,
+                'escola_unidade'     => $organizacaoLivre,
+                'tag'                => $tagOut,
+                'tag_ok'             => $tagOk,
+                'status'             => $status,
+                'justificativa'      => $justif,
+                'data_entrada'       => $entrada,
             ]);
         }
+    }
+
+    private function firstValue(array $row, array $keys, ?bool &$foundKey = null): ?string
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row)) {
+                if ($foundKey !== null) {
+                    $foundKey = true;
+                }
+                $value = $row[$key];
+                if ($value === null) {
+                    return null;
+                }
+                if (is_string($value)) {
+                    return trim($value);
+                }
+                if (is_scalar($value)) {
+                    return trim((string)$value);
+                }
+                return null;
+            }
+        }
+
+        if ($foundKey !== null) {
+            $foundKey = false;
+        }
+
+        return null;
     }
 
     private function mapStatus(string $raw): ?string

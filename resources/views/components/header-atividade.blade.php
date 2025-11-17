@@ -36,7 +36,12 @@
         </p>
     @endif
 
+    @if ($atividade->municipio)
+        <p class="text-muted mb-1">Município: {{ $atividade->municipio->nome_com_estado }}</p>
+    @endif
+
     @if ($atividade->local)
         <p class="text-muted mb-1">📍 {{ $atividade->local }}</p>
     @endif
 </div>
+

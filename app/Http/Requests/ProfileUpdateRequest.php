@@ -23,14 +23,15 @@ class ProfileUpdateRequest extends FormRequest
         $telDigits = preg_replace('/\D+/', '', (string)($this->telefone ?? ''));
 
         $this->merge([
-            'name'           => isset($this->name) ? trim((string)$this->name) : null,
-            'email'          => isset($this->email) ? trim((string)$this->email) : null,
-            'cpf'            => $toNull($cpfDigits ?: null),
-            'telefone'       => $toNull($telDigits ?: null),
-            'municipio_id'   => $toNull($this->municipio_id ?? null),
-            'escola_unidade' => $toNull(isset($this->escola_unidade) ? trim((string)$this->escola_unidade) : null),
-            'tag'            => $toNull(isset($this->tag) ? trim((string)$this->tag) : null),
-            'data_entrada'   => $toNull($this->data_entrada ?? null),
+            'name'             => isset($this->name) ? trim((string)$this->name) : null,
+            'email'            => isset($this->email) ? trim((string)$this->email) : null,
+            'cpf'              => $toNull($cpfDigits ?: null),
+            'telefone'         => $toNull($telDigits ?: null),
+            'municipio_id'     => $toNull($this->municipio_id ?? null),
+            'escola_unidade'   => $toNull(isset($this->escola_unidade) ? trim((string)$this->escola_unidade) : null),
+            'tipo_organizacao' => $toNull(isset($this->tipo_organizacao) ? trim((string)$this->tipo_organizacao) : null),
+            'tag'              => $toNull(isset($this->tag) ? trim((string)$this->tag) : null),
+            'data_entrada'     => $toNull($this->data_entrada ?? null),
         ]);
     }
 
@@ -49,6 +50,7 @@ class ProfileUpdateRequest extends FormRequest
             'telefone'       => ['nullable','regex:/^\d{10,11}$/'],
             'municipio_id'   => ['nullable','exists:municipios,id'],
             'escola_unidade' => ['nullable','string','max:255'],
+            'tipo_organizacao' => ['nullable','string','max:255', Rule::in(config('engaja.organizacoes', []))],
             'tag'            => ['nullable', Rule::in(Participante::TAGS)],
             'data_entrada'   => ['nullable','date'],
         ];
@@ -105,6 +107,7 @@ class ProfileUpdateRequest extends FormRequest
             'cpf.digits'          => 'CPF deve conter 11 dígitos.',
             'telefone.regex'      => 'Telefone deve ter DDD e 10 ou 11 dígitos.',
             'municipio_id.exists' => 'Município inválido.',
+            'tipo_organizacao.in' => 'Selecione um tipo de organização válido.',
             'tag.in'              => 'Selecione uma tag válida.',
             'data_entrada.date'   => 'Data de entrada inválida.',
         ];

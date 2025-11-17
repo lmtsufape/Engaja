@@ -158,8 +158,12 @@ class PresencaImportController extends Controller
                     continue; // não cria user/inscrição pra linha vazia
                 }
 
-                // agora aceita tanto "organizacao" quanto "escola_unidade"
-                $org   = $row['organizacao'] ?? $row['escola_unidade'] ?? null;
+                // tipo da organização pode vir da nova coluna ou da antiga "organizacao"
+                $tipoOrganizacao = $row['tipo_organizacao'] ?? $row['organizacao'] ?? $row['escola_unidade'] ?? null;
+                $organizacaoLivre = $row['escola_unidade'] ?? $row['organizacao_nome'] ?? null;
+                if ($organizacaoLivre === null && !isset($row['tipo_organizacao'])) {
+                    $organizacaoLivre = $row['organizacao'] ?? null;
+                }
 
                 $munId = null;
                 if (!empty($row['municipio'])) {
@@ -194,12 +198,13 @@ class PresencaImportController extends Controller
 
                 $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
                 $participante->fill([
-                    'municipio_id'   => $munId,
-                    'cpf'            => $cpf ?: null,
-                    'telefone'       => $tel ?: null,
-                    'escola_unidade' => $org ?: null,   // grava a organização
-                    'tag'            => $tag,
-                    'data_entrada'   => $row['data_entrada'] ?? null,
+                    'municipio_id'     => $munId,
+                    'cpf'              => $cpf ?: null,
+                    'telefone'         => $tel ?: null,
+                    'escola_unidade'   => $organizacaoLivre ?: null,   // grava a organização
+                    'tipo_organizacao' => $tipoOrganizacao ?: null,
+                    'tag'              => $tag,
+                    'data_entrada'     => $row['data_entrada'] ?? null,
                 ])->save();
 
                 // 3) Inscrição no momento

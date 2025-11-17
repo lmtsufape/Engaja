@@ -19,7 +19,16 @@ class Participante extends Model
 
     protected $table = 'participantes';
 
-    protected $fillable = ['user_id', 'municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tag', 'data_entrada'];
+    protected $fillable = [
+        'user_id',
+        'municipio_id',
+        'cpf',
+        'telefone',
+        'escola_unidade',
+        'tipo_organizacao',
+        'tag',
+        'data_entrada',
+    ];
 
     protected $appends = ['cpf_valido'];
 

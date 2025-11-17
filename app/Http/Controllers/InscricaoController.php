@@ -294,7 +294,13 @@ class InscricaoController extends Controller
                 if (!$user) continue;
                 $userId = $user->id;
 
-                $orgRaw = ($row['organizacao'] ?? $row['escola_unidade'] ?? null);
+                $tipoOrgRaw = $row['tipo_organizacao'] ?? $row['organizacao'] ?? null;
+                $tipoOrg    = is_string($tipoOrgRaw) ? trim($tipoOrgRaw) : null;
+
+                $orgRaw = $row['escola_unidade'] ?? $row['organizacao_nome'] ?? null;
+                if ($orgRaw === null && !isset($row['tipo_organizacao'])) {
+                    $orgRaw = $row['organizacao'] ?? null;
+                }
                 $org    = is_string($orgRaw) ? trim($orgRaw) : null;
 
                 $tagRaw = $row['tag'] ?? null;
@@ -306,12 +312,13 @@ class InscricaoController extends Controller
                 }
 
                 $dados = [
-                    'municipio_id'   => ($row['municipio_id'] ?? null) ?: null,
-                    'cpf'            => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
-                    'telefone'       => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
-                    'escola_unidade' => ($org !== '') ? $org : null,
-                    'tag'            => $tag,
-                    'data_entrada'   => $toDate($row['data_entrada'] ?? null),
+                    'municipio_id'     => ($row['municipio_id'] ?? null) ?: null,
+                    'cpf'              => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
+                    'telefone'         => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
+                    'escola_unidade'   => ($org !== '') ? $org : null,
+                    'tipo_organizacao' => ($tipoOrg !== '') ? $tipoOrg : null,
+                    'tag'              => $tag,
+                    'data_entrada'     => $toDate($row['data_entrada'] ?? null),
                 ];
 
                 if ($participantesExistentes->has($userId)) {
@@ -334,7 +341,7 @@ class InscricaoController extends Controller
 
             if (count($atualizacoes)) {
                 $idsToUpdate = array_column($atualizacoes, 'user_id');
-                $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tag', 'data_entrada'];
+                $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tipo_organizacao', 'tag', 'data_entrada'];
                 $cases = [];
                 foreach ($campos as $field) {
                     $sql = "$field = CASE user_id\n";
@@ -533,6 +540,5 @@ class InscricaoController extends Controller
     { /* ... */
     }
 }
-
 
 

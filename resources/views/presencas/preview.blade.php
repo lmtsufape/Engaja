@@ -25,6 +25,7 @@
             <th>CPF</th>
             <th>Telefone</th>
             <th>Município</th>
+            <th>Tipo de Organização</th>
             <th>Organização</th>
             <th>Tag</th>
             <th style="min-width:150px;">Status</th>
@@ -54,19 +55,25 @@
             </td>
             <td>
               <select
-                name="rows[{{ $globalOffset + $loop->index }}][organizacao]"
-                class="form-select form-select-sm {{ (!empty($r['organizacao']) && empty($r['organizacao_ok'])) ? 'is-invalid' : '' }}">
+                name="rows[{{ $gi }}][tipo_organizacao]"
+                class="form-select form-select-sm {{ (!empty($r['tipo_organizacao']) && empty($r['tipo_organizacao_ok'])) ? 'is-invalid' : '' }}">
                 <option value="">Selecione...</option>
                 @foreach($organizacoes as $org)
-                <option value="{{ $org }}" @selected(($r['organizacao'] ?? '' )===$org)>{{ $org }}</option>
+                <option value="{{ $org }}" @selected(($r['tipo_organizacao'] ?? '' )===$org)>{{ $org }}</option>
                 @endforeach
               </select>
 
-              @if(!empty($r['organizacao']) && empty($r['organizacao_ok']))
+              @if(!empty($r['tipo_organizacao']) && empty($r['tipo_organizacao_ok']))
               <div class="invalid-feedback">
-                Valor importado não está na lista. Selecione uma organização válida.
+                Valor importado não está na lista. Selecione um tipo válido.
               </div>
               @endif
+            </td>
+            <td>
+              <input
+                name="rows[{{ $gi }}][escola_unidade]"
+                class="form-control form-control-sm"
+                value="{{ $r['escola_unidade'] ?? '' }}">
             </td>
             <td>
               <select

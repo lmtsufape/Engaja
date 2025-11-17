@@ -132,26 +132,31 @@
                             </div> -->
 
                             <div class="col-md-6">
-                                <label for="escola_unidade" class="form-label">Organização</label>
+                                <label for="tipo_organizacao" class="form-label">Tipo de Organização</label>
 
                                 @php
-                                $currentOrg = old('escola_unidade', $participante->escola_unidade ?? '');
+                                $currentTipoOrg = old('tipo_organizacao', $participante->tipo_organizacao ?? '');
                                 @endphp
 
-                                <select id="escola_unidade" name="escola_unidade"
-                                    class="form-select @error('escola_unidade') is-invalid @enderror">
+                                <select id="tipo_organizacao" name="tipo_organizacao"
+                                    class="form-select @error('tipo_organizacao') is-invalid @enderror">
                                     <option value="">Selecione...</option>
 
                                     @foreach($organizacoes as $org)
-                                    <option value="{{ $org }}" @selected($currentOrg===$org)>{{ $org }}</option>
+                                    <option value="{{ $org }}" @selected($currentTipoOrg===$org)>{{ $org }}</option>
                                     @endforeach
-
-                                    {{-- Preserva um valor antigo que não esteja mais na lista (opcional) --}}
-                                    @if($currentOrg && !in_array($currentOrg, $organizacoes, true))
-                                    <option value="{{ $currentOrg }}" selected>{{ $currentOrg }} (valor anterior)</option>
-                                    @endif
                                 </select>
 
+                                @error('tipo_organizacao')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="escola_unidade" class="form-label">Organização</label>
+                                <input id="escola_unidade" type="text" name="escola_unidade"
+                                    value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
+                                    class="form-control @error('escola_unidade') is-invalid @enderror">
                                 @error('escola_unidade')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -256,7 +261,7 @@
                         Esta ação é irreversível. Todos os seus dados serão removidos.
                     </p>
 
-                    <form method="POST" action="{{ route('profile.destroy') }}" onsubmit="return confirm('Tem certeza que deseja excluir sua conta?');">
+                    <form method="POST" action="{{ route('profile.destroy') }}" data-confirm="Tem certeza que deseja excluir sua conta?">
                         @csrf
                         @method('delete')
 

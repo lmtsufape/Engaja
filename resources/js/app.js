@@ -1,4 +1,88 @@
 import './bootstrap';
 
-// use o bundle que já vem com Popper embutido
-import 'bootstrap/dist/js/bootstrap.bundle';
+// import bundle com Popper e exporta classes Bootstrap
+import * as bootstrap from 'bootstrap';
+
+let confirmModalInstance;
+let confirmMessageEl;
+let confirmAcceptBtn;
+let pendingForm = null;
+
+const submitWithConfirmation = () => {
+  if (!pendingForm) {
+    return;
+  }
+
+  pendingForm.dataset.confirmed = 'true';
+
+  const formToSubmit = pendingForm;
+  pendingForm = null;
+
+  if (typeof formToSubmit.requestSubmit === 'function') {
+    formToSubmit.requestSubmit();
+  } else {
+    formToSubmit.submit();
+  }
+};
+
+const ensureModalSetup = () => {
+  if (confirmModalInstance || !bootstrap?.Modal) {
+    return;
+  }
+
+  const modalEl = document.getElementById('confirmModal');
+  if (!modalEl) {
+    return;
+  }
+
+  confirmModalInstance = new bootstrap.Modal(modalEl);
+  confirmMessageEl = modalEl.querySelector('.js-confirm-message');
+  confirmAcceptBtn = modalEl.querySelector('.js-confirm-accept');
+
+  confirmAcceptBtn?.addEventListener('click', () => {
+    confirmModalInstance?.hide();
+    submitWithConfirmation();
+  });
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', ensureModalSetup, { once: true });
+} else {
+  ensureModalSetup();
+}
+
+document.addEventListener('submit', (event) => {
+  const form = event.target;
+
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const confirmMessage = form.dataset.confirm;
+
+  if (!confirmMessage) {
+    return;
+  }
+
+  if (form.dataset.confirmed === 'true') {
+    delete form.dataset.confirmed;
+    return;
+  }
+
+  event.preventDefault();
+  pendingForm = form;
+
+  ensureModalSetup();
+
+  if (confirmMessageEl) {
+    confirmMessageEl.textContent = confirmMessage;
+  }
+
+  if (confirmModalInstance) {
+    confirmModalInstance.show();
+  } else if (window.confirm(confirmMessage)) {
+    submitWithConfirmation();
+  } else {
+    pendingForm = null;
+  }
+});
