@@ -38,7 +38,7 @@
                         <th>Nome</th>
                         <th>Eixo</th>
                         <th>Tipo</th>
-                        <th>Data/Hora</th>
+                        <th>Período</th>
                         <th>Criado por</th>
                         <th class="text-end">Ações</th>
                     </tr>
@@ -49,7 +49,17 @@
                             <td class="fw-semibold">{{ $ev->nome }}</td>
                             <td>{{ $ev->eixo->nome ?? '—' }}</td>
                             <td>{{ $ev->tipo ?? '—' }}</td>
-                            <td>{{ $ev->data_horario ? \Carbon\Carbon::parse($ev->data_horario)->format('d/m/Y H:i') : '—' }}
+                            <td>
+                                @php
+                                    $inicio = $ev->data_inicio ? \Carbon\Carbon::parse($ev->data_inicio)->format('d/m/Y') : null;
+                                    $fim = $ev->data_fim ? \Carbon\Carbon::parse($ev->data_fim)->format('d/m/Y') : null;
+                                    $mostrarFim = $fim && (!$inicio || $fim !== $inicio);
+                                @endphp
+                                @if($inicio || $fim)
+                                    {{ $inicio ?? '—' }} @if($mostrarFim)<br><small class="text-muted">até {{ $fim }}</small>@endif
+                                @else
+                                    —
+                                @endif
                             </td>
                             <td>{{ $ev->user->name ?? '—' }}</td>
                             <td class="text-end">

@@ -17,10 +17,13 @@ class Evento extends Model
         'tipo',
         'data_horario',
         'duracao',
+        'data_inicio',
+        'data_fim',
         'modalidade',
         'link',
         'objetivo',
         'resumo',
+        'local',
         'imagem',
     ];
 

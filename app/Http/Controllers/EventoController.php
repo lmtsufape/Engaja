@@ -36,7 +36,7 @@ class EventoController extends Controller
                 });
             })
             ->when($r->eixo, fn($qq) => $qq->where('eixo_id', $r->eixo))
-            ->when($r->de, fn($qq) => $qq->whereDate('data_horario', '>=', $r->de))
+            ->when($r->de, fn($qq) => $qq->whereDate('data_inicio', '>=', $r->de))
             ->orderByDesc('id');
 
         $eventos = $q->paginate(10);
@@ -58,21 +58,21 @@ class EventoController extends Controller
         $this->authorize('create', Evento::class);
 
         $request->validate([
-            'nome'       => 'required|string|max:255',
-            'eixo_id'    => 'required|exists:eixos,id',
-            'duracao'    => 'nullable|integer|min:0',
-            'link'       => 'nullable|url',
-            'data_horario' => 'nullable|date',
-            'local'      => 'nullable|string|max:255',
-            'imagem'     => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'nome'        => 'required|string|max:255',
+            'eixo_id'     => 'required|exists:eixos,id',
+            'link'        => 'nullable|url',
+            'data_inicio' => 'nullable|date',
+            'data_fim'    => 'nullable|date|after_or_equal:data_inicio',
+            'local'       => 'nullable|string|max:255',
+            'imagem'      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
         ]);
 
         $dados = $request->only([
             'eixo_id',
             'nome',
             'tipo',
-            'data_horario',
-            'duracao',
+            'data_inicio',
+            'data_fim',
             'modalidade',
             'link',
             'objetivo',
@@ -116,21 +116,21 @@ class EventoController extends Controller
         $this->authorize('update', $evento);
 
         $request->validate([
-            'nome'       => 'required|string|max:255',
-            'eixo_id'    => 'required|exists:eixos,id',
-            'duracao'    => 'nullable|integer|min:0',
-            'link'       => 'nullable|url',
-            'data_horario' => 'nullable|date',
-            'local'      => 'nullable|string|max:255',
-            'imagem'     => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'nome'        => 'required|string|max:255',
+            'eixo_id'     => 'required|exists:eixos,id',
+            'link'        => 'nullable|url',
+            'data_inicio' => 'nullable|date',
+            'data_fim'    => 'nullable|date|after_or_equal:data_inicio',
+            'local'       => 'nullable|string|max:255',
+            'imagem'      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
         ]);
 
         $evento->fill($request->only([
             'eixo_id',
             'nome',
             'tipo',
-            'data_horario',
-            'duracao',
+            'data_inicio',
+            'data_fim',
             'modalidade',
             'link',
             'objetivo',
