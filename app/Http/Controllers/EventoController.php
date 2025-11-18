@@ -201,11 +201,12 @@ class EventoController extends Controller
             $user->assignRole('participante');
 
             $participanteData = [
-                'cpf'            => $data['cpf']   ?? null,
-                'telefone'       => $data['telefone']   ?? null,
-                'municipio_id'   => $data['municipio_id']   ?? null,
-                'escola_unidade' => $data['escola_unidade'] ?? null,
-                'tag'            => $data['tag']            ?? null,
+                'cpf'              => $data['cpf']   ?? null,
+                'telefone'         => $data['telefone']   ?? null,
+                'municipio_id'     => $data['municipio_id']   ?? null,
+                'escola_unidade'   => $data['escola_unidade'] ?? null,
+                'tipo_organizacao' => $data['tipo_organizacao'] ?? null,
+                'tag'              => $data['tag']            ?? null,
             ];
 
             $user->participante()->updateOrCreate(

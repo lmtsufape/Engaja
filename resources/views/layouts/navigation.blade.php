@@ -79,8 +79,15 @@
 </nav>
 <style>
 .navbar-nav.mx-auto {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
+}
+
+@media (min-width: 992px) {
+  .navbar-nav.mx-auto {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 </style>

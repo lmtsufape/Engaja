@@ -754,7 +754,7 @@ class AvaliacaoController extends Controller
         return $sincronizadas;
     }
 
-    private function tiposQuestao(): array
+    public function tiposQuestao(): array
     {
         return [
             'texto'  => 'Texto aberto',
@@ -762,5 +762,31 @@ class AvaliacaoController extends Controller
             'numero' => 'Numero',
             'boolean'=> 'Sim/Nao',
         ];
+    }
+
+    public function formularioAvaliacao(Avaliacao $avaliacao)
+    {
+        $atividade = Atividade::find($avaliacao->atividade_id);
+
+        $avaliacao->load([
+            'inscricao.participante.user',
+            'inscricao.evento',
+            'atividade.evento',
+            'templateAvaliacao',
+            'respostas.inscricao.participante.user',
+            'respostas.inscricao.evento',
+            'avaliacaoQuestoes.indicador.dimensao',
+            'avaliacaoQuestoes.evidencia',
+            'avaliacaoQuestoes.escala',
+            'respostas.avaliacaoQuestao',
+            'respostas.inscricao.participante.user',
+            'respostas.inscricao.evento',
+        ]);
+
+        return view('avaliacoes._form', [
+            'avaliacao' => $avaliacao,
+            'atividade' => $atividade,
+            'tiposQuestao' => $this->tiposQuestao(),
+        ]);
     }
 }

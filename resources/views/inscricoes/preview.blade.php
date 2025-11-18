@@ -67,6 +67,7 @@
             <th style="min-width:140px;">CPF</th>
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
+            <th style="min-width:220px;">Tipo de Organização</th>
             <th style="min-width:220px;">Organização</th>
             <th style="min-width:200px;">Tag</th>
             <!-- <th style="min-width:140px;">Data de entrada</th> -->
@@ -94,22 +95,27 @@
 
             <td>
               @php
-              // Valor já vem como canônico ou null pela prévia
-              $valor = $r['organizacao'] ?? $r['escola_unidade'] ?? null;
+              $valorTipo = $r['tipo_organizacao'] ?? null;
               @endphp
 
               <select
-                name="rows[{{ $globalOffset + $loop->index }}][organizacao]"
-                class="form-select form-select-sm {{ (!empty($r['organizacao']) && empty($r['organizacao_ok'])) ? 'is-invalid' : '' }}">
+                name="rows[{{ $globalOffset + $loop->index }}][tipo_organizacao]"
+                class="form-select form-select-sm {{ (!empty($r['tipo_organizacao']) && empty($r['tipo_organizacao_ok'])) ? 'is-invalid' : '' }}">
                 <option value="">Selecione...</option>
                 @foreach($organizacoes as $org)
-                <option value="{{ $org }}" @selected($valor===$org)>{{ $org }}</option>
+                <option value="{{ $org }}" @selected($valorTipo===$org)>{{ $org }}</option>
                 @endforeach
               </select>
 
-              @if(!empty($r['organizacao']) && empty($r['organizacao_ok']))
-              <div class="invalid-feedback">Selecione uma organização válida.</div>
+              @if(!empty($r['tipo_organizacao']) && empty($r['tipo_organizacao_ok']))
+              <div class="invalid-feedback">Selecione um tipo de organização válido.</div>
               @endif
+            </td>
+            <td>
+              <input
+                class="form-control form-control-sm"
+                name="rows[{{ $idx }}][escola_unidade]"
+                value="{{ old("rows.$idx.escola_unidade", $r['escola_unidade'] ?? '') }}">
             </td>
 
 

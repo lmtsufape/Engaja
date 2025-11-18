@@ -20,9 +20,9 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
     /** @var array<string,int> */
     protected array $municipiosCache = [];
     /** @var array<int,string> */
-    protected array $organizacoes = [];
+    protected array $tiposOrganizacao = [];
     /** @var array<string,string> */
-    protected array $organizacoesMap = [];
+    protected array $tiposOrganizacaoMap = [];
     /** @var array<int,string> */
     protected array $tags = [];
     /** @var array<string,string> */
@@ -39,8 +39,8 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             ->mapWithKeys(fn($m) => [mb_strtolower(trim($m->nome)) => $m->id])
             ->all();
 
-        $this->organizacoes = config('engaja.organizacoes', []);
-        $this->organizacoesMap = collect($this->organizacoes)
+        $this->tiposOrganizacao = config('engaja.organizacoes', []);
+        $this->tiposOrganizacaoMap = collect($this->tiposOrganizacao)
             ->mapWithKeys(fn($o) => [$this->slugify($o) => $o])
             ->all();
 
@@ -88,8 +88,30 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             }
         }
 
-        $orgRaw   = trim((string)($row['organizacao'] ?? $row['escola_unidade'] ?? ''));
-        $orgCanon = $this->normalizeOrganizacao($orgRaw);
+        $tipoColumnExists = false;
+        $tipoRaw = $this->firstValue($row, [
+            'tipo_de_organizacao',
+            'tipo_organizacao',
+            'tipo-da-organizacao',
+            'tipo_da_organizacao',
+            'tipoorganizacao',
+        ], $tipoColumnExists);
+        if (!$tipoColumnExists) {
+            $tipoRaw = trim((string)($row['organizacao'] ?? $row['escola_unidade'] ?? ''));
+        }
+        $tipoCanon = $this->normalizeTipoOrganizacao($tipoRaw);
+        $tipoOut = $tipoCanon ?? ($tipoRaw !== '' ? $tipoRaw : null);
+
+        $organizacaoLivre = $this->firstValue(
+            $row,
+            $tipoColumnExists
+                ? ['organizacao', 'organizacao_nome', 'nome_da_organizacao', 'organizacao_livre', 'escola_unidade']
+                : ['escola_unidade', 'organizacao']
+        );
+        $organizacaoOut = ($organizacaoLivre !== null && $organizacaoLivre !== '')
+            ? $organizacaoLivre
+            : (isset($row['escola_unidade']) ? trim((string)$row['escola_unidade']) : null);
+
         $tagCanon = $this->normalizeTag($row['tag'] ?? null);
 
         // Cria ou atualiza participante
@@ -98,18 +120,47 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
                 'user_id' => $user->id,
             ],
             [
-                'municipio_id'   => $municipioId,
-                'cpf'            => $row['cpf'] ?? null,
-                'telefone'       => $row['telefone'] ?? null,
-                'escola_unidade' => $orgCanon ?? ($row['escola_unidade'] ?? ($orgRaw ?: null)),
-                'tag'            => $tagCanon,
-                'data_entrada'   => $dataEntrada,
+                'municipio_id'     => $municipioId,
+                'cpf'              => $row['cpf'] ?? null,
+                'telefone'         => $row['telefone'] ?? null,
+                'escola_unidade'   => $organizacaoOut ?: null,
+                'tipo_organizacao' => $tipoOut,
+                'tag'              => $tagCanon,
+                'data_entrada'     => $dataEntrada,
             ]
         );
 
         $this->importados->push($participante);
 
         return $participante;
+    }
+
+    private function firstValue(array $row, array $keys, ?bool &$foundKey = null): ?string
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row)) {
+                if ($foundKey !== null) {
+                    $foundKey = true;
+                }
+                $value = $row[$key];
+                if ($value === null) {
+                    return null;
+                }
+                if (is_string($value)) {
+                    return trim($value);
+                }
+                if (is_scalar($value)) {
+                    return trim((string)$value);
+                }
+                return null;
+            }
+        }
+
+        if ($foundKey !== null) {
+            $foundKey = false;
+        }
+
+        return null;
     }
 
     private function slugify(string $s): string
@@ -120,11 +171,11 @@ class ParticipantesImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         return trim($s);
     }
 
-    private function normalizeOrganizacao(?string $raw): ?string
+    private function normalizeTipoOrganizacao(?string $raw): ?string
     {
         if (!$raw) return null;
         $key = $this->slugify($raw);
-        return $this->organizacoesMap[$key] ?? null;
+        return $this->tiposOrganizacaoMap[$key] ?? null;
     }
 
     private function normalizeTag($raw): ?string
