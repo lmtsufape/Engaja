@@ -20,6 +20,8 @@ class Atividade extends Model
         'dia',
         'hora_inicio',
         'hora_fim',
+        'publico_esperado',
+        'carga_horaria',
         'presenca_ativa',
     ];
 

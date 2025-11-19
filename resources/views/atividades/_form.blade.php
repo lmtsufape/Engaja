@@ -56,6 +56,26 @@
   </div>
 </div>
 
+<div class="row g-3 mt-1">
+  <div class="col-md-6">
+    <label class="form-label">Público esperado</label>
+    <input type="number" name="publico_esperado" min="0" step="1"
+           value="{{ old('publico_esperado', $atividade->publico_esperado ?? '') }}"
+           class="form-control @error('publico_esperado') is-invalid @enderror"
+           placeholder="Quantas pessoas pretende alcançar">
+    @error('publico_esperado') <div class="invalid-feedback">{{ $message }}</div> @enderror
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Carga horária (horas)</label>
+    <input type="number" name="carga_horaria" min="0" step="1"
+           value="{{ old('carga_horaria', $atividade->carga_horaria ?? '') }}"
+           class="form-control @error('carga_horaria') is-invalid @enderror"
+           placeholder="Ex.: 2">
+    @error('carga_horaria') <div class="invalid-feedback">{{ $message }}</div> @enderror
+  </div>
+</div>
+
 <div class="d-flex justify-content-end gap-2 mt-3">
   <a href="{{ route('eventos.atividades.index', $evento) }}" class="btn btn-outline-secondary">Cancelar</a>
   <button class="btn btn-engaja">{{ $submitLabel ?? 'Salvar' }}</button>

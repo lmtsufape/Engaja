@@ -376,6 +376,9 @@
               $momento = trim($at->descricao ?? '') !== '' ? $at->descricao : 'Momento';
               $local = $at->local ?? null;
               $municipio = optional($at->municipio)->nome_com_estado;
+              $publicoEsperado = $at->publico_esperado;
+              $cargaHoraria = $at->carga_horaria;
+              $cargaLabel = !is_null($cargaHoraria) ? number_format($cargaHoraria, 0, ',', '.') . 'h' : null;
               @endphp
 
               <div class="t-item">
@@ -386,11 +389,13 @@
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
                       <div class="program-title">{{ $momento }}</div>
 
-                      @if($local || $municipio || $chLabel)
+                      @if($local || $municipio || $chLabel || $publicoEsperado || $cargaLabel)
                       <div class="program-meta">
-                        @if($municipio) <span class="chip">🏙️ {{ $municipio }}</span> @endif
-                        @if($local) <span class="chip">📍 {{ $local }}</span> @endif
-                        @if($chLabel) <span class="chip">⏱️ {{ $chLabel }}</span> @endif
+                        @if($municipio) <span class="chip">Município: {{ $municipio }}</span> @endif
+                        @if($local) <span class="chip">Local: {{ $local }}</span> @endif
+                        @if($chLabel) <span class="chip">Duração: {{ $chLabel }}</span> @endif
+                        @if($publicoEsperado) <span class="chip">Público esperado: {{ number_format($publicoEsperado, 0, ',', '.') }} pessoas</span> @endif
+                        @if($cargaLabel) <span class="chip">Carga horária: {{ $cargaLabel }}</span> @endif
                       </div>
                       @endif
                     </div>

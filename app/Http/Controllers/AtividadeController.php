@@ -40,11 +40,13 @@ class AtividadeController extends Controller
         $this->authorize('update', $evento);
 
         $dados = $request->validate([
-            'municipio_id'  => 'required|exists:municipios,id',
-            'descricao'     => 'required|string',
-            'dia'           => 'required|date',
-            'hora_inicio'   => 'required|date_format:H:i',
-            'hora_fim'      => 'required|date_format:H:i|after:hora_inicio',
+            'municipio_id'     => 'required|exists:municipios,id',
+            'descricao'        => 'required|string',
+            'dia'              => 'required|date',
+            'hora_inicio'      => 'required|date_format:H:i',
+            'hora_fim'         => 'required|date_format:H:i|after:hora_inicio',
+            'publico_esperado' => 'nullable|integer|min:0',
+            'carga_horaria'    => 'nullable|integer|min:0',
         ]);
 
         $evento->atividades()->create($dados);
@@ -72,11 +74,13 @@ class AtividadeController extends Controller
         $this->authorize('update', $evento);
 
         $dados = $request->validate([
-            'municipio_id'  => 'required|exists:municipios,id',
-            'descricao'     => 'required|string',
-            'dia'           => 'required|date',
-            'hora_inicio'   => 'required|date_format:H:i',
-            'hora_fim'      => 'required|date_format:H:i|after:hora_inicio',
+            'municipio_id'     => 'required|exists:municipios,id',
+            'descricao'        => 'required|string',
+            'dia'              => 'required|date',
+            'hora_inicio'      => 'required|date_format:H:i',
+            'hora_fim'         => 'required|date_format:H:i|after:hora_inicio',
+            'publico_esperado' => 'nullable|integer|min:0',
+            'carga_horaria'    => 'nullable|integer|min:0',
         ]);
 
         $atividade->update($dados);
