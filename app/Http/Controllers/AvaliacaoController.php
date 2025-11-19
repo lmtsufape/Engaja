@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Atividade;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoQuestao;
 use App\Models\Evidencia;
 use App\Models\Escala;
+use App\Models\Inscricao;
+use App\Models\RespostaAvaliacao;
 use App\Models\TemplateAvaliacao;
 use App\ViewModels\Avaliacao\QuestoesFormViewModel;
 use Illuminate\Http\Request;
@@ -15,6 +18,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class AvaliacaoController extends Controller
 {
@@ -764,7 +768,7 @@ class AvaliacaoController extends Controller
         ];
     }
 
-    public function formularioAvaliacao(Avaliacao $avaliacao)
+    public function formularioAvaliacao(Request $request, Avaliacao $avaliacao)
     {
         $atividade = Atividade::find($avaliacao->atividade_id);
 
@@ -783,10 +787,128 @@ class AvaliacaoController extends Controller
             'respostas.inscricao.evento',
         ]);
 
+        $token = $request->query('token', $request->input('token'));
+        $respondente = $this->resolverInscricaoPorToken($token, $avaliacao);
+
+        $respostasExistentes = $avaliacao->respostas
+            ->when($respondente, fn($colecao) => $colecao->where('inscricao_id', $respondente->id))
+            ->pluck('resposta', 'avaliacao_questao_id');
+
+        $jaRespondeu = $respondente && $respostasExistentes->isNotEmpty();
+
         return view('avaliacoes._form', [
             'avaliacao' => $avaliacao,
             'atividade' => $atividade,
             'tiposQuestao' => $this->tiposQuestao(),
+            'inscricaoRespondente' => $respondente,
+            'token' => $token,
+            'respostasExistentes' => $respostasExistentes,
+            'jaRespondeu' => $jaRespondeu,
         ]);
+    }
+
+    public function responderFormulario(Request $request, Avaliacao $avaliacao)
+    {
+        $avaliacao->load(['avaliacaoQuestoes.escala', 'atividade']);
+
+        $token = $request->input('token', $request->query('token'));
+        $inscricao = $this->resolverInscricaoPorToken($token, $avaliacao);
+
+        if (! $inscricao) {
+            return redirect()
+                ->route('avaliacao.formulario', ['avaliacao' => $avaliacao->id, 'token' => $token])
+                ->withErrors(['token' => 'Não encontramos sua inscrição para esta avaliação. Confirme a presença novamente.']);
+        }
+
+        if ($this->jaRespondeuAvaliacao($avaliacao, $inscricao)) {
+            return redirect()
+                ->route('avaliacao.formulario', ['avaliacao' => $avaliacao->id, 'token' => $token])
+                ->withErrors(['avaliacao' => 'Você já respondeu este formulário.']);
+        }
+
+        $rules = [];
+        foreach ($avaliacao->avaliacaoQuestoes as $questao) {
+            $rules["respostas.{$questao->id}"] = $this->regraRespostaParaQuestao($questao);
+        }
+
+        $dados = $request->validate($rules);
+        $respostas = $dados['respostas'] ?? [];
+
+        foreach ($avaliacao->avaliacaoQuestoes as $questao) {
+            $valor = $respostas[$questao->id] ?? null;
+
+            if ($valor === null || $valor === '') {
+                RespostaAvaliacao::where([
+                    'avaliacao_id' => $avaliacao->id,
+                    'avaliacao_questao_id' => $questao->id,
+                    'inscricao_id' => $inscricao->id,
+                ])->delete();
+                continue;
+            }
+
+            RespostaAvaliacao::updateOrCreate(
+                [
+                    'avaliacao_id' => $avaliacao->id,
+                    'avaliacao_questao_id' => $questao->id,
+                    'inscricao_id' => $inscricao->id,
+                ],
+                ['resposta' => $valor]
+            );
+        }
+
+        return redirect()
+            ->route('avaliacao.formulario', ['avaliacao' => $avaliacao->id, 'token' => $token])
+            ->with('success', 'Avaliação registrada com sucesso!');
+    }
+
+    private function resolverInscricaoPorToken(?string $token, Avaliacao $avaliacao): ?Inscricao
+    {
+        if (! $token) {
+            return null;
+        }
+
+        try {
+            $inscricaoId = decrypt($token);
+        } catch (Throwable $exception) {
+            return null;
+        }
+
+        $inscricao = Inscricao::with(['participante.user', 'evento'])->find($inscricaoId);
+        if (! $inscricao) {
+            return null;
+        }
+
+        if ($avaliacao->atividade_id) {
+            if ($inscricao->atividade_id && $inscricao->atividade_id !== $avaliacao->atividade_id) {
+                return null;
+            }
+
+            if (! $inscricao->atividade_id && $inscricao->evento_id !== optional($avaliacao->atividade)->evento_id) {
+                return null;
+            }
+        }
+
+        return $inscricao;
+    }
+
+    private function regraRespostaParaQuestao(AvaliacaoQuestao $questao): array
+    {
+        if ($questao->tipo === 'escala') {
+            $valores = $questao->escala?->valores ?? [];
+            return empty($valores) ? ['nullable', 'string'] : ['nullable', Rule::in($valores)];
+        }
+
+        return match ($questao->tipo) {
+            'numero'  => ['nullable', 'numeric'],
+            'boolean' => ['nullable', Rule::in(['0', '1'])],
+            default   => ['nullable', 'string', 'max:2000'],
+        };
+    }
+
+    private function jaRespondeuAvaliacao(Avaliacao $avaliacao, Inscricao $inscricao): bool
+    {
+        return RespostaAvaliacao::where('avaliacao_id', $avaliacao->id)
+            ->where('inscricao_id', $inscricao->id)
+            ->exists();
     }
 }

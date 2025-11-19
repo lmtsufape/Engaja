@@ -86,6 +86,7 @@ class PresencaController extends Controller
                 'atividade_nome' => $atividade->descricao,
                 'dia' => $dia,
                 'success' => 'Presença confirmada com sucesso!',
+                'avaliacao_token' => encrypt($inscricao->id),
             ]);
     }
 }

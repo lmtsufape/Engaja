@@ -88,14 +88,18 @@
             </p>
           </div>
 
+          @if(isset($avaliacao))
           <div class="text-center py-1">
             <p class="mb-0 mt-2">Para acessar e responder o formulário de avaliação do momento {{ session('atividade_nome') }}, clique no botão abaixo.</p>
           </div>
+          @endif
         </div>
 
+        @if(isset($avaliacao))
         <div class="modal-footer justify-content-center">
-          <a class="btn btn-outline-primary" href="{{ route('avaliacao.formulario', $avaliacao) }}">Formulário de Avaliação</a>
+          <a class="btn btn-outline-primary" href="{{ session('avaliacao_token') ? route('avaliacao.formulario', ['avaliacao' => $avaliacao, 'token' => session('avaliacao_token')]) : route('avaliacao.formulario', $avaliacao) }}">Formulário de Avaliação</a>
         </div>
+        @endif
       </div>
     </div>
   </div>
