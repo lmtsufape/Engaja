@@ -154,6 +154,8 @@
   const cardsQuestoes = document.getElementById('cards-questoes');
   const refreshBtn = document.getElementById('btn-recarregar');
   const chartInstances = new Map();
+  const chartPreferences = new Map();
+  let cachedPerguntas = [];
   const palette = ['#421944', '#008BBC', '#FDB913', '#E62270', '#2EB57D', '#601F69', '#6C345E', '#9602C7', '#A95DB1', '#D9A8E2', '#ECDEEC'];
 
   function buildParams() {
@@ -190,7 +192,18 @@
     totalsEls.ultima.textContent = totais.ultima || '-';
   }
 
+  function resolveChartType(pergunta, labels) {
+    const userPref = chartPreferences.get(pergunta.id);
+    if (userPref && userPref !== 'auto') return userPref;
+
+    if (pergunta.tipo === 'boolean') return 'doughnut';
+    if (pergunta.tipo === 'numero') return 'line';
+    if (pergunta.tipo === 'escala') return 'bar';
+    return labels.length > 3 ? 'polarArea' : 'bar';
+  }
+
   function renderCharts(perguntas) {
+    cachedPerguntas = perguntas;
     cardsQuestoes.innerHTML = '';
     if (!perguntas || perguntas.length === 0) {
       cardsQuestoes.innerHTML = `
@@ -218,12 +231,15 @@
               <div class="fw-bold">${titulo}</div>
               <small class="text-muted">${totalRespostas} resposta(s)</small>
             </div>
-            ${resumo ? `<span class="badge bg-primary-subtle text-primary">${resumo}</span>` : ''}
+            <div class="d-flex align-items-start gap-2 controls-slot">
+              ${resumo ? `<span class="badge bg-primary-subtle text-primary">${resumo}</span>` : ''}
+            </div>
           </div>
           <div class="question-body mt-2"></div>
         </div>
       `;
       const body = card.querySelector('.question-body');
+      const controlsSlot = card.querySelector('.controls-slot');
 
       const isText = pergunta.tipo === 'texto';
       const exemplos = Array.isArray(pergunta.exemplos) ? pergunta.exemplos : [];
@@ -254,22 +270,51 @@
         const labels = (pergunta.labels || []).map((label) => cleanText(label));
         const bg = labels.map((_, idx) => palette[idx % palette.length]);
 
-        const chartType = (() => {
-          if (pergunta.tipo === 'boolean') return 'doughnut';
-          if (pergunta.tipo === 'numero') return 'line';
-          if (pergunta.tipo === 'escala') return 'bar';
-          return labels.length > 3 ? 'polarArea' : 'bar';
-        })();
+        const typeOptions = [
+          { value: 'auto', label: 'Auto' },
+          { value: 'bar', label: 'Barras (vertical)' },
+          { value: 'bar-horizontal', label: 'Barras (horizontal)' },
+          { value: 'doughnut', label: 'Pizza' },
+          { value: 'polarArea', label: 'Polar' },
+          { value: 'line', label: 'Linha' },
+        ];
 
+        const userPref = chartPreferences.get(pergunta.id);
+        const chartType = resolveChartType(pergunta, labels);
+
+        if (controlsSlot) {
+          const select = document.createElement('select');
+          select.className = 'form-select form-select-sm';
+          select.style.minWidth = '150px';
+          typeOptions.forEach((opt) => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            select.appendChild(option);
+          });
+          select.value = userPref || 'auto';
+          select.addEventListener('change', (event) => {
+            const value = event.target.value;
+            if (value === 'auto') {
+              chartPreferences.delete(pergunta.id);
+            } else {
+              chartPreferences.set(pergunta.id, value);
+            }
+            renderCharts(cachedPerguntas);
+          });
+          controlsSlot.appendChild(select);
+        }
+
+        const baseChartType = chartType === 'bar-horizontal' ? 'bar' : chartType;
         const data = {
           labels,
           datasets: [{
             label: 'Respostas',
             data: pergunta.values,
-            backgroundColor: chartType === 'line' ? 'rgba(66,25,68,0.15)' : bg,
+            backgroundColor: baseChartType === 'line' ? 'rgba(66,25,68,0.15)' : bg,
             borderColor: palette[0],
             tension: 0.2,
-            fill: chartType === 'line',
+            fill: baseChartType === 'line',
           }],
         };
 
@@ -282,15 +327,16 @@
           },
         };
 
-        if (chartType === 'doughnut' || chartType === 'polarArea') {
+        if (baseChartType === 'doughnut' || baseChartType === 'polarArea') {
           delete options.scales;
         }
 
-        if (chartType === 'bar' && labels.length > 4) {
+        const autoHorizontal = !userPref && baseChartType === 'bar' && labels.length > 4;
+        if (baseChartType === 'bar' && (chartType === 'bar-horizontal' || autoHorizontal)) {
           options.indexAxis = 'y';
         }
 
-        const chart = new Chart(canvas, { type: chartType, data, options });
+        const chart = new Chart(canvas, { type: baseChartType, data, options });
         chartInstances.set(pergunta.id, chart);
       }
 
