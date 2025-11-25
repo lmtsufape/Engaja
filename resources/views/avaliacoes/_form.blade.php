@@ -1,17 +1,17 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 <div class="row justify-content-center">
   <div class="col-xl-8">
     <div class="text-center mb-4">
       <h1 class="h3 fw-bold text-engaja mb-1">
-        Avaliação — {{ $atividade->descricao }}
+        Avaliação - {{ $atividade->descricao }}
       </h1>
-      <p class="text-muted mb-0" style="text-align: justify">Convidamos você a responder esta avaliação, expressando as suas opiniões, 
-                                críticas e sugestões. Este formulário é totalmente anônimo e os dados coletados 
-                                seguem as diretrizes da Lei Geral de Proteção de Dados (LGPD). Suas respostas contribuirão para o 
-                                aprimoramento do nosso trabalho.
-                              </p>
+      <p class="text-muted mb-0" style="text-align: justify">
+        Convidamos você a responder esta avaliação, expressando as suas opiniões, críticas e sugestões.
+        Este formulário é totalmente anônimo e os dados coletados seguem as diretrizes da LGPD.
+        Suas respostas contribuirão para o aprimoramento do nosso trabalho.
+      </p>
     </div>
 
     @if($errors->any())
@@ -24,7 +24,6 @@
       <div class="card-body">
         @php
           $inscricaoExibida = $inscricaoRespondente ?? $avaliacao->inscricao ?? $avaliacao->respostas->first()?->inscricao;
-          $participanteNome = $inscricaoExibida?->participante?->user?->name;
           $eventoNome = $inscricaoExibida?->evento?->nome ?? $atividade?->evento?->nome;
           $respostas = $respostasExistentes ?? collect();
           $formBloqueado = $jaRespondeu ?? false;
@@ -47,72 +46,100 @@
           <input type="hidden" name="token" value="{{ old('token', $token) }}">
 
           <fieldset @disabled($formBloqueado)>
-           <ol class="list-group list-group-flush" style="counter-reset: questao">
-            @forelse ($avaliacao->avaliacaoQuestoes as $questao)
-              <li class="list-group-item px-0" style="counter-increment: questao">
-                <p class="fw-semibold mb-1">
-                  <span class="text-muted me-2">{{ $loop->iteration }}.</span>
-                  {{ $questao->texto }}
-                </p>
+            @php
+              $questoesAgrupadas = $avaliacao->avaliacaoQuestoes
+                ->sortBy(function ($q) {
+                  $dim = mb_strtolower($q->indicador->dimensao->descricao ?? '');
+                  $ind = mb_strtolower($q->indicador->descricao ?? '');
+                  $ordem = $q->ordem ?? 999;
+                  return sprintf('%s|%s|%03d|%06d', $dim, $ind, $ordem, $q->id);
+                })
+                ->groupBy(fn($q) => $q->indicador->dimensao->descricao ?? 'Sem dimensão')
+                ->map(fn($colecao) => $colecao->groupBy(fn($q) => $q->indicador->descricao ?? 'Sem indicador'));
+              $contador = 0;
+            @endphp
 
-                @php $valorAtual = old("respostas.{$questao->id}", $respostas[$questao->id] ?? null); @endphp
+            <div class="list-group list-group-flush">
+              @forelse($questoesAgrupadas as $dimensao => $indicadores)
+                <div class="list-group-item px-0">
+                  <h5 class="fw-bold text-engaja mb-2">{{ $dimensao }}</h5>
 
-                <div class="mt-2">
-                  @switch($questao->tipo)
-                    @case('numero')
-                      <input type="number" step="any" name="respostas[{{ $questao->id }}]" class="form-control"
-                        value="{{ $valorAtual }}" placeholder="Digite um número">
-                      @break
+                  @foreach($indicadores as $indicador => $questoes)
+                    <div class="mb-2">
+                      <p class="fw-semibold mb-2">{{ $indicador }}</p>
+                      <ol class="list-unstyled mb-3">
+                        @foreach($questoes as $questao)
+                          @php
+                            $contador++;
+                            $valorAtual = old("respostas.{$questao->id}", $respostas[$questao->id] ?? null);
+                          @endphp
+                          <li class="mb-3">
+                            <p class="fw-semibold mb-1">
+                              <span class="text-muted me-2">{{ $contador }}.</span>
+                              {{ $questao->texto }}
+                            </p>
 
-                    @case('escala')
-                      @php $opcoesEscala = collect($questao->escala?->valores ?? []); @endphp
-                      @if($opcoesEscala->isNotEmpty())
-                        <div class="d-flex flex-column gap-2">
-                          @foreach($opcoesEscala as $indice => $opcao)
-                            @php $inputId = 'q'.$questao->id.'_'.($indice + 1); @endphp
-                            <div class="form-check">
-                              <input class="form-check-input" type="radio"
-                                name="respostas[{{ $questao->id }}]"
-                                id="{{ $inputId }}"
-                                value="{{ $opcao }}"
-                                {{ (string) $valorAtual === (string) $opcao ? 'checked' : '' }}>
-                              <label class="form-check-label" for="{{ $inputId }}">{{ strip_tags($opcao) }}</label>
+                            <div class="mt-2">
+                              @switch($questao->tipo)
+                                @case('numero')
+                                  <input type="number" step="any" name="respostas[{{ $questao->id }}]" class="form-control"
+                                    value="{{ $valorAtual }}" placeholder="Digite um número">
+                                  @break
+
+                                @case('escala')
+                                  @php $opcoesEscala = collect($questao->escala?->valores ?? []); @endphp
+                                  @if($opcoesEscala->isNotEmpty())
+                                    <div class="d-flex flex-column gap-2">
+                                      @foreach($opcoesEscala as $indice => $opcao)
+                                        @php $inputId = 'q'.$questao->id.'_'.($indice + 1); @endphp
+                                        <div class="form-check">
+                                          <input class="form-check-input" type="radio"
+                                            name="respostas[{{ $questao->id }}]"
+                                            id="{{ $inputId }}"
+                                            value="{{ $opcao }}"
+                                            {{ (string) $valorAtual === (string) $opcao ? 'checked' : '' }}>
+                                          <label class="form-check-label" for="{{ $inputId }}">{{ strip_tags($opcao) }}</label>
+                                        </div>
+                                      @endforeach
+                                    </div>
+                                  @else
+                                    <p class="text-muted small">Escala não configurada.</p>
+                                  @endif
+                                  @break
+
+                                @case('boolean')
+                                  <div class="d-flex flex-column gap-2">
+                                    @php $inputSim = 'q'.$questao->id.'_sim'; $inputNao = 'q'.$questao->id.'_nao'; @endphp
+                                    <div class="form-check">
+                                      <input class="form-check-input" type="radio" name="respostas[{{ $questao->id }}]" value="1" id="{{ $inputSim }}"
+                                        {{ (string) $valorAtual === '1' ? 'checked' : '' }}>
+                                      <label class="form-check-label" for="{{ $inputSim }}">Sim</label>
+                                    </div>
+                                    <div class="form-check">
+                                      <input class="form-check-input" type="radio" name="respostas[{{ $questao->id }}]" value="0" id="{{ $inputNao }}"
+                                        {{ (string) $valorAtual === '0' ? 'checked' : '' }}>
+                                      <label class="form-check-label" for="{{ $inputNao }}">Não</label>
+                                    </div>
+                                  </div>
+                                  @break
+
+                                @default
+                                  <textarea name="respostas[{{ $questao->id }}]" class="form-control" rows="3" placeholder="Compartilhe sua percepção">{{ $valorAtual }}</textarea>
+                              @endswitch
                             </div>
-                          @endforeach
-                        </div>
-                      @else
-                        <p class="text-muted small">Escala não configurada.</p>
-                      @endif
-                      @break
-
-                    @case('boolean')
-                      <div class="d-flex flex-column gap-2">
-                        @php $inputSim = 'q'.$questao->id.'_sim'; $inputNao = 'q'.$questao->id.'_nao'; @endphp
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="respostas[{{ $questao->id }}]" value="1" id="{{ $inputSim }}"
-                            {{ (string) $valorAtual === '1' ? 'checked' : '' }}>
-                          <label class="form-check-label" for="{{ $inputSim }}">Sim</label>
-                        </div>
-                        <div class="form-check">
-                          <input class="form-check-input" type="radio" name="respostas[{{ $questao->id }}]" value="0" id="{{ $inputNao }}"
-                            {{ (string) $valorAtual === '0' ? 'checked' : '' }}>
-                          <label class="form-check-label" for="{{ $inputNao }}">Não</label>
-                        </div>
-                      </div>
-                      @break
-
-                    @default
-                      <textarea name="respostas[{{ $questao->id }}]" class="form-control" rows="3" placeholder="Compartilhe sua percepção">{{ $valorAtual }}</textarea>
-                  @endswitch
+                            @error("respostas.{$questao->id}")
+                              <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                          </li>
+                        @endforeach
+                      </ol>
+                    </div>
+                  @endforeach
                 </div>
-                @error("respostas.{$questao->id}")
-                  <div class="text-danger small mt-1">{{ $message }}</div>
-                @enderror
-              </li>
-            @empty
-              <li class="list-group-item px-0 text-muted">Nenhuma questão cadastrada para esta avaliação.</li>
-            @endforelse
-          </ol>
+              @empty
+                <div class="list-group-item px-0 text-muted">Nenhuma questão cadastrada para esta avaliação.</div>
+              @endforelse
+            </div>
           </fieldset>
 
           @unless($formBloqueado)
