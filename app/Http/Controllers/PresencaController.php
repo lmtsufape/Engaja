@@ -29,9 +29,9 @@ class PresencaController extends Controller
             ->orWhere('telefone', $campo)
             ->first();
 
-        if(!$usuario)
+        if(!$usuario && $participante)
         {
-            $usuario = User::findOrFail($participante->user_id);
+            $usuario = User::find($participante->user_id);
         }
 
         //TODO redirecionar para a tela de cadastro de participante
