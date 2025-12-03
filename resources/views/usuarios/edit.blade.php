@@ -37,7 +37,6 @@
             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
           </div>
 
-          <input type="hidden" name="role" value="{{ old('role', $currentRole) }}">
         </div>
       </div>
     </div>
