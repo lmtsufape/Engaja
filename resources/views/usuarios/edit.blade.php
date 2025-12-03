@@ -39,7 +39,6 @@
             </div>
           </div>
 
-          <input type="hidden" name="role" value="{{ old('role', $currentRole) }}">
         </div>
       </div>
     </div>

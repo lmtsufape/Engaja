@@ -19,7 +19,7 @@ class UserManagementController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
 
-        $users = User::with('roles')
+        $users = User::with(['roles', 'participante'])
             ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', self::PROTECTED_ROLES))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
