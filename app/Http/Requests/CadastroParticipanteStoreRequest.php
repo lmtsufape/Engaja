@@ -17,8 +17,8 @@ class CadastroParticipanteStoreRequest extends FormRequest
     {
         $toNull = fn ($v) => ($v === '' || $v === null) ? null : $v;
 
-        $cpfDigits = preg_replace('/\D+/', '', (string)($this->cpf ?? ''));
-        $telDigits = preg_replace('/\D+/', '', (string)($this->telefone ?? ''));
+        $cpfDigits = preg_replace('/\D+/', '', (string) ($this->cpf ?? ''));
+        $telDigits = preg_replace('/\D+/', '', (string) ($this->telefone ?? ''));
 
         $this->merge([
             'name'             => isset($this->name) ? trim((string) $this->name) : null,
@@ -42,7 +42,7 @@ class CadastroParticipanteStoreRequest extends FormRequest
                 Rule::unique('users', 'email'),
             ],
 
-            'cpf'              => ['nullable', 'digits:11'],
+            'cpf'              => ['required', 'digits:11'],
             'telefone'         => ['nullable', 'regex:/^\d{10,11}$/'],
             'municipio_id'     => ['nullable', 'exists:municipios,id'],
             'escola_unidade'   => ['nullable', 'string', 'max:255'],
@@ -127,6 +127,7 @@ class CadastroParticipanteStoreRequest extends FormRequest
             'email.required'      => 'Informe seu e-mail.',
             'email.email'         => 'Informe um e-mail válido.',
             'email.unique'        => 'Este e-mail já está em uso.',
+            'cpf.required'        => 'O campo CPF é obrigatório.',
             'cpf.digits'          => 'CPF deve conter 11 dígitos.',
             'telefone.regex'      => 'Telefone deve ter DDD e 10 ou 11 dígitos.',
             'municipio_id.exists' => 'Município inválido.',

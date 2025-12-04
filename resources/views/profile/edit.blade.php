@@ -130,13 +130,13 @@
                                 @error('telefone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
 
-                            <!-- <div class="col-md-4">
+                            {{-- <div class="col-md-4">
                                 <label for="data_entrada" class="form-label">Data de entrada</label>
                                 <input id="data_entrada" type="date" name="data_entrada"
                                        value="{{ old('data_entrada', $dataEntradaValue) }}"
                                        class="form-control @error('data_entrada') is-invalid @enderror">
                                 @error('data_entrada') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            </div> -->
+                            </div> --}}
 
                             <div class="col-md-6">
                                 <label for="tipo_organizacao" class="form-label">Tipo de instituição</label>
