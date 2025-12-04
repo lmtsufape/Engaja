@@ -59,9 +59,15 @@ class UserManagementRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($v) {
-            $cpf = (string)($this->input('cpf'));
+            $cpf = $this->normalizeCpf($this->input('cpf'));
             if (!$this->isValidCpf($cpf)) {
                 $v->errors()->add('cpf', 'CPF invalido.');
+            } else {
+                $managedUser = $this->route('managedUser');
+                $ignoreParticipanteId = $managedUser?->participante?->id;
+                if ($this->cpfDuplicado($cpf, $ignoreParticipanteId)) {
+                    $v->errors()->add('cpf', 'Este CPF já possui cadastro no sistema.');
+                }
             }
 
             $tel = (string)($this->input('telefone'));
@@ -69,6 +75,27 @@ class UserManagementRequest extends FormRequest
                 $v->errors()->add('telefone', 'Telefone invalido. Use DDD + numero (10 ou 11 digitos).');
             }
         });
+    }
+
+
+    private function normalizeCpf(?string $cpf): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) ($cpf ?? ''));
+        return $digits !== '' ? $digits : null;
+    }
+
+    private function cpfDuplicado(string $cpf, ?int $ignorarId = null): bool
+    {
+        $cpf = $this->normalizeCpf($cpf);
+        if (! $cpf) {
+            return false;
+        }
+
+        return Participante::query()
+            ->whereNotNull('cpf')
+            ->when($ignorarId, fn($q) => $q->where('id', '!=', $ignorarId))
+            ->whereRaw("regexp_replace(cpf, '[^0-9]', '', 'g') = ?", [$cpf])
+            ->exists();
     }
 
     private function isValidCpf(string $cpf): bool

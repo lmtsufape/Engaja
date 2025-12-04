@@ -54,10 +54,17 @@
           @endphp
           <div class="row g-3">
             <div class="col-md-6">
+              @php
+                $cpfRaw = old('cpf', $participante->cpf ?? '');
+                $cpfDigits = preg_replace('/\D+/', '', $cpfRaw);
+                $cpfFormatado = strlen($cpfDigits) === 11
+                  ? preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $cpfDigits)
+                  : $cpfRaw;
+              @endphp
               <label for="cpf" class="form-label">CPF</label>
               <input id="cpf" type="text" name="cpf"
                 inputmode="numeric" maxlength="14" required
-                value="{{ old('cpf', $participante->cpf ?? '') }}"
+                value="{{ $cpfFormatado }}"
                 class="form-control @error('cpf') is-invalid @enderror"
                 placeholder="000.000.000-00">
               @error('cpf') <div class="invalid-feedback">{{ $message }}</div> @enderror
