@@ -45,7 +45,7 @@
         @hasanyrole('administrador|gestor')
         <li class="nav-item">
           <a class="nav-link text-white ms-lg-2" href="{{ route('usuarios.index') }}">
-            Gerenciar Usuarios
+            Gerenciar Usuários
           </a>
         </li>
         @endhasanyrole

@@ -101,11 +101,18 @@
                         <div class="row g-3">
                             {{-- CPF --}}
                             <div class="col-md-6">
+                                @php
+                                    $cpfRaw = old('cpf', $participante->cpf ?? '');
+                                    $cpfDigits = preg_replace('/\D+/', '', $cpfRaw);
+                                    $cpfFormatado = strlen($cpfDigits) === 11
+                                        ? preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $cpfDigits)
+                                        : $cpfRaw;
+                                @endphp
                                 <label for="cpf" class="form-label">CPF</label>
                                 <input id="cpf" type="text" name="cpf"
                                     inputmode="numeric" autocomplete="off"
                                     maxlength="14" required {{-- 000.000.000-00 --}}
-                                    value="{{ old('cpf', $participante->cpf ?? '') }}"
+                                    value="{{ $cpfFormatado }}"
                                     class="form-control @error('cpf') is-invalid @enderror"
                                     placeholder="000.000.000-00">
                                 @error('cpf') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -153,7 +160,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="escola_unidade" class="form-label">Instituição</label>
+                                <label for="escola_unidade" class="form-label">Nome da instituição</label>
                                 <input id="escola_unidade" type="text" name="escola_unidade"
                                     value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
                                     class="form-control @error('escola_unidade') is-invalid @enderror">
@@ -167,7 +174,7 @@
                                     class="form-select @error('tag') is-invalid @enderror">
                                     <option value="">Selecione...</option>
                                     @foreach($participanteTags as $tagOption)
-                                    <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? "") === $tagOption)>{{ $tagOption }}</option>
+                                    <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? '') === $tagOption)>{{ $tagOption }}</option>
                                     @endforeach
                                 </select>
                                 @error('tag')

@@ -38,6 +38,9 @@ class ProfileUpdateRequest extends FormRequest
             'cpf'          => ['required', 'digits:11'],
             'telefone'     => ['nullable', 'regex:/^\d{10,11}$/'],
             'municipio_id' => ['nullable', 'exists:municipios,id'],
+            'escola_unidade'   => ['nullable','string','max:255'],
+            'tipo_organizacao' => ['nullable','string','max:255', Rule::in(config('engaja.organizacoes', []))],
+            'tag'              => ['nullable', Rule::in(Participante::TAGS)],
         ];
     }
 

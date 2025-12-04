@@ -63,7 +63,7 @@
               @endphp
               <label for="cpf" class="form-label">CPF</label>
               <input id="cpf" type="text" name="cpf"
-                inputmode="numeric" maxlength="14" required
+                inputmode="numeric" maxlength="14"
                 value="{{ $cpfFormatado }}"
                 class="form-control @error('cpf') is-invalid @enderror"
                 placeholder="000.000.000-00">

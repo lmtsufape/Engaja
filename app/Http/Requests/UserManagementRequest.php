@@ -47,7 +47,7 @@ class UserManagementRequest extends FormRequest
             ],
             'role'  => ['nullable','string', Rule::in($this->assignableRoleNames())],
 
-            'cpf'              => ['required','digits:11'],
+            'cpf'              => ['nullable','digits:11'],
             'telefone'         => ['nullable','regex:/^\\d{10,11}$/'],
             'municipio_id'     => ['nullable','exists:municipios,id'],
             'escola_unidade'   => ['nullable','string','max:255'],
@@ -60,13 +60,15 @@ class UserManagementRequest extends FormRequest
     {
         $validator->after(function ($v) {
             $cpf = $this->normalizeCpf($this->input('cpf'));
-            if (!$this->isValidCpf($cpf)) {
-                $v->errors()->add('cpf', 'CPF invalido.');
-            } else {
-                $managedUser = $this->route('managedUser');
-                $ignoreParticipanteId = $managedUser?->participante?->id;
-                if ($this->cpfDuplicado($cpf, $ignoreParticipanteId)) {
-                    $v->errors()->add('cpf', 'Este CPF já possui cadastro no sistema.');
+            if ($cpf) {
+                if (!$this->isValidCpf($cpf)) {
+                    $v->errors()->add('cpf', 'CPF invalido.');
+                } else {
+                    $managedUser = $this->route('managedUser');
+                    $ignoreParticipanteId = $managedUser?->participante?->id;
+                    if ($this->cpfDuplicado($cpf, $ignoreParticipanteId)) {
+                        $v->errors()->add('cpf', 'Este CPF já possui cadastro no sistema.');
+                    }
                 }
             }
 
