@@ -19,6 +19,13 @@ class ModeloCertificado extends Model
         'imagem_verso',
         'texto_frente',
         'texto_verso',
+        'layout_frente',
+        'layout_verso',
+    ];
+
+    protected $casts = [
+        'layout_frente' => 'array',
+        'layout_verso'  => 'array',
     ];
 
     public function eixo()
@@ -26,4 +33,3 @@ class ModeloCertificado extends Model
         return $this->belongsTo(Eixo::class);
     }
 }
-
