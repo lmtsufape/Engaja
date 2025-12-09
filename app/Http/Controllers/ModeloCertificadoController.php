@@ -34,7 +34,7 @@ class ModeloCertificadoController extends Controller
 
     public function store(ModeloCertificadoRequest $request): RedirectResponse
     {
-        $data = $request->validated();
+        $data = $this->normalizeLayout($request->validated());
         if ($request->hasFile('imagem_frente')) {
             $data['imagem_frente'] = $request->file('imagem_frente')->store('certificados', 'public');
         }
@@ -55,7 +55,7 @@ class ModeloCertificadoController extends Controller
 
     public function update(ModeloCertificadoRequest $request, ModeloCertificado $modelo): RedirectResponse
     {
-        $data = $request->validated();
+        $data = $this->normalizeLayout($request->validated());
 
         if ($request->hasFile('imagem_frente')) {
             $data['imagem_frente'] = $request->file('imagem_frente')->store('certificados', 'public');
@@ -79,5 +79,16 @@ class ModeloCertificadoController extends Controller
         $modelo->delete();
         return redirect()->route('certificados.modelos.index')
             ->with('success', 'Modelo removido com sucesso.');
+    }
+
+    private function normalizeLayout(array $data): array
+    {
+        foreach (['layout_frente','layout_verso'] as $key) {
+            if (!empty($data[$key]['styles']) && is_string($data[$key]['styles'])) {
+                $decoded = json_decode($data[$key]['styles'], true);
+                $data[$key]['styles'] = is_array($decoded) ? $decoded : null;
+            }
+        }
+        return $data;
     }
 }

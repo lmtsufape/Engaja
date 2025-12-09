@@ -34,11 +34,23 @@ class ModeloCertificadoRequest extends FormRequest
             'layout_frente.y' => ['nullable', 'numeric'],
             'layout_frente.w' => ['nullable', 'numeric'],
             'layout_frente.h' => ['nullable', 'numeric'],
+            'layout_frente.font_family' => ['nullable','string','max:100'],
+            'layout_frente.font_size'   => ['nullable','numeric'],
+            'layout_frente.font_weight' => ['nullable','string','max:20'],
+            'layout_frente.font_style'  => ['nullable','string','max:20'],
+            'layout_frente.align'       => ['nullable','string','in:left,center,right,justify'],
+            'layout_frente.styles'      => ['nullable','string'],
             'layout_verso'  => ['nullable', 'array'],
             'layout_verso.x' => ['nullable', 'numeric'],
             'layout_verso.y' => ['nullable', 'numeric'],
             'layout_verso.w' => ['nullable', 'numeric'],
             'layout_verso.h' => ['nullable', 'numeric'],
+            'layout_verso.font_family' => ['nullable','string','max:100'],
+            'layout_verso.font_size'   => ['nullable','numeric'],
+            'layout_verso.font_weight' => ['nullable','string','max:20'],
+            'layout_verso.font_style'  => ['nullable','string','max:20'],
+            'layout_verso.align'       => ['nullable','string','in:left,center,right,justify'],
+            'layout_verso.styles'      => ['nullable','string'],
         ];
     }
 
