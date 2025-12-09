@@ -226,7 +226,7 @@ class AvaliacaoController extends Controller
 
         return redirect()
             ->route('avaliacoes.index')
-            ->with('success', 'Avaliacao registrada com sucesso!');
+            ->with('success', 'Avaliação registrada com sucesso!');
     }
 
     public function show(Avaliacao $avaliacao)
@@ -853,7 +853,7 @@ class AvaliacaoController extends Controller
         return redirect()
             ->route('presenca.confirmar', $presenca->atividade_id)
             ->with([
-                'success' => 'Avaliacao registrada com sucesso!',
+                'success' => 'Avaliação registrada com sucesso!',
                 'avaliacao_token' => null,
                 'avaliacao_disponivel' => false,
             ]);

@@ -27,7 +27,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -41,11 +41,49 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = (string) $this->input('login');
+        $password = (string) $this->input('password');
+
+        $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL) !== false;
+        $cpfDigits = preg_replace('/\D+/', '', $login);
+
+        $user = null;
+        $errorKey = 'login';
+
+        if ($isEmail) {
+            $user = \App\Models\User::where('email', $login)->first();
+        } elseif (strlen($cpfDigits) === 11) {
+            $usuarios = \App\Models\User::whereHas('participante', function ($q) use ($cpfDigits) {
+                $q->whereRaw("regexp_replace(cpf, '[^0-9]', '', 'g') = ?", [$cpfDigits]);
+            })->get();
+
+            if ($usuarios->count() > 1) {
+                RateLimiter::hit($this->throttleKey());
+                throw ValidationException::withMessages([
+                    'login' => 'CPF duplicado no cadastro. Contate o suporte para regularizar.',
+                ]);
+            }
+
+            $user = $usuarios->first();
+        } else {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'login' => 'Informe um e-mail válido ou um CPF com 11 dígitos.',
+            ]);
+        }
+
+        if (! $user) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                $errorKey => 'E-mail/CPF ou senha inválidos.',
+            ]);
+        }
+
+        if (! Auth::attempt(['email' => $user->email, 'password' => $password], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                $errorKey => 'E-mail/CPF ou senha inválidos.',
             ]);
         }
 
@@ -80,6 +118,6 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('login')).'|'.$this->ip());
     }
 }

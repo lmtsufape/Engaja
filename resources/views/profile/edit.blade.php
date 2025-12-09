@@ -95,17 +95,24 @@
 
                 <div class="card shadow-sm">
                     <div class="card-header bg-white">
-                        <strong>Dados do participante</strong> <span class="text-muted">(opcionais)</span>
+                        <strong>Dados do participante</strong> {{-- <span class="text-muted">(opcionais)</span> --}}
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
                             {{-- CPF --}}
                             <div class="col-md-6">
+                                @php
+                                    $cpfRaw = old('cpf', $participante->cpf ?? '');
+                                    $cpfDigits = preg_replace('/\D+/', '', $cpfRaw);
+                                    $cpfFormatado = strlen($cpfDigits) === 11
+                                        ? preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $cpfDigits)
+                                        : $cpfRaw;
+                                @endphp
                                 <label for="cpf" class="form-label">CPF</label>
                                 <input id="cpf" type="text" name="cpf"
                                     inputmode="numeric" autocomplete="off"
                                     maxlength="14" required {{-- 000.000.000-00 --}}
-                                    value="{{ old('cpf', $participante->cpf ?? '') }}"
+                                    value="{{ $cpfFormatado }}"
                                     class="form-control @error('cpf') is-invalid @enderror"
                                     placeholder="000.000.000-00">
                                 @error('cpf') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -123,16 +130,16 @@
                                 @error('telefone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
 
-                            <!-- <div class="col-md-4">
+                            {{-- <div class="col-md-4">
                                 <label for="data_entrada" class="form-label">Data de entrada</label>
                                 <input id="data_entrada" type="date" name="data_entrada"
                                        value="{{ old('data_entrada', $dataEntradaValue) }}"
                                        class="form-control @error('data_entrada') is-invalid @enderror">
                                 @error('data_entrada') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            </div> -->
+                            </div> --}}
 
                             <div class="col-md-6">
-                                <label for="tipo_organizacao" class="form-label">Tipo de Organização</label>
+                                <label for="tipo_organizacao" class="form-label">Tipo de instituição</label>
 
                                 @php
                                 $currentTipoOrg = old('tipo_organizacao', $participante->tipo_organizacao ?? '');
@@ -153,7 +160,7 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="escola_unidade" class="form-label">Organização</label>
+                                <label for="escola_unidade" class="form-label">Nome da instituição</label>
                                 <input id="escola_unidade" type="text" name="escola_unidade"
                                     value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
                                     class="form-control @error('escola_unidade') is-invalid @enderror">
@@ -162,12 +169,12 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="tag" class="form-label">Tag</label>
+                                <label for="tag" class="form-label">Vinculo no projeto</label>
                                 <select id="tag" name="tag"
                                     class="form-select @error('tag') is-invalid @enderror">
                                     <option value="">Selecione...</option>
                                     @foreach($participanteTags as $tagOption)
-                                    <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? "") === $tagOption)>{{ $tagOption }}</option>
+                                    <option value="{{ $tagOption }}" @selected(old('tag', $participante->tag ?? '') === $tagOption)>{{ $tagOption }}</option>
                                     @endforeach
                                 </select>
                                 @error('tag')
@@ -231,7 +238,7 @@
                             @error('password')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <div class="form-text">Mínimo 8 caracteres. Use letras, números e símbolos.</div>
+                            <div class="form-text">Mínimo 8 caracteres. Use letras, números e/ou símbolos.</div>
                         </div>
 
                         <div class="mb-4">

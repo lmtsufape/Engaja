@@ -7,7 +7,7 @@
     <h1 class="h4 fw-bold text-engaja mb-0">Editar usuario</h1>
     <div class="text-muted small">Atualize dados cadastrais e do participante.</div>
   </div>
-  <a href="{{ route('usuarios.index') }}" class="btn btn-outline-secondary btn-sm">&lt; Voltar</a>
+  <a href="{{ route('usuarios.index') }}" class="btn btn-outline-secondary btn-sm">Voltar</a>
 </div>
 
 <form method="POST" action="{{ route('usuarios.update', $user) }}" class="needs-validation" novalidate>
@@ -15,33 +15,35 @@
   @method('put')
 
   <div class="row g-4">
-    <div class="col-12 col-lg-6">
+    <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
           <strong>Dados do usuario</strong>
         </div>
         <div class="card-body">
-          <div class="mb-3">
-            <label for="name" class="form-label">Nome</label>
-            <input id="name" type="text" name="name"
-              value="{{ old('name', $user->name) }}"
-              class="form-control @error('name') is-invalid @enderror" required>
-            @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="name" class="form-label">Nome</label>
+              <input id="name" type="text" name="name"
+                value="{{ old('name', $user->name) }}"
+                class="form-control @error('name') is-invalid @enderror" required>
+              @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
 
-          <div class="mb-3">
-            <label for="email" class="form-label">E-mail</label>
-            <input id="email" type="email" name="email"
-              value="{{ old('email', $user->email) }}"
-              class="form-control @error('email') is-invalid @enderror" required>
-            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            <div class="col-md-6">
+              <label for="email" class="form-label">E-mail</label>
+              <input id="email" type="email" name="email"
+                value="{{ old('email', $user->email) }}"
+                class="form-control @error('email') is-invalid @enderror" required>
+              @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
           </div>
 
         </div>
       </div>
     </div>
 
-    <div class="col-12 col-lg-6">
+    <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
           <strong>Dados do participante</strong>
@@ -52,10 +54,17 @@
           @endphp
           <div class="row g-3">
             <div class="col-md-6">
+              @php
+                $cpfRaw = old('cpf', $participante->cpf ?? '');
+                $cpfDigits = preg_replace('/\D+/', '', $cpfRaw);
+                $cpfFormatado = strlen($cpfDigits) === 11
+                  ? preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $cpfDigits)
+                  : $cpfRaw;
+              @endphp
               <label for="cpf" class="form-label">CPF</label>
               <input id="cpf" type="text" name="cpf"
-                inputmode="numeric" maxlength="14" required
-                value="{{ old('cpf', $participante->cpf ?? '') }}"
+                inputmode="numeric" maxlength="14"
+                value="{{ $cpfFormatado }}"
                 class="form-control @error('cpf') is-invalid @enderror"
                 placeholder="000.000.000-00">
               @error('cpf') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -72,20 +81,20 @@
             </div>
 
             <div class="col-md-6">
-              <label for="tipo_organizacao" class="form-label">Tipo de Organizacao</label>
+              <label for="tipo_organizacao" class="form-label">Tipo de instituição</label>
               @php $currentTipoOrg = old('tipo_organizacao', $participante->tipo_organizacao ?? ''); @endphp
               <select id="tipo_organizacao" name="tipo_organizacao"
                 class="form-select @error('tipo_organizacao') is-invalid @enderror">
                 <option value="">Selecione...</option>
                 @foreach($organizacoes as $org)
-                <option value="{{ $org }}" @selected($currentTipoOrg === $org)>{{ $org }}</option>
+                <option value="{{ $org }}" @selected($currentTipoOrg===$org)>{{ $org }}</option>
                 @endforeach
               </select>
               @error('tipo_organizacao') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="col-md-6">
-              <label for="escola_unidade" class="form-label">Organizacao</label>
+              <label for="escola_unidade" class="form-label">Instituição</label>
               <input id="escola_unidade" type="text" name="escola_unidade"
                 value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
                 class="form-control @error('escola_unidade') is-invalid @enderror">
@@ -93,7 +102,7 @@
             </div>
 
             <div class="col-md-6">
-              <label for="tag" class="form-label">Tag</label>
+              <label for="tag" class="form-label">Vinculo no projeto</label>
               <select id="tag" name="tag" class="form-select @error('tag') is-invalid @enderror">
                 <option value="">Selecione...</option>
                 @foreach($participanteTags as $tagOption)
