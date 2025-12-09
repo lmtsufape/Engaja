@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('imagem_verso')->nullable();
             $table->longText('texto_frente')->nullable();
             $table->longText('texto_verso')->nullable();
+            $table->json('layout_frente')->nullable();
+            $table->json('layout_verso')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -33,4 +35,3 @@ return new class extends Migration
         Schema::dropIfExists('modelo_certificados');
     }
 };
-

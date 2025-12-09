@@ -29,6 +29,16 @@ class ModeloCertificadoRequest extends FormRequest
             'imagem_verso'  => ['nullable', 'image', 'max:5120'],
             'texto_frente'  => ['nullable', 'string'],
             'texto_verso'   => ['nullable', 'string'],
+            'layout_frente' => ['nullable', 'array'],
+            'layout_frente.x' => ['nullable', 'numeric'],
+            'layout_frente.y' => ['nullable', 'numeric'],
+            'layout_frente.w' => ['nullable', 'numeric'],
+            'layout_frente.h' => ['nullable', 'numeric'],
+            'layout_verso'  => ['nullable', 'array'],
+            'layout_verso.x' => ['nullable', 'numeric'],
+            'layout_verso.y' => ['nullable', 'numeric'],
+            'layout_verso.w' => ['nullable', 'numeric'],
+            'layout_verso.h' => ['nullable', 'numeric'],
         ];
     }
 

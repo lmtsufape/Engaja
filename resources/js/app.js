@@ -4,6 +4,10 @@ import './bootstrap';
 import * as bootstrap from 'bootstrap';
 window.bootstrap = bootstrap;
 
+// Fabric.js para pré-visualização de certificados
+import { fabric } from 'fabric';
+window.fabric = fabric;
+
 let confirmModalInstance;
 let confirmMessageEl;
 let confirmAcceptBtn;
