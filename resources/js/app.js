@@ -5,7 +5,7 @@ import * as bootstrap from 'bootstrap';
 window.bootstrap = bootstrap;
 
 // Fabric.js para pré-visualização de certificados
-import { fabric } from 'fabric';
+import * as fabric from 'fabric';
 window.fabric = fabric;
 
 let confirmModalInstance;

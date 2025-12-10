@@ -16,6 +16,7 @@ class Certificado extends Model
         'ano',
         'texto_frente',
         'texto_verso',
+        'carga_horaria',
     ];
 
     public function modelo()

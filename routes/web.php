@@ -90,6 +90,7 @@ Route::middleware(['auth', 'role:administrador|gestor'])
         Route::get('/', [UserManagementController::class, 'index'])->name('index');
         Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
         Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
+        Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
     });
 
 Route::middleware(['auth', 'role:administrador|participante'])->group(function () {
