@@ -9,7 +9,15 @@ class Presenca extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['inscricao_id', 'atividade_id', 'status', 'justificativa', 'avaliacao_respondida'];
+    protected $fillable = ['inscricao_id', 'atividade_id', 'status', 'justificativa', 'avaliacao_respondida', 'certificado_emitido'];
+
+    /**
+     * Presenças que ainda não geraram certificado.
+     */
+    public function scopeSemCertificado($query)
+    {
+        return $query->where('certificado_emitido', false);
+    }
 
     public function inscricao()
     {

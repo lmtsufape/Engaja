@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Participante;
 use App\Models\Atividade;
 use App\Models\Inscricao;
+use App\Models\ModeloCertificado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -41,8 +42,9 @@ class EventoController extends Controller
 
         $eventos = $q->paginate(10);
         $eixos   = Eixo::orderBy('nome')->get();
+        $modelosCertificados = ModeloCertificado::orderBy('nome')->get();
 
-        return view('eventos.index', compact('eventos', 'eixos'));
+        return view('eventos.index', compact('eventos', 'eixos', 'modelosCertificados'));
     }
 
     public function create()
