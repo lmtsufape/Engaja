@@ -4,42 +4,57 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
 /* Paleta Engaja */
-$engaja-purple: #421944; // primária
-$engaja-blue:   #008BBC;
-$engaja-yellow: #FDB913;
-$engaja-pink:   #E62270;
-$engaja-green:  #2EB57D;
+$engaja-teal:   #104E5B; // primária
+$engaja-orange: #F19E0E;
+$engaja-red:    #D93B30;
+$engaja-salmon: #F5B6A3;
+$engaja-dark:   #1F1F1F;
 
 $font-family-sans-serif: 'Montserrat', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif !default;
-$primary:   $engaja-purple;
-$secondary: $engaja-blue;
-$success:   $engaja-green;
-$warning:   $engaja-yellow;
-$danger:    $engaja-pink;
-$info:      $engaja-blue;
+$primary:       $engaja-teal;  
+$secondary:     $engaja-salmon;
+$success:       #2EB57D;        
+$warning:       $engaja-orange;
+$danger:        $engaja-red;    
+$info:          $engaja-teal;
 
-$body-color: #1f1f1f;
-$body-bg: #ffffff;
+$body-color:    $engaja-dark;
+$body-bg:       #ffffff;
 $border-radius: .6rem;
-$border-radius-lg: .8rem;
 
 @import "bootstrap/scss/bootstrap";
 
 $theme-colors: map-merge(
   $theme-colors,
   (
-    "engaja": $engaja-purple,
-    "blue":   $engaja-blue,
-    "yellow": $engaja-yellow,
-    "pink":   $engaja-pink,
-    "green":  $engaja-green
+    "engaja":        $engaja-teal,
+    "engaja-orange": $engaja-orange,
+    "engaja-red":    $engaja-red,
+    "engaja-salmon": $engaja-salmon
   )
 );
 
 
 /* Custom utilities */
-.text-engaja     { color: $engaja-purple !important; }
-.bg-engaja       { background-color: $engaja-purple !important; }
+.text-engaja        { color: $engaja-teal !important; }
+.bg-engaja          { background-color: $engaja-teal !important; }
 .btn-engaja {
-  @include button-variant($engaja-purple, $engaja-purple);
+  @include button-variant($engaja-orange, $engaja-orange);
+  color: #fff;
+  font-weight: 600;
+
+  &:hover {
+     color: #fff;
+     background-color: darken($engaja-orange, 10%);
+     border-color: darken($engaja-orange, 10%);
+  }
+}
+
+.form-control, .form-select {
+    border-color: #ced4da;
+   
+    &:focus {
+        border-color: $engaja-teal !important;
+        box-shadow: 0 0 0 0.2rem rgba($engaja-teal, 0.25);
+    }
 }

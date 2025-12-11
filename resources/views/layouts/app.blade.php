@@ -11,44 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 
+  {{-- O Vite agora controla todas as cores via SASS --}}
   @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
-  <style>
-    :root {
-      --engaja-purple: #421944;
-    }
-
-    body {
-      font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-
-    .navbar-brand {
-      font-weight: 700;
-      letter-spacing: .2px;
-    }
-  </style>
-  <style>
-    .form-control {
-      border-color: #b1b6bbff !important;
-      /* cinza escuro padrão Bootstrap */
-    }
-
-    .form-control:focus {
-      border-color: #421944 !important;
-      /* roxo Engaja no foco */
-      box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
-      /* glow roxo no foco */
-    }
-
-    .form-select {
-      border-color: #b1b6bbff !important;
-    }
-
-    .form-select:focus {
-      border-color: #421944 !important;
-      box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
-    }
-  </style>
   @stack('styles')
 </head>
 
@@ -61,21 +26,13 @@
   </header>
   @endisset
 
-  <div class="row justify-content-center mt-2">
-    <div class="col-md-6">
-      @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show text-center" role="alert">
-          {{ session('success') }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-        </div>
-      @endif
-    </div>
-  </div>
+  @if (session('success'))
+  <div class="alert alert-success text-center">{{ session('success') }}</div>
+  @endif
 
   @if (session('error'))
   <div class="alert alert-danger text-center">{{ session('error') }}</div>
   @endif
-
 
   <main class="flex-grow-1 py-4">
     <div class="container">
@@ -83,8 +40,7 @@
     </div>
   </main>
 
-  @include('layouts.footer') {{-- <footer class="bg-primary border-top mt-auto pt-5"> ... --}}
-  @stack('scripts')
+  @include('layouts.footer')
 
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -104,5 +60,4 @@
     </div>
   </div>
 </body>
-
 </html>

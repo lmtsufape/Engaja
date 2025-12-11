@@ -27,7 +27,7 @@
       </div>
       <div class="col-md-6">
         <div class="mb-3 text-white">Parceria</div>
-        <img src="{{ asset('images/petrobras-white.png') }}" alt="Parceiro" class="img-fluid" style="max-height:42px">
+        <img src="{{ asset('images/ppt-banner.png') }}" alt="Parceiro" class="img-fluid" style="max-height:120px">
       </div>
     </div>
 
