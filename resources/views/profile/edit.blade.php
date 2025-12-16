@@ -2,7 +2,10 @@
 
 @section('content')
 <div class="container">
-    <h1 class="h3 fw-bold mb-4 text-engaja">Meu perfil</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 fw-bold text-engaja mb-0">Meu perfil</h1>
+        <a href="{{ route('profile.certificados') }}" class="btn btn-outline-secondary btn-sm">Meus certificados</a>
+    </div>
 
     {{-- Mensagens globais --}}
     @if (session('status') === 'profile-updated')

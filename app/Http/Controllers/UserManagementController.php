@@ -6,6 +6,7 @@ use App\Http\Requests\UserManagementRequest;
 use App\Models\Municipio;
 use App\Models\Participante;
 use App\Models\User;
+use App\Models\ModeloCertificado;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -34,6 +35,7 @@ class UserManagementController extends Controller
         return view('usuarios.index', [
             'users' => $users,
             'search' => $search,
+            'modelosCertificado' => ModeloCertificado::orderBy('nome')->get(['id', 'nome']),
         ]);
     }
 

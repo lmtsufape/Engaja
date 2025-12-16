@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Participante;
+use App\Models\Certificado;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,18 @@ class ProfileController extends Controller
             'organizacoes'     => $organizacoes,
             'participanteTags' => $participanteTags,
         ]);
+    }
+
+    public function certificados(Request $request): View
+    {
+        $user = $request->user();
+        $participanteId = $user->participante?->id;
+        $certificados = Certificado::with(['modelo'])
+            ->where('participante_id', $participanteId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('profile.certificados', compact('certificados'));
     }
 
     /**

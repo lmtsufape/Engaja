@@ -7,7 +7,6 @@
       <div>
         <p class="text-uppercase small mb-1" style="color:#421944;">Dashboards</p>
         <h1 class="h4 fw-bold mb-1" style="color:#421944;">Escolha o painel</h1>
-        <p class="text-muted mb-0">Acesse os paineis ja existentes sem exageros visuais, mantendo a paleta do projeto.</p>
       </div>
       <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-primary" href="{{ route('dashboards.avaliacoes') }}">
@@ -30,7 +29,7 @@
               <h2 class="h5 fw-bold">Painel estilo Forms</h2>
               <p class="text-muted mb-3">
                 Veja medias, distribuicoes e respostas abertas com graficos dinamicos.
-                Troque de modelo, evento ou periodo sem recarregar a pagina.
+                Troque de modelo, ação pedagógica ou periodo.
               </p>
               <a href="{{ route('dashboards.avaliacoes') }}" class="btn btn-primary">
                 Abrir dashboard de respostas
@@ -91,7 +90,7 @@
     <div class="col-lg-5">
       <div class="card shadow-sm border-0 h-100">
         <div class="card-header bg-white border-0">
-          <p class="text-uppercase small text-muted mb-0">Eventos recentes</p>
+          <p class="text-uppercase small text-muted mb-0">Ações pedagógicas recentes</p>
           <h3 class="h6 fw-bold mb-0">O que recebeu inscricoes</h3>
         </div>
         <div class="card-body">
@@ -102,10 +101,10 @@
                 <div class="fw-semibold">{{ $evento->nome }}</div>
                 <small class="text-muted">Criado em {{ optional($evento->created_at)->format('d/m/Y') }}</small>
               </div>
-              <a href="{{ route('eventos.show', $evento) }}" class="btn btn-sm btn-outline-secondary">Ver evento</a>
+              <a href="{{ route('eventos.show', $evento) }}" class="btn btn-sm btn-outline-secondary">Ver ação</a>
             </div>
             @empty
-            <div class="text-muted">Nenhum evento registrado.</div>
+            <div class="text-muted">Nenhuma ação pedagógica registrado.</div>
             @endforelse
           </div>
         </div>

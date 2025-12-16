@@ -27,7 +27,7 @@
           </a>
         </li>
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button" data-bs-toggle="dropdown"
             aria-expanded="false">
             Avaliações
           </a>
@@ -48,7 +48,19 @@
             Gerenciar Usuários
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link text-white ms-lg-2" href="{{ route('certificados.modelos.index') }}">
+            Certificados
+          </a>
+        </li>
         @endhasanyrole
+        @role('participante')
+        <li class="nav-item">
+          <a class="nav-link text-white ms-lg-2" href="{{ route('profile.certificados') }}">
+            Meus certificados
+          </a>
+        </li>
+        @endrole
         @endauth
       </ul>
 
@@ -62,7 +74,7 @@
         @endif
         @else
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-white" href="#" role="button"
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button"
             data-bs-toggle="dropdown" aria-expanded="false">
             Olá, {{ Auth::user()->name }}
           </a>
@@ -98,3 +110,34 @@
   }
 }
 </style>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toggles = Array.from(document.querySelectorAll('.nav-dropdown-fallback'));
+
+  if (window.bootstrap?.Dropdown) {
+    toggles.forEach(t => new window.bootstrap.Dropdown(t));
+    return;
+  }
+
+  // Fallback caso o JS do Bootstrap não esteja carregado.
+  toggles.forEach(toggle => {
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      const menu = toggle.nextElementSibling;
+      if (!menu) return;
+      const isOpen = menu.classList.contains('show');
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+      if (!isOpen) menu.classList.add('show');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-item.dropdown')) {
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+    }
+  });
+});
+</script>
+@endpush
