@@ -67,23 +67,42 @@
       <input type="hidden" name="layout_frente[y]" id="layout_frente_y" value="{{ old('layout_frente.y', $modelo->layout_frente['y'] ?? '') }}">
       <input type="hidden" name="layout_frente[w]" id="layout_frente_w" value="{{ old('layout_frente.w', $modelo->layout_frente['w'] ?? '') }}">
       <input type="hidden" name="layout_frente[h]" id="layout_frente_h" value="{{ old('layout_frente.h', $modelo->layout_frente['h'] ?? '') }}">
+      <input type="hidden" name="layout_frente[canvas_w]" id="layout_frente_canvas_w" value="{{ old('layout_frente.canvas_w', $modelo->layout_frente['canvas_w'] ?? '') }}">
+      <input type="hidden" name="layout_frente[canvas_h]" id="layout_frente_canvas_h" value="{{ old('layout_frente.canvas_h', $modelo->layout_frente['canvas_h'] ?? '') }}">
       <input type="hidden" name="layout_frente[font_family]" id="layout_frente_font_family" value="{{ old('layout_frente.font_family', $modelo->layout_frente['font_family'] ?? 'Arial') }}">
       <input type="hidden" name="layout_frente[font_size]" id="layout_frente_font_size" value="{{ old('layout_frente.font_size', $modelo->layout_frente['font_size'] ?? 22) }}">
       <input type="hidden" name="layout_frente[font_weight]" id="layout_frente_font_weight" value="{{ old('layout_frente.font_weight', $modelo->layout_frente['font_weight'] ?? 'normal') }}">
       <input type="hidden" name="layout_frente[font_style]" id="layout_frente_font_style" value="{{ old('layout_frente.font_style', $modelo->layout_frente['font_style'] ?? 'normal') }}">
       <input type="hidden" name="layout_frente[align]" id="layout_frente_align" value="{{ old('layout_frente.align', $modelo->layout_frente['align'] ?? 'left') }}">
       <input type="hidden" name="layout_frente[styles]" id="layout_frente_styles" value="{{ old('layout_frente.styles', isset($modelo->layout_frente['styles']) ? json_encode($modelo->layout_frente['styles']) : '') }}">
+      <input type="hidden" name="layout_frente[qr_x]" id="layout_frente_qr_x" value="{{ old('layout_frente.qr_x', $modelo->layout_frente['qr_x'] ?? '') }}">
+      <input type="hidden" name="layout_frente[qr_y]" id="layout_frente_qr_y" value="{{ old('layout_frente.qr_y', $modelo->layout_frente['qr_y'] ?? '') }}">
+      <input type="hidden" name="layout_frente[qr_size]" id="layout_frente_qr_size" value="{{ old('layout_frente.qr_size', $modelo->layout_frente['qr_size'] ?? 140) }}">
 
       <input type="hidden" name="layout_verso[x]" id="layout_verso_x" value="{{ old('layout_verso.x', $modelo->layout_verso['x'] ?? '') }}">
       <input type="hidden" name="layout_verso[y]" id="layout_verso_y" value="{{ old('layout_verso.y', $modelo->layout_verso['y'] ?? '') }}">
       <input type="hidden" name="layout_verso[w]" id="layout_verso_w" value="{{ old('layout_verso.w', $modelo->layout_verso['w'] ?? '') }}">
       <input type="hidden" name="layout_verso[h]" id="layout_verso_h" value="{{ old('layout_verso.h', $modelo->layout_verso['h'] ?? '') }}">
+      <input type="hidden" name="layout_verso[canvas_w]" id="layout_verso_canvas_w" value="{{ old('layout_verso.canvas_w', $modelo->layout_verso['canvas_w'] ?? '') }}">
+      <input type="hidden" name="layout_verso[canvas_h]" id="layout_verso_canvas_h" value="{{ old('layout_verso.canvas_h', $modelo->layout_verso['canvas_h'] ?? '') }}">
       <input type="hidden" name="layout_verso[font_family]" id="layout_verso_font_family" value="{{ old('layout_verso.font_family', $modelo->layout_verso['font_family'] ?? 'Arial') }}">
       <input type="hidden" name="layout_verso[font_size]" id="layout_verso_font_size" value="{{ old('layout_verso.font_size', $modelo->layout_verso['font_size'] ?? 22) }}">
       <input type="hidden" name="layout_verso[font_weight]" id="layout_verso_font_weight" value="{{ old('layout_verso.font_weight', $modelo->layout_verso['font_weight'] ?? 'normal') }}">
       <input type="hidden" name="layout_verso[font_style]" id="layout_verso_font_style" value="{{ old('layout_verso.font_style', $modelo->layout_verso['font_style'] ?? 'normal') }}">
       <input type="hidden" name="layout_verso[align]" id="layout_verso_align" value="{{ old('layout_verso.align', $modelo->layout_verso['align'] ?? 'left') }}">
       <input type="hidden" name="layout_verso[styles]" id="layout_verso_styles" value="{{ old('layout_verso.styles', isset($modelo->layout_verso['styles']) ? json_encode($modelo->layout_verso['styles']) : '') }}">
+      <input type="hidden" name="layout_verso[qr_x]" id="layout_verso_qr_x" value="{{ old('layout_verso.qr_x', $modelo->layout_verso['qr_x'] ?? '') }}">
+      <input type="hidden" name="layout_verso[qr_y]" id="layout_verso_qr_y" value="{{ old('layout_verso.qr_y', $modelo->layout_verso['qr_y'] ?? '') }}">
+      <input type="hidden" name="layout_verso[qr_size]" id="layout_verso_qr_size" value="{{ old('layout_verso.qr_size', $modelo->layout_verso['qr_size'] ?? 140) }}">
+      <div class="col-md-4">
+        <label class="form-label" for="layout_verso_qr_color_input">Cor do QR (verso)</label>
+        <input type="color"
+          id="layout_verso_qr_color_input"
+          name="layout_verso[qr_color]"
+          class="form-control form-control-color"
+          value="{{ old('layout_verso.qr_color', $modelo->layout_verso['qr_color'] ?? '#811283') }}"
+          title="Cor principal do QR">
+      </div>
 
       <div class="col-12">
         <label class="form-label">Pré-visualização - Frente</label>
@@ -143,6 +162,8 @@
 </div>
 
 @push('scripts')
+{{-- Carrega Fabric somente nesta tela de modelo de certificado --}}
+<script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
 <script>
   function simplePreview(inputId, previewWrapperId) {
     const input = document.getElementById(inputId);
@@ -173,8 +194,11 @@
     const {
       canvasId, fileInputId, textareaId,
       xInputId, yInputId, wInputId, hInputId,
+      canvasWInputId, canvasHInputId,
       fontFamilyInputId, fontSizeInputId, fontWeightInputId, fontStyleInputId, alignInputId, stylesInputId,
-      existingUrl, toolbar
+      qrXInputId, qrYInputId, qrSizeInputId,
+      existingUrl, toolbar,
+      qrEnabled = true,
     } = opts;
 
     const canvasEl = document.getElementById(canvasId);
@@ -185,16 +209,22 @@
     const yInput = document.getElementById(yInputId);
     const wInput = document.getElementById(wInputId);
     const hInput = document.getElementById(hInputId);
+    const canvasWInput = document.getElementById(canvasWInputId);
+    const canvasHInput = document.getElementById(canvasHInputId);
     const fontFamilyInput = document.getElementById(fontFamilyInputId);
     const fontSizeInput = document.getElementById(fontSizeInputId);
     const fontWeightInput = document.getElementById(fontWeightInputId);
     const fontStyleInput = document.getElementById(fontStyleInputId);
     const alignInput = document.getElementById(alignInputId);
     const stylesInput = document.getElementById(stylesInputId);
+    const qrXInput = qrEnabled ? document.getElementById(qrXInputId) : null;
+    const qrYInput = qrEnabled ? document.getElementById(qrYInputId) : null;
+    const qrSizeInput = qrEnabled ? document.getElementById(qrSizeInputId) : null;
     if (!canvasEl || !fileInput || !textArea || !xInput || !yInput || !wInput || !hInput || !fontFamilyInput || !fontSizeInput || !fontWeightInput || !fontStyleInput || !alignInput || !stylesInput) return;
 
     const canvas = new fabric.Canvas(canvasId, { selection: false, backgroundColor: '#ffffff' });
     let textObj = null;
+    let qrObj = null;
     let guides = [];
     let snapGuides = [];
 
@@ -228,14 +258,21 @@
       if (!textObj) return;
       xInput.value = Math.round(textObj.left ?? 0);
       yInput.value = Math.round(textObj.top ?? 0);
-      wInput.value = Math.round(textObj.getScaledWidth() ?? textObj.width ?? 0);
-      hInput.value = Math.round(textObj.getScaledHeight() ?? textObj.height ?? 0);
+      wInput.value = Math.round(textObj.width ?? 0);
+      hInput.value = Math.round(textObj.height ?? 0);
+      if (canvasWInput) canvasWInput.value = Math.round(canvas.getWidth());
+      if (canvasHInput) canvasHInput.value = Math.round(canvas.getHeight());
       fontFamilyInput.value = textObj.fontFamily || 'Arial';
       fontSizeInput.value = Math.round(textObj.fontSize || 22);
       fontWeightInput.value = textObj.fontWeight || 'normal';
       fontStyleInput.value = textObj.fontStyle || 'normal';
       alignInput.value = textObj.textAlign || 'left';
       stylesInput.value = JSON.stringify(textObj.styles || {});
+      if (qrObj) {
+        qrXInput && (qrXInput.value = Math.round(qrObj.left ?? 0));
+        qrYInput && (qrYInput.value = Math.round(qrObj.top ?? 0));
+        qrSizeInput && (qrSizeInput.value = Math.round(qrObj.width ?? 0));
+      }
     };
 
     const ensureText = () => {
@@ -269,8 +306,8 @@
         const w = canvas.getWidth();
         const h = canvas.getHeight();
         const threshold = 5;
-        const cx = textObj.left + textObj.getScaledWidth() / 2;
-        const cy = textObj.top + textObj.getScaledHeight() / 2;
+        const cx = textObj.left + (textObj.width || 0) / 2;
+        const cy = textObj.top + (textObj.height || 0) / 2;
         if (Math.abs(cx - w / 2) <= threshold) {
           snapGuides.push(new fabric.Line([w / 2, 0, w / 2, h], { stroke: '#f97316', selectable: false, evented: false }));
         }
@@ -281,10 +318,15 @@
         canvas.renderAll();
       };
 
-      textObj.on('modified', () => { updateHidden(); showSnap(); });
+      const lockScale = () => {
+        const newW = (textObj.width || 0) * (textObj.scaleX || 1);
+        const newH = (textObj.height || 0) * (textObj.scaleY || 1);
+        textObj.set({ width: newW, height: newH, scaleX: 1, scaleY: 1 });
+      };
+      textObj.on('modified', () => { lockScale(); updateHidden(); showSnap(); });
       textObj.on('moving', () => { updateHidden(); showSnap(); });
-      textObj.on('scaled', () => { updateHidden(); showSnap(); });
-      textObj.on('scaling', () => { updateHidden(); showSnap(); });
+      textObj.on('scaled', () => { lockScale(); updateHidden(); showSnap(); });
+      textObj.on('scaling', () => { lockScale(); updateHidden(); showSnap(); });
       textObj.on('changed', updateHidden);
       textObj.on('selection:changed', () => {
         syncToolbarWithSelection();
@@ -294,21 +336,63 @@
       syncToolbarWithSelection();
     };
 
+    const ensureQr = () => {
+      if (!qrEnabled || qrObj || !qrXInput || !qrYInput || !qrSizeInput) return;
+      const qx = parseFloat(qrXInput.value || '0') || canvas.getWidth() * 0.78;
+      const qy = parseFloat(qrYInput.value || '0') || canvas.getHeight() * 0.75;
+      const qs = parseFloat(qrSizeInput.value || '140') || 140;
+      qrObj = new fabric.Rect({
+        left: qx,
+        top: qy,
+        width: qs,
+        height: qs,
+        fill: 'rgba(44,181,124,0.08)',
+        stroke: '#22c55e',
+        strokeWidth: 2,
+        selectable: true,
+        evented: true,
+        lockRotation: true,
+        lockScalingFlip: true,
+      });
+      qrObj.on('modified', () => {
+        qrObj.set({ scaleX: 1, scaleY: 1 });
+        updateHidden();
+      });
+      qrObj.on('moving', updateHidden);
+      qrObj.on('scaled', () => {
+        qrObj.set({ width: qrObj.width * qrObj.scaleX, height: qrObj.height * qrObj.scaleY, scaleX: 1, scaleY: 1 });
+        updateHidden();
+      });
+      qrObj.on('scaling', () => {
+        qrObj.set({ width: qrObj.width * qrObj.scaleX, height: qrObj.height * qrObj.scaleY, scaleX: 1, scaleY: 1 });
+        updateHidden();
+      });
+      canvas.add(qrObj);
+      qrObj.bringToFront();
+      textObj && textObj.bringToFront();
+      updateHidden();
+      canvas.renderAll();
+    };
+
     const loadImage = (url) => {
       // Sempre desenha guias e texto, mesmo que não haja imagem
       drawGuides();
       ensureText();
+      ensureQr();
 
       const fallbackSize = () => {
         const targetW = (container?.clientWidth ?? 960) - 24;
         const targetH = Math.round(targetW * 0.6);
         canvas.setWidth(targetW);
         canvas.setHeight(targetH);
+        canvasEl.style.width = `${targetW}px`;
+        canvasEl.style.height = `${targetH}px`;
         if (container) container.style.height = `${targetH}px`;
       };
 
       if (!url) {
         fallbackSize();
+        ensureQr();
         canvas.renderAll();
         return;
       }
@@ -318,17 +402,17 @@
       imgEl.crossOrigin = 'anonymous';
       imgEl.onload = () => {
         const targetW = (container?.clientWidth ?? 960) - 24;
-        const maxH = 620;
-        const scale = Math.min(
-          targetW / imgEl.naturalWidth,
-          maxH / imgEl.naturalHeight,
-          1
-        );
-        const targetH = imgEl.naturalHeight * scale;
+        const scale = Math.min(targetW / imgEl.naturalWidth, 1);
+        const imgW = imgEl.naturalWidth * scale;
+        const imgH = imgEl.naturalHeight * scale;
 
-        canvas.setWidth(targetW);
-        canvas.setHeight(targetH);
-        if (container) container.style.height = `${targetH}px`;
+        canvas.setWidth(imgW);
+        canvas.setHeight(imgH);
+        canvasEl.style.width = `${imgW}px`;
+        canvasEl.style.height = `${imgH}px`;
+        if (canvasWInput) canvasWInput.value = Math.round(imgW);
+        if (canvasHInput) canvasHInput.value = Math.round(imgH);
+        if (container) container.style.height = `${imgH}px`;
 
         const fabricImg = new fabric.Image(imgEl, {
           originX: 'left',
@@ -351,12 +435,14 @@
         if (textObj) {
           textObj.text = textArea.value || 'Texto';
         }
+        ensureQr();
         canvas.renderAll();
       };
       imgEl.onerror = () => {
         fallbackSize();
         drawGuides();
         ensureText();
+        ensureQr();
         canvas.renderAll();
       };
       imgEl.src = absoluteUrl;
@@ -409,6 +495,7 @@
 
       if (selectionOnly && textObj.selectionStart !== textObj.selectionEnd && !isAlignChange) {
         textObj.setSelectionStyles(stylePayload, textObj.selectionStart, textObj.selectionEnd);
+        textObj.set(stylePayload);
       } else {
         textObj.set(stylePayload);
       }
@@ -496,6 +583,8 @@
         yInputId: 'layout_frente_y',
         wInputId: 'layout_frente_w',
         hInputId: 'layout_frente_h',
+        canvasWInputId: 'layout_frente_canvas_w',
+        canvasHInputId: 'layout_frente_canvas_h',
         fontFamilyInputId: 'layout_frente_font_family',
         fontSizeInputId: 'layout_frente_font_size',
         fontWeightInputId: 'layout_frente_font_weight',
@@ -509,6 +598,7 @@
           italicBtn: document.querySelector('[data-front-style="italic"]'),
           alignButtons: Array.from(document.querySelectorAll('[data-front-align]')),
         },
+        qrEnabled: false,
         existingUrl: "{{ !empty($modelo?->imagem_frente) ? asset('storage/'.$modelo->imagem_frente) : '' }}",
       });
 
@@ -520,12 +610,17 @@
         yInputId: 'layout_verso_y',
         wInputId: 'layout_verso_w',
         hInputId: 'layout_verso_h',
+        canvasWInputId: 'layout_verso_canvas_w',
+        canvasHInputId: 'layout_verso_canvas_h',
         fontFamilyInputId: 'layout_verso_font_family',
         fontSizeInputId: 'layout_verso_font_size',
         fontWeightInputId: 'layout_verso_font_weight',
         fontStyleInputId: 'layout_verso_font_style',
         alignInputId: 'layout_verso_align',
         stylesInputId: 'layout_verso_styles',
+        qrXInputId: 'layout_verso_qr_x',
+        qrYInputId: 'layout_verso_qr_y',
+        qrSizeInputId: 'layout_verso_qr_size',
         toolbar: {
           fontFamilySelect: document.getElementById('back_toolbar_font'),
           fontSizeField: document.getElementById('back_toolbar_size'),

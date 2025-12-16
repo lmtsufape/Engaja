@@ -31,8 +31,8 @@
                 <td>{{ $c->created_at?->format('d/m/Y H:i') }}</td>
                 <td>{{ $c->carga_horaria }}h</td>
                 <td class="text-end pe-4">
-                  <a href="{{ route('certificados.show', $c) }}" class="btn btn-sm btn-engaja" target="_blank">
-                    Visualizar / Baixar
+                  <a href="{{ route('certificados.download', $c) }}" class="btn btn-sm btn-engaja">
+                    Baixar PDF
                   </a>
                 </td>
               </tr>
