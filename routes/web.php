@@ -121,6 +121,9 @@ Route::middleware(['auth'])->group(function () {
         ->whereNumber('certificado')
         ->name('certificados.download');
 });
+Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
+    Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
+});
 
 Route::get( '/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');
 Route::post('/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'responderFormulario'])->name('avaliacao.formulario.responder');

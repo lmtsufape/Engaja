@@ -48,19 +48,23 @@
             Gerenciar Usuários
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link text-white ms-lg-2" href="{{ route('certificados.modelos.index') }}">
+        @endhasanyrole
+
+        @hasanyrole('administrador|gestor|participante')
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
             Certificados
           </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ route('profile.certificados') }}">Meus certificados</a></li>
+            @hasanyrole('administrador|gestor')
+              <li><a class="dropdown-item" href="{{ route('certificados.modelos.index') }}">Modelos de certificados</a></li>
+              <li><a class="dropdown-item" href="{{ route('certificados.emitidos') }}">Certificados emitidos</a></li>
+            @endhasanyrole
+          </ul>
         </li>
         @endhasanyrole
-        @role('participante')
-        <li class="nav-item">
-          <a class="nav-link text-white ms-lg-2" href="{{ route('profile.certificados') }}">
-            Meus certificados
-          </a>
-        </li>
-        @endrole
         @endauth
       </ul>
 

@@ -213,7 +213,9 @@ class CertificadoController extends Controller
     public function show(Certificado $certificado)
     {
         $user = auth()->user();
-        if ($certificado->participante_id !== $user->participante?->id) {
+        $isOwner = $certificado->participante_id === optional($user->participante)->id;
+        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
+        if (! $isOwner && ! $isAdmin) {
             abort(403);
         }
         $certificado->load('modelo');
@@ -233,7 +235,9 @@ class CertificadoController extends Controller
     public function download(Certificado $certificado)
     {
         $user = auth()->user();
-        if ($certificado->participante_id !== $user->participante?->id) {
+        $isOwner = $certificado->participante_id === optional($user->participante)->id;
+        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
+        if (! $isOwner && ! $isAdmin) {
             abort(403);
         }
 
@@ -251,6 +255,15 @@ class CertificadoController extends Controller
         $fileName = 'certificado-'.$certificado->id.'.pdf';
 
         return $pdf->download($fileName);
+    }
+
+    public function emitidos()
+    {
+        $certificados = Certificado::with(['participante.user', 'modelo'])
+            ->latest()
+            ->paginate(20);
+
+        return view('certificados.emitidos', compact('certificados'));
     }
 
     public function preview(Request $request)
@@ -276,8 +289,8 @@ class CertificadoController extends Controller
         }
 
         $map = [
-            '%participante%'  => 'Participante Exemplo',
-            '%acao%'          => $eventoNome,
+            '%participante%'  => '[NOME DO PARTICIPANTE]',
+            '%acao%'          => '[NOME DA AÇÃO PEDAGÓGICA]',
             '%carga_horaria%' => '10',
         ];
 
