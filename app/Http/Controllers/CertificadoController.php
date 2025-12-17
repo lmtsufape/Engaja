@@ -213,7 +213,9 @@ class CertificadoController extends Controller
     public function show(Certificado $certificado)
     {
         $user = auth()->user();
-        if ($certificado->participante_id !== $user->participante?->id) {
+        $isOwner = $certificado->participante_id === optional($user->participante)->id;
+        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
+        if (! $isOwner && ! $isAdmin) {
             abort(403);
         }
         $certificado->load('modelo');
@@ -233,7 +235,9 @@ class CertificadoController extends Controller
     public function download(Certificado $certificado)
     {
         $user = auth()->user();
-        if ($certificado->participante_id !== $user->participante?->id) {
+        $isOwner = $certificado->participante_id === optional($user->participante)->id;
+        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
+        if (! $isOwner && ! $isAdmin) {
             abort(403);
         }
 
@@ -251,5 +255,63 @@ class CertificadoController extends Controller
         $fileName = 'certificado-'.$certificado->id.'.pdf';
 
         return $pdf->download($fileName);
+    }
+
+    public function emitidos()
+    {
+        $certificados = Certificado::with(['participante.user', 'modelo'])
+            ->latest()
+            ->paginate(20);
+
+        return view('certificados.emitidos', compact('certificados'));
+    }
+
+    public function preview(Request $request)
+    {
+        $request->validate([
+            'modelo_id' => ['required', 'exists:modelo_certificados,id'],
+            'eventos'   => ['nullable', 'string'],
+        ]);
+
+        $modelo = ModeloCertificado::findOrFail($request->modelo_id);
+        $eventos = collect(explode(',', (string) $request->eventos))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $eventoNome = 'Ação pedagógica';
+        if ($eventos->count()) {
+            $evento = Evento::find($eventos->first());
+            if ($evento) {
+                $eventoNome = $evento->nome;
+            }
+        }
+
+        $map = [
+            '%participante%'  => '[NOME DO PARTICIPANTE]',
+            '%acao%'          => '[NOME DA AÇÃO PEDAGÓGICA]',
+            '%carga_horaria%' => '10',
+        ];
+
+        $certificado = new Certificado();
+        $certificado->modelo = $modelo;
+        $certificado->texto_frente = strtr($modelo->texto_frente ?? '', $map);
+        $certificado->texto_verso  = strtr($modelo->texto_verso ?? '', $map);
+        $certificado->evento_nome  = $eventoNome;
+        $certificado->codigo_validacao = null;
+        $certificado->carga_horaria = 10;
+
+        $pdf = app('dompdf.wrapper');
+        $pdf->setOptions([
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'dpi' => 72,
+            'defaultMediaType' => 'print',
+        ]);
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->loadView('certificados.pdf', ['certificado' => $certificado]);
+
+        return $pdf->stream('certificado-preview.pdf');
     }
 }

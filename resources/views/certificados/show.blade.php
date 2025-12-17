@@ -89,7 +89,7 @@
              data-cert-layer="frente"
              data-layout='@json($layoutFrente)'
              data-text="{!! nl2br(e($textoFrente)) !!}">
-          {!! nl2br(e($textoFrente)) !!}
+          {!! $renderStyled($textoFrente, $layoutFrente['styles'] ?? [], $layoutFrente['font_weight'] ?? 'normal', $layoutFrente['font_style'] ?? 'normal') !!}
         </div>
       </div>
 
@@ -102,7 +102,7 @@
              data-cert-layer="verso"
              data-layout='@json($layoutVerso)'
              data-text="{!! nl2br(e($textoVerso)) !!}">
-          {!! nl2br(e($textoVerso)) !!}
+          {!! $renderStyled($textoVerso, $layoutVerso['styles'] ?? [], $layoutVerso['font_weight'] ?? 'normal', $layoutVerso['font_style'] ?? 'normal') !!}
         </div>
       </div>
       @endif

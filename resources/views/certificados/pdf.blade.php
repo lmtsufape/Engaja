@@ -22,11 +22,10 @@
     }
     .text-layer {
       position: absolute;
-      inset: 12%;
       color: #111;
       font-size: 20px;
       line-height: 1.4;
-      white-space: pre-line;
+      white-space: normal;
       text-align: justify;
       text-align-last: left;
       text-justify: inter-word;
@@ -116,6 +115,57 @@
 
     $frenteUrl = $toBase64Reduced($frenteFile);
     $versoUrl  = $toBase64Reduced($versoFile);
+
+    $renderStyled = function ($text, $layout) {
+        $styles = $layout['styles'] ?? [];
+        $lines = explode("\n", (string) $text);
+        $parts = [];
+        foreach ($lines as $rowIndex => $line) {
+            $lineStyles = $styles[$rowIndex] ?? [];
+            $chars = preg_split('//u', $line, -1, PREG_SPLIT_NO_EMPTY);
+            $buffer = '';
+            $prevStyle = null;
+            $flush = function () use (&$buffer, &$prevStyle, &$parts) {
+                if ($buffer === '') {
+                    return;
+                }
+                $open = '';
+                $close = '';
+                if (($prevStyle['fontWeight'] ?? '') === 'bold') {
+                    $open .= '<strong>';
+                    $close = '</strong>' . $close;
+                }
+                if (($prevStyle['fontStyle'] ?? '') === 'italic') {
+                    $open .= '<em>';
+                    $close = '</em>' . $close;
+                }
+                $parts[] = $open . e($buffer) . $close;
+                $buffer = '';
+            };
+
+            foreach ($chars as $idx => $ch) {
+                $current = $lineStyles[$idx] ?? [];
+                if ($prevStyle === null) {
+                    $prevStyle = $current;
+                    $buffer .= $ch;
+                    continue;
+                }
+                if ($current === $prevStyle) {
+                    $buffer .= $ch;
+                } else {
+                    $flush();
+                    $prevStyle = $current;
+                    $buffer .= $ch;
+                }
+            }
+            $flush();
+            // quebra de linha
+            if ($rowIndex < count($lines) - 1) {
+                $parts[] = '<br>';
+            }
+        }
+        return implode('', $parts);
+    };
   @endphp
 
   <div class="page">
@@ -160,7 +210,7 @@
       if ($boxH) $styleFront[] = "height:{$boxH}px";
     @endphp
     <img src="{{ $frenteUrl }}" class="bg" alt="Frente" style="width:{{ $renderW }}px; height:{{ $renderH }}px; left:{{ $offsetX }}px; top:{{ $offsetY }}px;">
-    <div class="text-layer" style="{{ implode(';', $styleFront) }}">{!! nl2br(e($textoFrente)) !!}</div>
+    <div class="text-layer" style="{{ implode(';', $styleFront) }}">{!! $renderStyled($textoFrente, $layoutFrente) !!}</div>
   </div>
 
   @if($versoUrl || $textoVerso)
@@ -211,7 +261,7 @@
     @if($qrBase64 && ($layoutVerso['qr_size'] ?? null))
       <img src="{{ $qrBase64 }}" alt="QR" style="position:absolute; left:{{ $qrX }}px; top:{{ $qrY }}px; width:{{ $qrS }}px; height:{{ $qrS }}px; object-fit:contain;">
     @endif
-    <div class="text-layer" style="{{ implode(';', $styleBack) }}">{!! nl2br(e($textoVerso)) !!}</div>
+    <div class="text-layer" style="{{ implode(';', $styleBack) }}">{!! $renderStyled($textoVerso, $layoutVerso) !!}</div>
   </div>
   @endif
 </body>

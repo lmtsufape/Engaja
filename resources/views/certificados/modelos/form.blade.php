@@ -106,7 +106,7 @@
 
       <div class="col-12">
         <label class="form-label">Pré-visualização - Frente</label>
-        <div class="border rounded p-2 bg-light position-relative d-flex justify-content-center" style="min-height: 300px;">
+        <div class="border rounded p-2 position-relative d-flex justify-content-center" style="min-height: 420px; background:#fff;">
           <div class="position-absolute top-0 start-0 end-0 d-flex align-items-center gap-2 p-2" style="z-index:2; pointer-events: auto;">
             <select id="front_toolbar_font" class="form-select form-select-sm w-auto">
               @foreach(['Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma'] as $fam)
@@ -131,7 +131,7 @@
 
       <div class="col-12">
         <label class="form-label">Pré-visualização - Verso</label>
-        <div class="border rounded p-2 bg-light position-relative d-flex justify-content-center" style="min-height: 300px;">
+        <div class="border rounded p-2 position-relative d-flex justify-content-center" style="min-height: 420px; background:#fff;">
           <div class="position-absolute top-0 start-0 end-0 d-flex align-items-center gap-2 p-2" style="z-index:2; pointer-events: auto;">
             <select id="back_toolbar_font" class="form-select form-select-sm w-auto">
               @foreach(['Arial','Georgia','Times New Roman','Courier New','Verdana','Tahoma'] as $fam)
@@ -346,9 +346,9 @@
         top: qy,
         width: qs,
         height: qs,
-        fill: 'rgba(44,181,124,0.08)',
-        stroke: '#22c55e',
-        strokeWidth: 2,
+        fill: 'rgba(34,197,94,0.18)',
+        stroke: '#16a34a',
+        strokeWidth: 3,
         selectable: true,
         evented: true,
         lockRotation: true,

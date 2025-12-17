@@ -120,12 +120,55 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-outline-primary" id="btn-preview-certificado" disabled>Pré-visualizar</button>
                         <button type="submit" class="btn btn-engaja" id="btn-confirmar-emissao" disabled>Emitir agora</button>
                     </div>
                 </div>
             </div>
         </div>
     </form>
+
+@push('scripts')
+<script>
+  (function() {
+    const selectModelo = document.getElementById('modelo_id');
+    const hiddenEventos = document.getElementById('eventosSelecionados');
+    const btnPreview = document.getElementById('btn-preview-certificado');
+    const btnEmitir = document.getElementById('btn-confirmar-emissao');
+
+    const toggleButtons = () => {
+      const hasModelo = selectModelo && selectModelo.value;
+      const hasEventos = hiddenEventos && hiddenEventos.value;
+      const enable = Boolean(hasModelo && hasEventos);
+      if (btnPreview) btnPreview.disabled = !enable;
+      if (btnEmitir) btnEmitir.disabled = !enable;
+    };
+
+    if (selectModelo) {
+      selectModelo.addEventListener('change', toggleButtons);
+    }
+
+    // Se o JS que popula eventosSelecionados já existir, este listener garante atualização
+    if (hiddenEventos) {
+      hiddenEventos.addEventListener('change', toggleButtons);
+    }
+
+    if (btnPreview) {
+      btnPreview.addEventListener('click', () => {
+        if (!selectModelo.value || !hiddenEventos.value) return;
+        const params = new URLSearchParams({
+          modelo_id: selectModelo.value,
+          eventos: hiddenEventos.value,
+        });
+        window.open(`{{ route('certificados.preview') }}?${params.toString()}`, '_blank');
+      });
+    }
+
+    // Chamada inicial
+    toggleButtons();
+  })();
+</script>
+@endpush
 @endsection
 
 @push('scripts')

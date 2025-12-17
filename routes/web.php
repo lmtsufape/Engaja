@@ -113,8 +113,16 @@ Route::post('/presenca/{atividade}/confirmar', [PresencaController::class, 'stor
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
-    Route::get('/certificados/{certificado}', [CertificadoController::class, 'show'])->name('certificados.show');
-    Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])->name('certificados.download');
+    Route::get('/certificados/preview', [CertificadoController::class, 'preview'])->name('certificados.preview');
+    Route::get('/certificados/{certificado}', [CertificadoController::class, 'show'])
+        ->whereNumber('certificado')
+        ->name('certificados.show');
+    Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])
+        ->whereNumber('certificado')
+        ->name('certificados.download');
+});
+Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
+    Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
 });
 
 Route::get( '/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');
