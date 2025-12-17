@@ -14,6 +14,7 @@ class CertificadoEmitidoMail extends Mailable implements ShouldQueue
     public string $nome;
     public string $acao;
     public int $certificadoId;
+    public ?string $logoData = null;
 
     public function __construct(string $nome, string $acao, int $certificadoId)
     {
@@ -24,7 +25,14 @@ class CertificadoEmitidoMail extends Mailable implements ShouldQueue
 
     public function build(): self
     {
-        return $this->subject('Certificado disponível - '.$this->acao)
-            ->view('emails.certificados.emitido');
+        $logoPath = public_path('images/engaja-bg-white.png');
+        if (file_exists($logoPath)) {
+            $data = base64_encode(file_get_contents($logoPath));
+            $this->logoData = 'data:image/png;base64,'.$data;
+        }
+
+        return $this->subject('Certificado disponivel - '.$this->acao)
+            ->view('emails.certificados.emitido')
+            ->with(['logoData' => $this->logoData]);
     }
 }

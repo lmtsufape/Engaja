@@ -60,11 +60,10 @@
 </head>
 <body>
   <div class="wrapper">
-    @php
-      $logoUrl = url(asset('images/engaja-bg-white.png'));
-    @endphp
     <div class="logo">
-      <img src="{{ $logoUrl }}" alt="Engaja" style="height:48px;">
+      @if(!empty($logoData))
+        <img src="{{ $logoData }}" alt="Engaja" style="height:48px;">
+      @endif
     </div>
     <div class="card">
       <h1>Olá, {{ $nome }}!</h1>
