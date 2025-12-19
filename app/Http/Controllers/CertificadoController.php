@@ -33,7 +33,7 @@ class CertificadoController extends Controller
         }
         $eventosIds = array_unique(array_filter($eventosIds));
         if (empty($eventosIds)) {
-            return back()->with('error', 'Selecione ao menos uma a??o pedag?gica.');
+            return back()->with('error', 'Selecione ao menos uma ação pedagógica.');
         }
 
         $modelo = ModeloCertificado::findOrFail($data['modelo_id']);

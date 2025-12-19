@@ -125,6 +125,7 @@
             $chars = preg_split('//u', $line, -1, PREG_SPLIT_NO_EMPTY);
             $buffer = '';
             $prevStyle = null;
+            $boldFlag = false;
             $flush = function () use (&$buffer, &$prevStyle, &$parts) {
                 if ($buffer === '') {
                     return;
@@ -144,7 +145,17 @@
             };
 
             foreach ($chars as $idx => $ch) {
+                if ($ch === '*') {
+                    // alterna negrito com marcador *...*
+                    $flush();
+                    $boldFlag = ! $boldFlag;
+                    $prevStyle = null;
+                    continue;
+                }
                 $current = $lineStyles[$idx] ?? [];
+                if ($boldFlag) {
+                    $current['fontWeight'] = 'bold';
+                }
                 if ($prevStyle === null) {
                     $prevStyle = $current;
                     $buffer .= $ch;
