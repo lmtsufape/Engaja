@@ -99,7 +99,7 @@ class CertificadoController extends Controller
             }
         }
 
-        $this->notificarLote($paraNotificar);
+        //$this->notificarLote($paraNotificar);
 
         return redirect()
             ->back()
@@ -201,7 +201,7 @@ class CertificadoController extends Controller
             }
         }
 
-        $this->notificarLote($paraNotificar);
+        //$this->notificarLote($paraNotificar);
 
         return redirect()
             ->back()
