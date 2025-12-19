@@ -4,12 +4,6 @@
 import * as bootstrap from 'bootstrap';
 window.bootstrap = bootstrap;
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadFabricIfNeeded, { once: true });
-} else {
-  loadFabricIfNeeded();
-}
-
 let confirmModalInstance;
 let confirmMessageEl;
 let confirmAcceptBtn;
