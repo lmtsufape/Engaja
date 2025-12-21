@@ -269,6 +269,40 @@ class CertificadoController extends Controller
         return view('certificados.emitidos', compact('certificados'));
     }
 
+    public function edit(Certificado $certificado)
+    {
+        $user = auth()->user();
+        if (! $user->hasAnyRole(['administrador', 'gestor'])) {
+            abort(403);
+        }
+
+        $certificado->load(['participante.user', 'modelo']);
+
+        return view('certificados.edit', compact('certificado'));
+    }
+
+    public function update(Request $request, Certificado $certificado)
+    {
+        $user = auth()->user();
+        if (! $user->hasAnyRole(['administrador', 'gestor'])) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'texto_frente' => ['required', 'string'],
+            'texto_verso'  => ['nullable', 'string'],
+        ]);
+
+        $certificado->update([
+            'texto_frente' => $data['texto_frente'],
+            'texto_verso'  => $data['texto_verso'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('certificados.emitidos')
+            ->with('success', 'Certificado atualizado com sucesso.');
+    }
+
     public function preview(Request $request)
     {
         $request->validate([

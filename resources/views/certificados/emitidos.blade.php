@@ -29,9 +29,14 @@
             <td class="text-center">{{ $cert->modelo?->nome ?? '-' }}</td>
             <td class="text-center">{{ $cert->carga_horaria ?? '-' }}h</td>
             <td class="text-center">
-              <a href="{{ route('certificados.download', $cert) }}" class="btn btn-engaja btn-sm px-3">
-                Baixar PDF
-              </a>
+              <div class="d-flex gap-2 justify-content-center">
+                <a href="{{ route('certificados.download', $cert) }}" class="btn btn-engaja btn-sm px-3">
+                  Baixar PDF
+                </a>
+                <a href="{{ route('certificados.edit', $cert) }}" class="btn btn-outline-secondary btn-sm px-3">
+                  Editar
+                </a>
+              </div>
             </td>
           </tr>
         @empty

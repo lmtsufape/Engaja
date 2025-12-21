@@ -123,6 +123,12 @@ Route::middleware(['auth'])->group(function () {
 });
 Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
+    Route::get('/certificados/{certificado}/edit', [CertificadoController::class, 'edit'])
+        ->whereNumber('certificado')
+        ->name('certificados.edit');
+    Route::put('/certificados/{certificado}', [CertificadoController::class, 'update'])
+        ->whereNumber('certificado')
+        ->name('certificados.update');
 });
 
 Route::get( '/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');
