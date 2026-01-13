@@ -12,6 +12,7 @@ class PresencaController extends Controller
 {
     public function confirmarPresenca(Atividade $atividade)
     {
+        $atividade->load(['municipios.estado']);
         return view('atividades.confirmar-presenca', compact('atividade'));
     }
 
@@ -27,6 +28,11 @@ class PresencaController extends Controller
         $participante = Participante::where('cpf', $campo)
             ->orWhere('telefone', $campo)
             ->first();
+
+        if(!$usuario && $participante)
+        {
+            $usuario = User::find($participante->user_id);
+        }
 
         //TODO redirecionar para a tela de cadastro de participante
         if (!$usuario && !$participante) {
@@ -70,13 +76,28 @@ class PresencaController extends Controller
             ]);
         }
 
-        $atividade->presencas()->updateOrCreate(
+        $presenca = $atividade->presencas()->updateOrCreate(
             ['inscricao_id' => $inscricao->id],
             ['status' => 'presente']
         );
+        if (is_null($presenca->avaliacao_respondida)) {
+            $presenca->avaliacao_respondida = false;
+            $presenca->save();
+        }
         $dia = \Carbon\Carbon::parse($atividade->dia)
             ->locale('pt_BR')
             ->translatedFormat('l, d \\d\\e F \\d\\e Y');
-        return redirect()->route('presenca.confirmar', $atividade->id)->with('success', "Presença confirmada com sucesso na ação pedagógica ".$evento->nome.", no momento ".$atividade->descricao." (".$dia.")!");
+
+        return redirect()
+            ->route('presenca.confirmar', $atividade->id)
+            ->with([
+                'usuario_nome' => $usuario->name,
+                'evento_nome' => $evento->nome,
+                'atividade_nome' => $atividade->descricao,
+                'dia' => $dia,
+                'success-presenca' => 'Presença confirmada com sucesso!',
+                'avaliacao_token' => $presenca->avaliacao_respondida ? null : encrypt($presenca->id),
+                'avaliacao_disponivel' => ! $presenca->avaliacao_respondida,
+            ]);
     }
 }

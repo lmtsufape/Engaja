@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Participante;
 use App\Models\Atividade;
 use App\Models\Inscricao;
+use App\Models\ModeloCertificado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -36,13 +37,14 @@ class EventoController extends Controller
                 });
             })
             ->when($r->eixo, fn($qq) => $qq->where('eixo_id', $r->eixo))
-            ->when($r->de, fn($qq) => $qq->whereDate('data_horario', '>=', $r->de))
+            ->when($r->de, fn($qq) => $qq->whereDate('data_inicio', '>=', $r->de))
             ->orderByDesc('id');
 
         $eventos = $q->paginate(10);
         $eixos   = Eixo::orderBy('nome')->get();
+        $modelosCertificados = ModeloCertificado::orderBy('nome')->get();
 
-        return view('eventos.index', compact('eventos', 'eixos'));
+        return view('eventos.index', compact('eventos', 'eixos', 'modelosCertificados'));
     }
 
     public function create()
@@ -58,21 +60,21 @@ class EventoController extends Controller
         $this->authorize('create', Evento::class);
 
         $request->validate([
-            'nome'       => 'required|string|max:255',
-            'eixo_id'    => 'required|exists:eixos,id',
-            'duracao'    => 'nullable|integer|min:0',
-            'link'       => 'nullable|url',
-            'data_horario' => 'nullable|date',
-            'local'      => 'nullable|string|max:255',
-            'imagem'     => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'nome'        => 'required|string|max:255',
+            'eixo_id'     => 'required|exists:eixos,id',
+            'link'        => 'nullable|url',
+            'data_inicio' => 'nullable|date',
+            'data_fim'    => 'nullable|date|after_or_equal:data_inicio',
+            'local'       => 'nullable|string|max:255',
+            'imagem'      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
         ]);
 
         $dados = $request->only([
             'eixo_id',
             'nome',
             'tipo',
-            'data_horario',
-            'duracao',
+            'data_inicio',
+            'data_fim',
             'modalidade',
             'link',
             'objetivo',
@@ -96,7 +98,7 @@ class EventoController extends Controller
             'eixo',
             'user',
             'atividades' => fn($q) => $q
-                ->with('municipio.estado')
+                ->with('municipios.estado')
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);
@@ -116,21 +118,21 @@ class EventoController extends Controller
         $this->authorize('update', $evento);
 
         $request->validate([
-            'nome'       => 'required|string|max:255',
-            'eixo_id'    => 'required|exists:eixos,id',
-            'duracao'    => 'nullable|integer|min:0',
-            'link'       => 'nullable|url',
-            'data_horario' => 'nullable|date',
-            'local'      => 'nullable|string|max:255',
-            'imagem'     => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'nome'        => 'required|string|max:255',
+            'eixo_id'     => 'required|exists:eixos,id',
+            'link'        => 'nullable|url',
+            'data_inicio' => 'nullable|date',
+            'data_fim'    => 'nullable|date|after_or_equal:data_inicio',
+            'local'       => 'nullable|string|max:255',
+            'imagem'      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
         ]);
 
         $evento->fill($request->only([
             'eixo_id',
             'nome',
             'tipo',
-            'data_horario',
-            'duracao',
+            'data_inicio',
+            'data_fim',
             'modalidade',
             'link',
             'objetivo',
@@ -221,7 +223,7 @@ class EventoController extends Controller
 
             //Auth::login($user);
 
-            return redirect()->route('eventos.show', $evento->id)->with('success', 'Cadastro, inscrição e presença realizados!');
+            return redirect()->route('presenca.confirmar', $atividade->id)->with('success', 'Cadastro realizado com sucesso! Agora você já pode confirmar sua presença abaixo');
         } catch (\Throwable $e) {
             DB::rollBack();
 

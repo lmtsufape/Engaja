@@ -78,22 +78,21 @@
                     @error('modalidade') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                {{-- Duração (dias) --}}
-                <div class="col-md-4">
-                    <label for="duracao" class="form-label">Duração (dias)</label>
-                    <input id="duracao" name="duracao" type="number" min="0" step="1"
-                        value="{{ old('duracao') }}"
-                        class="form-control @error('duracao') is-invalid @enderror">
-                    @error('duracao') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                {{-- Período --}}
+                <div class="col-md-6">
+                    <label for="data_inicio" class="form-label">Início</label>
+                    <input id="data_inicio" name="data_inicio" type="date"
+                        value="{{ old('data_inicio') }}"
+                        class="form-control @error('data_inicio') is-invalid @enderror">
+                    @error('data_inicio') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                {{-- Data e hora --}}
                 <div class="col-md-6">
-                    <label for="data_horario" class="form-label">Data e horário</label>
-                    <input id="data_horario" name="data_horario" type="datetime-local"
-                        value="{{ old('data_horario') }}"
-                        class="form-control @error('data_horario') is-invalid @enderror">
-                    @error('data_horario') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    <label for="data_fim" class="form-label">Fim</label>
+                    <input id="data_fim" name="data_fim" type="date"
+                        value="{{ old('data_fim') }}"
+                        class="form-control @error('data_fim') is-invalid @enderror">
+                    @error('data_fim') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 {{-- Local --}}

@@ -13,5 +13,8 @@
     "laravel-vite-plugin": "^2.0.0",
     "sass": "^1.71.1",
     "vite": "^7.0.4"
+  },
+  "dependencies": {
+    "fabric": "^6.9.0"
   }
 }

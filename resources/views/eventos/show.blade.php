@@ -159,10 +159,20 @@
     <div class="col-md-7">
       <h1 class="h3 fw-bold text-engaja mb-2">{{ $evento->nome }}</h1>
 
+      @php
+        $dataInicio = $evento->data_inicio ? \Carbon\Carbon::parse($evento->data_inicio) : null;
+        $dataFim = $evento->data_fim ? \Carbon\Carbon::parse($evento->data_fim) : null;
+        $mesmoDia = $dataInicio && $dataFim && $dataInicio->isSameDay($dataFim);
+      @endphp
+
       <ul class="list-unstyled mb-3">
-        @if($evento->data_horario)
-        <li class="mb-1">📅
-          {{ \Carbon\Carbon::parse($evento->data_horario)->locale('pt_BR')->translatedFormat('l, d \d\e F \à\s H\hi') }}
+        @if($dataInicio || $dataFim)
+        <li class="mb-1">
+          📅
+          {{ $dataInicio ? $dataInicio->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') : 'Início não informado' }}
+          @if($dataFim && !$mesmoDia)
+          <br><small class="text-muted">Até {{ $dataFim->locale('pt_BR')->translatedFormat('l, d \d\e F \d\e Y') }}</small>
+          @endif
         </li>
         @endif
 
@@ -239,8 +249,19 @@
       @if($evento->tipo)
       <span class="ev-chip">Tipo: <strong class="ms-1">{{ $evento->tipo }}</strong></span>
       @endif
-      @if(!is_null($evento->duracao))
-      <span class="ev-chip">Duração: <strong class="ms-1">{{ $evento->duracao }} dias</strong></span>
+      @if($dataInicio || $dataFim)
+      @php
+        $chipInicio = $dataInicio ? $dataInicio->format('d/m/Y') : null;
+        $chipFim = $dataFim && !$mesmoDia ? $dataFim->format('d/m/Y') : null;
+      @endphp
+      <span class="ev-chip">
+        Período:
+        <strong class="ms-1">{{ $chipInicio ?? '—' }}</strong>
+        @if($chipFim)
+        <span class="text-muted px-1">até</span>
+        <strong>{{ $chipFim }}</strong>
+        @endif
+      </span>
       @endif
       @if($evento->modalidade)
       <span class="ev-chip">Modalidade: <strong class="ms-1">{{ $evento->modalidade }}</strong></span>
@@ -350,7 +371,12 @@
 
               $momento = trim($at->descricao ?? '') !== '' ? $at->descricao : 'Momento';
               $local = $at->local ?? null;
-              $municipio = optional($at->municipio)->nome_com_estado;
+              $municipio = $at->municipios->isNotEmpty()
+                ? $at->municipios->map(fn($m) => $m->nome_com_estado ?? $m->nome)->join(', ')
+                : null;
+              $publicoEsperado = $at->publico_esperado;
+              $cargaHoraria = $at->carga_horaria;
+              $cargaLabel = !is_null($cargaHoraria) ? number_format($cargaHoraria, 0, ',', '.') . 'h' : null;
               @endphp
 
               <div class="t-item">
@@ -361,11 +387,13 @@
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
                       <div class="program-title">{{ $momento }}</div>
 
-                      @if($local || $municipio || $chLabel)
+                      @if($local || $municipio || $chLabel || $publicoEsperado || $cargaLabel)
                       <div class="program-meta">
-                        @if($municipio) <span class="chip">🏙️ {{ $municipio }}</span> @endif
-                        @if($local) <span class="chip">📍 {{ $local }}</span> @endif
-                        @if($chLabel) <span class="chip">⏱️ {{ $chLabel }}</span> @endif
+                        @if($municipio) <span class="chip">Município: {{ $municipio }}</span> @endif
+                        @if($local) <span class="chip">Local: {{ $local }}</span> @endif
+                        @if($chLabel) <span class="chip">Duração: {{ $chLabel }}</span> @endif
+                        @if($publicoEsperado) <span class="chip">Público esperado: {{ number_format($publicoEsperado, 0, ',', '.') }} pessoas</span> @endif
+                        @if($cargaLabel) <span class="chip">Carga horária: {{ $cargaLabel }}</span> @endif
                       </div>
                       @endif
                     </div>

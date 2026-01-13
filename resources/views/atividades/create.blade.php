@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
 <div class="container">
@@ -17,6 +17,7 @@
         @include('atividades._form', [
           'evento' => $evento,
           'municipios' => $municipios,
+          'atividadesCopiaveis' => $atividadesCopiaveis,
           'submitLabel' => 'Salvar momento'
         ])
       </form>

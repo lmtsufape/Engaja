@@ -14,14 +14,20 @@ use App\Http\Controllers\PresencaImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestaoController;
 use App\Http\Controllers\TemplateAvaliacaoController;
+use App\Http\Controllers\UserManagementController;
+use App\Http\Controllers\ModeloCertificadoController;
+use App\Http\Controllers\CertificadoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'home'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboards/presencas', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboards.presencas');
 Route::get('/dashboard/export', [DashboardController::class, 'export'])->middleware(['auth', 'verified'])->name('dashboard.export');
+Route::get('/dashboards/avaliacoes', [DashboardController::class, 'avaliacoes'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes');
+Route::get('/dashboards/avaliacoes/dados', [DashboardController::class, 'avaliacoesData'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes.data');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -45,6 +51,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/atividades/{atividade}/presencas/preview', [PresencaImportController::class, 'preview'])->name('atividades.presencas.preview');
     Route::post('/atividades/{atividade}/presencas/savepage', [PresencaImportController::class, 'savePage'])->name('atividades.presencas.savepage');
     Route::post('/atividades/{atividade}/presencas/confirmar', [PresencaImportController::class, 'confirmar'])->name('atividades.presencas.confirmar');
+
+    Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
 });
 
 Route::middleware(['auth', 'role:administrador'])->group(function () {
@@ -68,6 +76,25 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
         ->parameters(['avaliacoes' => 'avaliacao']);
 });
 
+Route::middleware(['auth', 'role:administrador|gestor'])
+    ->prefix('certificados')
+    ->name('certificados.')
+    ->group(function () {
+        Route::resource('modelos', ModeloCertificadoController::class)
+            ->parameters(['modelos' => 'modelo']);
+        Route::post('emitir', [CertificadoController::class, 'emitir'])->name('emitir');
+    });
+
+Route::middleware(['auth', 'role:administrador|gestor'])
+    ->prefix('usuarios')
+    ->name('usuarios.')
+    ->group(function () {
+        Route::get('/', [UserManagementController::class, 'index'])->name('index');
+        Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
+        Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
+        Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
+    });
+
 Route::middleware(['auth', 'role:administrador|participante'])->group(function () {
     Route::resource('eventos', EventoController::class);
 });
@@ -83,5 +110,29 @@ Route::post('/eventos/cadastro-e-inscricao/store', [EventoController::class, 'st
 
 Route::get('/presenca/{atividade}/confirmar', [PresencaController::class, 'confirmarPresenca'])->name('presenca.confirmar');
 Route::post('/presenca/{atividade}/confirmar', [PresencaController::class, 'store'])->name('presenca.store');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
+    Route::get('/certificados/preview', [CertificadoController::class, 'preview'])->name('certificados.preview');
+    Route::get('/certificados/{certificado}', [CertificadoController::class, 'show'])
+        ->whereNumber('certificado')
+        ->name('certificados.show');
+    Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])
+        ->whereNumber('certificado')
+        ->name('certificados.download');
+});
+Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
+    Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
+    Route::get('/certificados/{certificado}/edit', [CertificadoController::class, 'edit'])
+        ->whereNumber('certificado')
+        ->name('certificados.edit');
+    Route::put('/certificados/{certificado}', [CertificadoController::class, 'update'])
+        ->whereNumber('certificado')
+        ->name('certificados.update');
+});
+
+Route::get( '/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');
+Route::post('/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'responderFormulario'])->name('avaliacao.formulario.responder');
+Route::get('/validacao/{codigo}', [CertificadoController::class, 'validar'])->name('certificados.validacao');
 
 require __DIR__ . '/auth.php';

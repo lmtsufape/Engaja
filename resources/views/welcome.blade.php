@@ -9,11 +9,13 @@
 
     <div class="mt-4">
         @guest
-            {{-- " class="btn btn-engaja btn-lg me-2">Entrar</a>
-            <a href="{{ route('register') }}" class="btn btn-outline-engaja btn-lg">Cadastrar</a> --}}
+            <a href="{{ route('login') }}" class="btn btn-engaja btn-lg me-2">Entrar</a>
+            <a href="{{ route('register') }}" class="btn btn-outline-engaja btn-lg">Cadastrar</a>
         @else
             {{-- <a href="{{ url('/dashboard') }}" class="btn btn-engaja btn-lg me-2">Ir para o painel</a> --}}
-            <a href="{{ route('eventos.index') }}" class="btn btn-engaja btn-lg">Ver ações pedagógicas</a>
+            @hasanyrole('administrador|gestor')
+                <a href="{{ route('eventos.index') }}" class="btn btn-engaja btn-lg">Ver ações pedagógicas</a>
+            @endrole
         @endguest
     </div>
 </div>

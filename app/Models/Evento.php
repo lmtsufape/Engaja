@@ -17,10 +17,13 @@ class Evento extends Model
         'tipo',
         'data_horario',
         'duracao',
+        'data_inicio',
+        'data_fim',
         'modalidade',
         'link',
         'objetivo',
         'resumo',
+        'local',
         'imagem',
     ];
 
@@ -47,5 +50,17 @@ class Evento extends Model
         return $this->belongsToMany(Participante::class, 'inscricaos')
             ->withPivot(['atividade_id'])
             ->withTimestamps();
+    }
+
+    public function presencas()
+    {
+        return $this->hasManyThrough(
+            Presenca::class,
+            Atividade::class,
+            'evento_id',    // FK em atividades
+            'atividade_id', // FK em presencas
+            'id',           // PK eventos
+            'id'            // PK atividades
+        );
     }
 }

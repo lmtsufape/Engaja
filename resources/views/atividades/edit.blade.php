@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
 <div class="container">
@@ -19,6 +19,7 @@
           'evento' => $evento,
           'atividade' => $atividade,
           'municipios' => $municipios,
+          'atividadesCopiaveis' => $atividadesCopiaveis,
           'submitLabel' => 'Salvar alterações'
         ])
       </form>

@@ -20,6 +20,8 @@ class Atividade extends Model
         'dia',
         'hora_inicio',
         'hora_fim',
+        'publico_esperado',
+        'carga_horaria',
         'presenca_ativa',
     ];
 
@@ -31,6 +33,12 @@ class Atividade extends Model
     public function municipio(): BelongsTo
     {
         return $this->belongsTo(Municipio::class);
+    }
+
+    public function municipios(): BelongsToMany
+    {
+        return $this->belongsToMany(Municipio::class, 'atividade_municipio')
+            ->withTimestamps();
     }
 
     public function presencas()

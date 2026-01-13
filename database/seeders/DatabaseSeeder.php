@@ -32,5 +32,9 @@ class DatabaseSeeder extends Seeder
             ]);
 
         $administrador->assignRole('administrador');
+
+        $this->call([
+            QuestionarioRespostaSeeder::class,
+        ]);
     }
 }

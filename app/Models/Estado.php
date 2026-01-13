@@ -14,4 +14,9 @@ class Estado extends Model
         'nome',
         'sigla',
     ];
+
+    public function regiao()
+    {
+        return $this->belongsTo(Regiao::class);
+    }
 }

@@ -2,7 +2,17 @@
 
 @section('content')
 <div class="container py-4">
-    <h1 class="h4 mb-3">Dashboard</h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <p class="text-uppercase small text-muted mb-1">Dashboards</p>
+            <h1 class="h4 mb-0">Presencas e inscricoes</h1>
+            <p class="text-muted small mb-0">Visual completo das acoes pedagogicas com expansao de presencas e exportacao.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Hub de dashboards</a>
+            <a href="{{ route('dashboards.avaliacoes') }}" class="btn btn-outline-primary btn-sm">Dashboard de respostas</a>
+        </div>
+    </div>
     @can('evento.criar')
     <div class="card shadow-sm">
         <div class="card-header bg-white">
@@ -47,7 +57,7 @@
 
                 <div class="col-md-auto d-flex gap-2">
                     <button class="btn btn-primary btn-sm">Filtrar</button>
-                    <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+                    <a href="{{ route('dashboards.presencas') }}" class="btn btn-outline-secondary btn-sm">Limpar</a>
                 </div>
             </form>
         </div>

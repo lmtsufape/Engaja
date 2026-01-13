@@ -13,7 +13,7 @@
     <div id="mainNav" class="collapse navbar-collapse">
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
         @auth
-        @hasanyrole('administrador|participante')
+        @hasanyrole('administrador|gestor')
         <li class="nav-item">
           <a class="nav-link text-white" href="{{ route('eventos.index') }}">
             Ações Pedagógicas
@@ -23,11 +23,11 @@
         @role('administrador')
         <li class="nav-item">
           <a class="nav-link text-white" href="{{ route('dashboard') }}">
-            Dashboard
+            Dashboards
           </a>
         </li>
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button" data-bs-toggle="dropdown"
             aria-expanded="false">
             Avaliações
           </a>
@@ -42,20 +42,43 @@
           </ul>
         </li>
         @endrole
+        @hasanyrole('administrador|gestor')
+        <li class="nav-item">
+          <a class="nav-link text-white ms-lg-2" href="{{ route('usuarios.index') }}">
+            Gerenciar Usuários
+          </a>
+        </li>
+        @endhasanyrole
+
+        @hasanyrole('administrador|gestor|participante')
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            Certificados
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ route('profile.certificados') }}">Meus certificados</a></li>
+            @hasanyrole('administrador|gestor')
+              <li><a class="dropdown-item" href="{{ route('certificados.modelos.index') }}">Modelos de certificados</a></li>
+              <li><a class="dropdown-item" href="{{ route('certificados.emitidos') }}">Certificados emitidos</a></li>
+            @endhasanyrole
+          </ul>
+        </li>
+        @endhasanyrole
         @endauth
       </ul>
 
       <ul class="navbar-nav ms-auto">
         @guest
-        {{-- @if (Route::has('login'))
+        @if (Route::has('login'))
         <li class="nav-item"><a class="nav-link text-white" href="{{ route('login') }}">Entrar</a></li>
         @endif
         @if (Route::has('register'))
         <li class="nav-item"><a class="nav-link text-white" href="{{ route('register') }}">Cadastrar</a></li>
-        @endif --}}
+        @endif
         @else
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle text-white" href="#" role="button"
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button"
             data-bs-toggle="dropdown" aria-expanded="false">
             Olá, {{ Auth::user()->name }}
           </a>
@@ -91,3 +114,34 @@
   }
 }
 </style>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toggles = Array.from(document.querySelectorAll('.nav-dropdown-fallback'));
+
+  if (window.bootstrap?.Dropdown) {
+    toggles.forEach(t => new window.bootstrap.Dropdown(t));
+    return;
+  }
+
+  // Fallback caso o JS do Bootstrap não esteja carregado.
+  toggles.forEach(toggle => {
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      const menu = toggle.nextElementSibling;
+      if (!menu) return;
+      const isOpen = menu.classList.contains('show');
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+      if (!isOpen) menu.classList.add('show');
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-item.dropdown')) {
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
+    }
+  });
+});
+</script>
+@endpush

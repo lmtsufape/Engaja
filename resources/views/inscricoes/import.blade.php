@@ -9,8 +9,13 @@
       <h1 class="h4 fw-bold text-engaja mb-1">Importar inscrições</h1>
       <div class="text-muted small">
         Ação pedagógica: <strong>{{ $evento->nome }}</strong>
-        @if($evento->data_horario)
-        • {{ \Carbon\Carbon::parse($evento->data_horario)->format('d/m/Y H:i') }}
+        @php
+          $periodoInicio = $evento->data_inicio ? \Carbon\Carbon::parse($evento->data_inicio)->format('d/m/Y') : null;
+          $periodoFim = $evento->data_fim ? \Carbon\Carbon::parse($evento->data_fim)->format('d/m/Y') : null;
+        @endphp
+        @php $mostrarPeriodoFim = $periodoFim && (!$periodoInicio || $periodoFim !== $periodoInicio); @endphp
+        @if($periodoInicio || $periodoFim)
+        • {{ $periodoInicio ?? '—' }} @if($mostrarPeriodoFim)<span class="text-muted">até {{ $periodoFim }}</span>@endif
         @endif
       </div>
     </div>

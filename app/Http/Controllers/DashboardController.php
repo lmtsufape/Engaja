@@ -5,10 +5,31 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Atividade;
 use App\Models\Evento;
+use App\Models\Inscricao;
 use App\Models\Municipio;
+use App\Models\RespostaAvaliacao;
+use App\Models\SubmissaoAvaliacao;
+use App\Models\TemplateAvaliacao;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+
 class DashboardController extends Controller
 {
+    public function home()
+    {
+        $resumo = [
+            'avaliacoesRespondidas' => SubmissaoAvaliacao::count(),
+            'respostas'             => RespostaAvaliacao::count(),
+            'atividades'            => Atividade::count(),
+            'inscricoes'            => Inscricao::count(),
+            'ultimaAtualizacao'     => optional(RespostaAvaliacao::latest('updated_at')->first())->updated_at,
+        ];
+
+        $templatesDisponiveis = TemplateAvaliacao::orderBy('nome')->limit(4)->get();
+        $eventosRecentes = Evento::orderByDesc('created_at')->limit(4)->get();
+
+        return view('dashboards.home', compact('resumo', 'templatesDisponiveis', 'eventosRecentes'));
+    }
+
     public function index(Request $request)
     {
         $eventoId   = $request->integer('evento_id');
@@ -136,6 +157,58 @@ class DashboardController extends Controller
             ->pluck('descricao');
 
         return view('dashboard', compact('atividades', 'eventos', 'municipios', 'momentos'));
+    }
+
+    public function avaliacoes(Request $request)
+    {
+        $templates = TemplateAvaliacao::orderBy('nome')->get(['id', 'nome']);
+        $eventos = Evento::orderBy('nome')->get(['id', 'nome']);
+        $atividades = Atividade::with('evento')
+            ->orderByDesc('dia')
+            ->orderByDesc('hora_inicio')
+            ->limit(80)
+            ->get(['id', 'evento_id', 'descricao', 'dia', 'hora_inicio']);
+
+        return view('dashboards.avaliacoes', compact('templates', 'eventos', 'atividades'));
+    }
+
+    public function avaliacoesData(Request $request)
+    {
+        $respostas = $this->filtrarRespostas($request);
+        $perguntas = $this->montarPerguntas($respostas);
+
+        $submissoesBase = $this->filtrarSubmissoes($request);
+        $submissoesTable = (new SubmissaoAvaliacao())->getTable();
+        $totais = [
+            'submissoes' => (clone $submissoesBase)->count(),
+            'atividades' => (clone $submissoesBase)->distinct('atividade_id')->count('atividade_id'),
+            'eventos'    => (clone $submissoesBase)
+                ->leftJoin('atividades', 'atividades.id', '=', "{$submissoesTable}.atividade_id")
+                ->distinct('atividades.evento_id')
+                ->count('atividades.evento_id'),
+            'respostas'  => $respostas->count(),
+            'questoes'   => $perguntas->count(),
+            'ultima'     => optional($respostas->sortByDesc('created_at')->first())->created_at?->format('d/m/Y H:i'),
+        ];
+
+        $recentes = $respostas
+            ->sortByDesc('created_at')
+            ->take(8)
+            ->map(function ($resposta) {
+                $questao = $resposta->avaliacaoQuestao;
+                return [
+                    'questao' => $questao?->texto ?? 'Questao',
+                    'valor'   => $this->respostaParaTexto($resposta->resposta),
+                    'quando'  => optional($resposta->created_at)->format('d/m H:i'),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'totais'    => $totais,
+            'perguntas' => $perguntas->values(),
+            'recentes'  => $recentes,
+        ]);
     }
 
     public function export(Request $request)
@@ -271,5 +344,186 @@ class DashboardController extends Controller
         ])->setPaper('a4', 'portrait');
 
         return $pdf->download('dashboard-presencas-'.now()->format('Ymd_His').'.pdf');
+    }
+
+    private function filtrarRespostas(Request $request)
+    {
+        $respostasTable = (new RespostaAvaliacao())->getTable();
+        $templateId = $request->integer('template_id');
+        $eventoId = $request->integer('evento_id');
+        $atividadeId = $request->integer('atividade_id');
+        $de = $request->date('de');
+        $ate = $request->date('ate');
+
+        return RespostaAvaliacao::query()
+            ->with(['avaliacaoQuestao.escala', 'avaliacao.atividade.evento'])
+            ->when($templateId, fn($q) => $q->whereHas('avaliacao', fn($aq) => $aq->where('template_avaliacao_id', $templateId)))
+            ->when($atividadeId, fn($q) => $q->whereHas('avaliacao', fn($aq) => $aq->where('atividade_id', $atividadeId)))
+            ->when($eventoId, fn($q) => $q->whereHas('avaliacao.atividade', fn($aq) => $aq->where('evento_id', $eventoId)))
+            ->when($de, fn($q) => $q->whereDate("{$respostasTable}.created_at", '>=', $de))
+            ->when($ate, fn($q) => $q->whereDate("{$respostasTable}.created_at", '<=', $ate))
+            ->get();
+    }
+
+    private function filtrarSubmissoes(Request $request)
+    {
+        $submissoesTable = (new SubmissaoAvaliacao())->getTable();
+        $templateId = $request->integer('template_id');
+        $eventoId = $request->integer('evento_id');
+        $atividadeId = $request->integer('atividade_id');
+        $de = $request->date('de');
+        $ate = $request->date('ate');
+
+        return SubmissaoAvaliacao::query()
+            ->when($templateId, fn($q) => $q->whereHas('avaliacao', fn($aq) => $aq->where('template_avaliacao_id', $templateId)))
+            ->when($atividadeId, fn($q) => $q->where('atividade_id', $atividadeId))
+            ->when($eventoId, fn($q) => $q->whereHas('atividade', fn($aq) => $aq->where('evento_id', $eventoId)))
+            ->when($de, fn($q) => $q->whereDate("{$submissoesTable}.created_at", '>=', $de))
+            ->when($ate, fn($q) => $q->whereDate("{$submissoesTable}.created_at", '<=', $ate));
+    }
+
+    private function montarPerguntas($respostas)
+    {
+        return $respostas
+            ->groupBy('avaliacao_questao_id')
+            ->map(function ($items) {
+                $questao = $items->first()->avaliacaoQuestao;
+                $tipo = $questao?->tipo ?? 'texto';
+
+                $bloco = [
+                    'id'      => $questao?->id ?? $items->first()->avaliacao_questao_id,
+                    'texto'   => $questao?->texto ?? 'Questao',
+                    'tipo'    => $tipo,
+                    'total'   => $items->count(),
+                    'labels'  => [],
+                    'values'  => [],
+                    'media'   => null,
+                    'resumo'  => null,
+                    'exemplos'=> [],
+                    'respostas' => [],
+                ];
+
+                if ($tipo === 'boolean') {
+                    $sim = $items->filter(fn($r) => $this->respostaParaBool($r->resposta) === true)->count();
+                    $nao = $items->filter(fn($r) => $this->respostaParaBool($r->resposta) === false)->count();
+                    $total = max($sim + $nao, 1);
+
+                    $bloco['labels'] = ['Sim', 'Nao'];
+                    $bloco['values'] = [$sim, $nao];
+                    $bloco['resumo'] = $total > 0 ? round(($sim / $total) * 100) . '% de sim' : 'Sem respostas';
+                    return $bloco;
+                }
+
+                if ($tipo === 'escala') {
+                    $opcoes = $questao?->escala?->valores ?? [];
+                    if (empty($opcoes)) {
+                        $opcoes = $items->map(fn($r) => $this->respostaParaTexto($r->resposta))
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all();
+                    }
+
+                    $contagem = [];
+                    foreach ($opcoes as $opcao) {
+                        $contagem[$opcao] = 0;
+                    }
+
+                    foreach ($items as $resposta) {
+                        $valor = $this->respostaParaTexto($resposta->resposta);
+                        if ($valor === '') {
+                            continue;
+                        }
+                        $contagem[$valor] = ($contagem[$valor] ?? 0) + 1;
+                    }
+
+                    $bloco['labels'] = array_keys($contagem);
+                    $bloco['values'] = array_values($contagem);
+
+                    $media = $this->calcularMediaNumerica($items);
+                    $bloco['media'] = $media;
+                    $bloco['resumo'] = $media !== null ? 'Media ' . number_format($media, 1, ',', '.') : null;
+                    return $bloco;
+                }
+
+                if ($tipo === 'numero') {
+                    $numeros = $items->map(fn($r) => is_numeric($r->resposta) ? (float) $r->resposta : null)
+                        ->filter();
+                    $bloco['labels'] = $numeros->groupBy(fn($v) => (string) $v)->keys()->values();
+                    $bloco['values'] = $numeros->groupBy(fn($v) => (string) $v)->map->count()->values();
+                    $media = $numeros->avg();
+                    $bloco['media'] = $media ? round($media, 2) : null;
+                    $bloco['resumo'] = $media ? 'Media ' . number_format($media, 2, ',', '.') : null;
+                    return $bloco;
+                }
+
+                $respostasTexto = $items
+                    ->sortByDesc('created_at')
+                    ->map(fn($r) => $this->respostaParaTexto($r->resposta))
+                    ->filter()
+                    ->values();
+
+                $bloco['respostas'] = $respostasTexto->all();
+                $bloco['exemplos'] = $respostasTexto->take(5)->values()->all();
+
+                return $bloco;
+            });
+    }
+
+    private function respostaParaTexto($valor): string
+    {
+        if ($valor === null) {
+            return '';
+        }
+
+        if (is_array($valor)) {
+            return implode(', ', $valor);
+        }
+
+        $texto = (string) $valor;
+
+        if ($texto === '') {
+            return '';
+        }
+
+        if (in_array(substr($texto, 0, 1), ['[', '{'], true)) {
+            $decoded = json_decode($texto, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                return implode(', ', $decoded);
+            }
+        }
+
+        return $texto;
+    }
+
+    private function respostaParaBool($valor): ?bool
+    {
+        $texto = strtolower(trim($this->respostaParaTexto($valor)));
+
+        if ($texto === '') {
+            return null;
+        }
+
+        if (in_array($texto, ['1', 'true', 'sim', 's', 'yes'], true)) {
+            return true;
+        }
+
+        if (in_array($texto, ['0', 'false', 'nao', 'n', 'no'], true)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    private function calcularMediaNumerica($items): ?float
+    {
+        $numeros = $items->map(function ($resposta) {
+            $valor = $this->respostaParaTexto($resposta->resposta);
+            return is_numeric($valor) ? (float) $valor : null;
+        })->filter();
+
+        $media = $numeros->avg();
+
+        return $media ? round($media, 1) : null;
     }
 }

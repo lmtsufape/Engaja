@@ -62,7 +62,7 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                             <div class="form-text">
-                                                {{ __('Min. 8 caracteres. Use letras, números e símbolos.') }}
+                                                {{ __('Min. 8 caracteres. Use letras, números e/ou símbolos.') }}
                                             </div>
                                         </div>
 
@@ -78,7 +78,7 @@
 
                             <div class="card shadow-sm mb-3">
                                 <div class="card-header bg-white">
-                                    <strong>Dados do participante</strong> <span class="text-muted">(opcionais)</span>
+                                    <strong>Dados do participante</strong> {{-- <span class="text-muted">(opcionais)</span> --}}
                                 </div>
                                 <div class="card-body">
                                     <div class="row g-3">
@@ -105,7 +105,7 @@
                                         </div>
 
                                         <div class="col-md-6">
-                                            <label for="tipo_organizacao" class="form-label">Tipo de Organização</label>
+                                            <label for="tipo_organizacao" class="form-label">Tipo de Instituição</label>
                                             <select id="tipo_organizacao" name="tipo_organizacao"
                                                 class="form-select @error('tipo_organizacao') is-invalid @enderror">
                                                 <option value="">Selecione...</option>
@@ -117,7 +117,7 @@
                                         </div>
 
                                         <div class="col-md-6">
-                                            <label for="escola_unidade" class="form-label">Organização</label>
+                                            <label for="escola_unidade" class="form-label">Nome da instituição</label>
                                             <input id="escola_unidade" type="text" name="escola_unidade"
                                                 value="{{ old('escola_unidade', $participante->escola_unidade ?? '') }}"
                                                 class="form-control @error('escola_unidade') is-invalid @enderror">
@@ -125,7 +125,7 @@
                                             @enderror
                                         </div>
                                         <div class="col-md-6">
-                                            <label for="tag" class="form-label">Tag</label>
+                                            <label for="tag" class="form-label">Vínculo no projeto</label>
                                             <select id="tag" name="tag"
                                                 class="form-select @error('tag') is-invalid @enderror">
                                                 <option value="">Selecione...</option>
@@ -166,11 +166,11 @@
                         </form>
                     </div>
 
-                    <div class="card-footer text-center">
+                    {{-- <div class="card-footer text-center">
                         <small class="text-danger opacity-75">
                             {{ __('Ao criar sua conta, você será inscrito automaticamente no evento e sua presença será confirmada.') }}
                         </small>
-                    </div>
+                    </div> --}}
                 </div>
             </div>
         </div>

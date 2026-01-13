@@ -42,22 +42,23 @@
                 {{-- Tipo --}}
                 <div class="col-md-4">
                     <label for="tipo" class="form-label">Tipo</label>
+                    @php $tipoSelecionado = old('tipo', $evento->tipo); @endphp
                     <select id="tipo" name="tipo" class="form-select @error('tipo') is-invalid @enderror">
                         <option value="">Selecione...</option>
-                        <option value="Cartas para Esperançar" @selected(old('tipo')=="Cartas para Esperançar" )>Cartas para Esperançar</option>
-                        <option value="Curso Como Alfabetizar com Paulo Freire" @selected(old('tipo')=="Curso Como Alfabetizar com Paulo Freire" )>
+                        <option value="Cartas para Esperançar" @selected($tipoSelecionado=="Cartas para Esperançar")>Cartas para Esperançar</option>
+                        <option value="Curso Como Alfabetizar com Paulo Freire" @selected($tipoSelecionado=="Curso Como Alfabetizar com Paulo Freire")>
                             Curso Como Alfabetizar com Paulo Freire
                         </option>
-                        <option value="Encontros Escuta Territorial" @selected(old('tipo')=="Encontros Escuta Territorial" )>Encontros Escuta Territorial</option>
-                        <option value="Encontros de Educandos" @selected(old('tipo')=="Encontros de Educandos" )>Encontros de Educandos</option>
-                        <option value="Encontros de Formação" @selected(old('tipo')=="Encontros de Formação" )>Encontros de Formação</option>
-                        <option value="Feira Pedagógica, Artístico-Cultural com Educandos" @selected(old('tipo')=="Feira Pedagógica, Artístico-Cultural com Educandos" )>
+                        <option value="Encontros Escuta Territorial" @selected($tipoSelecionado=="Encontros Escuta Territorial")>Encontros Escuta Territorial</option>
+                        <option value="Encontros de Educandos" @selected($tipoSelecionado=="Encontros de Educandos")>Encontros de Educandos</option>
+                        <option value="Encontros de Formação" @selected($tipoSelecionado=="Encontros de Formação")>Encontros de Formação</option>
+                        <option value="Feira Pedagógica, Artístico-Cultural com Educandos" @selected($tipoSelecionado=="Feira Pedagógica, Artístico-Cultural com Educandos")>
                             Feira Pedagógica, Artístico-Cultural com Educandos
                         </option>
-                        <option value="Lives e Webinars" @selected(old('tipo')=="Lives e Webinars" )>Lives e Webinars</option>
-                        <option value="Reunião de Assessoria" @selected(old('tipo')=="Reunião de Assessoria" )>Reunião de Assessoria</option>
-                        <option value="Seminários de Práticas" @selected(old('tipo')=="Seminários de Práticas" )>Seminários de Práticas</option>
-                        <option value="Veja as Palavras" @selected(old('tipo')=="Veja as Palavras" )>Veja as Palavras</option>
+                        <option value="Lives e Webinars" @selected($tipoSelecionado=="Lives e Webinars")>Lives e Webinars</option>
+                        <option value="Reunião de Assessoria" @selected($tipoSelecionado=="Reunião de Assessoria")>Reunião de Assessoria</option>
+                        <option value="Seminários de Práticas" @selected($tipoSelecionado=="Seminários de Práticas")>Seminários de Práticas</option>
+                        <option value="Veja as Palavras" @selected($tipoSelecionado=="Veja as Palavras")>Veja as Palavras</option>
                     </select>
                     @error('tipo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
@@ -74,22 +75,21 @@
                     @error('modalidade') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                {{-- Duração (dias) --}}
-                <div class="col-md-4">
-                    <label for="duracao" class="form-label">Duração (dias)</label>
-                    <input id="duracao" name="duracao" type="number" min="0" step="1"
-                           value="{{ old('duracao', $evento->duracao) }}"
-                           class="form-control @error('duracao') is-invalid @enderror">
-                    @error('duracao') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                {{-- Período --}}
+                <div class="col-md-6">
+                    <label for="data_inicio" class="form-label">Início</label>
+                    <input id="data_inicio" name="data_inicio" type="date"
+                           value="{{ old('data_inicio', optional($evento->data_inicio ? \Carbon\Carbon::parse($evento->data_inicio) : null)?->format('Y-m-d')) }}"
+                           class="form-control @error('data_inicio') is-invalid @enderror">
+                    @error('data_inicio') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
-                {{-- Data/hora --}}
                 <div class="col-md-6">
-                    <label for="data_horario" class="form-label">Data e horário</label>
-                    <input id="data_horario" name="data_horario" type="datetime-local"
-                           value="{{ old('data_horario', optional($evento->data_horario ? \Carbon\Carbon::parse($evento->data_horario) : null)?->format('Y-m-d\TH:i')) }}"
-                           class="form-control @error('data_horario') is-invalid @enderror">
-                    @error('data_horario') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    <label for="data_fim" class="form-label">Fim</label>
+                    <input id="data_fim" name="data_fim" type="date"
+                           value="{{ old('data_fim', optional($evento->data_fim ? \Carbon\Carbon::parse($evento->data_fim) : null)?->format('Y-m-d')) }}"
+                           class="form-control @error('data_fim') is-invalid @enderror">
+                    @error('data_fim') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 {{-- Local --}}

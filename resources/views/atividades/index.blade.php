@@ -23,19 +23,35 @@
             <th>Dia</th>
             <th>Hora início</th>
             <th>Hora de término</th>
-            <th>Município</th>
+            <th>Municípios</th>
+            <th>Público esperado</th>
+            <th>Carga horária</th>
             @hasanyrole('administrador|formador')
             <th class="text-end">Ações</th>
             @endhasanyrole
           </tr>
         </thead>
+        @php $temPermissao = auth()->user()?->hasAnyRole('administrador', 'formador'); @endphp
         <tbody>
           @forelse($atividades as $at)
+            @php
+              $munLabel = $at->municipios->isNotEmpty()
+                ? $at->municipios->map(fn($m) => $m->nome_com_estado ?? $m->nome)->join(', ')
+                : '-';
+            @endphp
             <tr>
               <td>{{ \Carbon\Carbon::parse($at->dia)->format('d/m/Y') }}</td>
               <td>{{ \Carbon\Carbon::parse($at->hora_inicio)->format('H:i') }}</td>
               <td>{{ \Carbon\Carbon::parse($at->hora_fim)->format('H:i') }}</td>
-              <td>{{ $at->municipio?->nome_com_estado ?? '-' }}</td>
+              <td>{{ $munLabel }}</td>
+              <td>{{ $at->publico_esperado ? number_format($at->publico_esperado, 0, ',', '.') : '—' }}</td>
+              <td>
+                @php
+                  $carga = $at->carga_horaria;
+                  $cargaLabel = !is_null($carga) ? number_format($carga, 0, ',', '.') . 'h' : '—';
+                @endphp
+                {{ $cargaLabel }}
+              </td>
               @hasanyrole('administrador|formador')
               <td class="text-end">
                 <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
@@ -50,7 +66,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="5" class="text-center text-muted py-4">Nenhum momento cadastrada.</td>
+              <td colspan="{{ $temPermissao ? 7 : 6 }}" class="text-center text-muted py-4">Nenhum momento cadastrada.</td>
             </tr>
           @endforelse
         </tbody>
