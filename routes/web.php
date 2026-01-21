@@ -108,6 +108,10 @@ Route::middleware(['auth', 'role:administrador|gestor'])
         Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
     });
 
+Route::middleware(['auth', 'role:administrador|formador'])
+    ->get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
+    ->name('eventos.relatorios');
+
 Route::middleware(['auth', 'role:administrador|participante'])->group(function () {
     Route::resource('eventos', EventoController::class);
 });

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\EventoParticipantesGeralExport;
+use App\Exports\EventoParticipantesPorMomentoExport;
 use App\Models\Evento;
 use App\Models\Eixo;
 use App\Models\User;
@@ -107,6 +109,27 @@ class EventoController extends Controller
                 ->orderBy('hora_inicio'),
         ]);
         return view('eventos.show', compact('evento'));
+    }
+
+    public function relatorios(Request $request, Evento $evento)
+    {
+        $user = $request->user();
+        if (!$user || (!$user->hasRole('administrador') && !$user->hasRole('formador'))) {
+            abort(403);
+        }
+
+        $tipo = $request->get('tipo', 'geral');
+        $slug = Str::slug($evento->nome ?? 'acao-pedagogica');
+
+        if ($tipo === 'momentos') {
+            $nomeArquivo = $slug.'-participantes-por-momento.xlsx';
+
+            return Excel::download(new EventoParticipantesPorMomentoExport($evento), $nomeArquivo);
+        }
+
+        $nomeArquivo = $slug.'-participantes-geral.xlsx';
+
+        return Excel::download(new EventoParticipantesGeralExport($evento), $nomeArquivo);
     }
 
     public function edit(Evento $evento)
