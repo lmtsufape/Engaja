@@ -86,6 +86,19 @@ Route::middleware(['auth', 'role:administrador|gestor'])
     });
 
 Route::middleware(['auth', 'role:administrador|gestor'])
+    ->group(function () {
+        Route::resource('regioes', \App\Http\Controllers\RegiaoController::class)
+            ->parameters(['regioes' => 'regiao'])
+            ->except(['create', 'edit', 'show']);
+        Route::resource('estados', \App\Http\Controllers\EstadoController::class)
+            ->parameters(['estados' => 'estado'])
+            ->except(['create', 'edit', 'show']);
+        Route::resource('municipios', \App\Http\Controllers\MunicipioController::class)
+            ->parameters(['municipios' => 'municipio'])
+            ->except(['create', 'edit', 'show']);
+    });
+
+Route::middleware(['auth', 'role:administrador|gestor'])
     ->prefix('usuarios')
     ->name('usuarios.')
     ->group(function () {

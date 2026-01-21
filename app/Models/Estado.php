@@ -19,4 +19,9 @@ class Estado extends Model
     {
         return $this->belongsTo(Regiao::class);
     }
+
+    public function municipios()
+    {
+        return $this->hasMany(Municipio::class);
+    }
 }
