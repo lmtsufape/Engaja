@@ -24,7 +24,7 @@ class UserManagementController extends Controller
             ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', self::PROTECTED_ROLES))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
-                    $sub->where('name', 'like', "%{$search}%")
+                    $sub->where('name', 'ilike', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })

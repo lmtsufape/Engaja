@@ -260,13 +260,31 @@ class CertificadoController extends Controller
         return $pdf->download($fileName);
     }
 
-    public function emitidos()
+    public function emitidos(Request $request)
     {
-        $certificados = Certificado::with(['participante.user', 'modelo'])
-            ->latest()
-            ->paginate(20);
+        $filtroParticipante = trim($request->query('participante', ''));
+        $filtroAcao = trim($request->query('acao', ''));
 
-        return view('certificados.emitidos', compact('certificados'));
+        $query = Certificado::with(['participante.user', 'modelo']);
+
+        if ($filtroParticipante) {
+            $query->whereHas('participante.user', function ($q) use ($filtroParticipante) {
+                $q->where('name', 'ilike', "%{$filtroParticipante}%");
+            });
+        }
+
+        if ($filtroAcao) {
+            $query->where('evento_nome', 'ilike', "%{$filtroAcao}%");
+        }
+
+        $certificados = $query->latest()
+            ->paginate(20)
+            ->appends([
+                'participante' => $filtroParticipante,
+                'acao' => $filtroAcao
+            ]);
+
+        return view('certificados.emitidos', compact('certificados', 'filtroParticipante', 'filtroAcao'));
     }
 
     public function edit(Certificado $certificado)
