@@ -14,6 +14,12 @@ class Avaliacao extends Model
         'anonima' => 'boolean',
     ];
 
+    public function getAnonimaAttribute($value): bool
+    {
+        // Tratamos null como anônima para retrocompatibilidade
+        return $value === null ? true : (bool) $value;
+    }
+
     public function templateAvaliacao(): BelongsTo
     {
         return $this->belongsTo(TemplateAvaliacao::class);

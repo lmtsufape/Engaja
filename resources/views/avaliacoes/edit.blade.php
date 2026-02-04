@@ -51,12 +51,14 @@
 
             <div class="col-md-6 d-flex align-items-center">
               <div class="form-check mt-4">
-                <input class="form-check-input" type="checkbox" value="1" id="anonima" name="anonima"
-                  @checked(old('anonima', $avaliacao->anonima))>
+                <input class="form-check-input" type="checkbox" value="1" id="anonima" disabled
+                  @checked($avaliacao->anonima)>
                 <label class="form-check-label" for="anonima">
                   Avaliação anônima
                 </label>
-                <div class="form-text">Se marcada, não vinculará as respostas à presença do participante.</div>
+                <div class="form-text">
+                  Definido na criação.
+                </div>
               </div>
             </div>
           </div>

@@ -350,6 +350,9 @@ class AvaliacaoController extends Controller
     {
         $dados = $this->validateAvaliacao($request, $avaliacao->id);
 
+        // Anonimato não pode ser alterado após criação. Mantém valor original
+        $dados['anonima'] = $avaliacao->getRawOriginal('anonima');
+
         $template = TemplateAvaliacao::with([
             'questoes.indicador',
             'questoes.escala',
@@ -378,17 +381,30 @@ class AvaliacaoController extends Controller
                 ->withErrors(['atividade_id' => 'Ja existe outra avaliacao para esta inscricao nesta atividade.']);
         }
 
-        DB::transaction(function () use ($avaliacao, $dados, $template, $customizacoes, $respostas, $questoesAdicionais, $questoesAdicionaisRemovidas) {
-            $templateAlterado = $avaliacao->template_avaliacao_id !== $dados['template_avaliacao_id'];
+        $jaTemRespostas = $avaliacao->respostas()->exists();
 
-            // Se apenas campos básicos foram alterados (ex.: anônima) e nenhuma
-            // mudança de template/personalização/resposta foi enviada, não
-            // toque nas questões nem nas respostas para evitar perda de dados.
-            $mudouQuestoesOuRespostas = $templateAlterado
+        $templateAlterado = $avaliacao->template_avaliacao_id !== $dados['template_avaliacao_id'];
+        $tentouAlterarQuestoes = $templateAlterado
+            || !empty($customizacoes)
+            || ($questoesAdicionais && $questoesAdicionais->isNotEmpty())
+            || !empty($questoesAdicionaisRemovidas)
+            || (is_array($respostas) && count($respostas) > 0);
+
+        if ($jaTemRespostas && $tentouAlterarQuestoes) {
+            return back()
+                ->withInput()
+                ->withErrors(['template_avaliacao_id' => 'Esta avaliação já possui respostas. Não é possível alterar modelo ou questões.']);
+        }
+
+        DB::transaction(function () use ($avaliacao, $dados, $template, $customizacoes, $respostas, $questoesAdicionais, $questoesAdicionaisRemovidas, $jaTemRespostas, $templateAlterado) {
+            // Se possui respostas, apenas campos básicos são atualizados.
+            $mudouQuestoesOuRespostas = ! $jaTemRespostas && (
+                $templateAlterado
                 || !empty($customizacoes)
                 || (is_array($respostas) && count($respostas) > 0)
                 || ($questoesAdicionais && $questoesAdicionais->isNotEmpty())
-                || !empty($questoesAdicionaisRemovidas);
+                || !empty($questoesAdicionaisRemovidas)
+            );
 
             $avaliacao->update($dados);
             $avaliacao->refresh();
@@ -603,20 +619,27 @@ class AvaliacaoController extends Controller
 
     private function validateAvaliacao(Request $request, ?int $avaliacaoId = null): array
     {
+        $anonRule = $avaliacaoId ? ['prohibited'] : ['sometimes', 'boolean'];
+
         $dados = $request->validate([
             'inscricao_id'          => ['nullable', Rule::exists('inscricaos', 'id')],
             'atividade_id'          => ['required', Rule::exists('atividades', 'id')],
             'template_avaliacao_id' => ['required', Rule::exists('template_avaliacaos', 'id')],
             'respostas'             => ['nullable', 'array'],
-            'anonima'               => ['sometimes', 'boolean'],
+            'anonima'               => $anonRule,
         ]);
 
-        return [
+        $resultado = [
             'inscricao_id'          => $dados['inscricao_id'] ?? null,
             'atividade_id'          => $dados['atividade_id'],
             'template_avaliacao_id' => $dados['template_avaliacao_id'],
-            'anonima'               => (bool) ($dados['anonima'] ?? false),
         ];
+
+        if (! $avaliacaoId) {
+            $resultado['anonima'] = (bool) ($dados['anonima'] ?? false);
+        }
+
+        return $resultado;
     }
 
     /**
@@ -928,3 +951,5 @@ class AvaliacaoController extends Controller
         return $presenca;
     }
 }
+
+
