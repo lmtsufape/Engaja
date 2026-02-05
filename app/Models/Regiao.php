@@ -10,4 +10,9 @@ class Regiao extends Model
     use SoftDeletes;
     protected $table = 'regiaos';
     protected $fillable = ['nome'];
+
+    public function estados()
+    {
+        return $this->hasMany(Estado::class);
+    }
 }

@@ -221,21 +221,27 @@
         @endauth -->
 
         @hasanyrole('administrador|formador')
+        <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
         <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
         <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
         <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">
           Ver inscritos
         </a>
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+          data-bs-target="#modalRelatoriosEvento">
+          Relatórios
+        </button>
         @endhasanyrole
 
         @can('update', $evento)
         <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
 
         <form action="{{ route('eventos.destroy', $evento) }}" method="POST"
-          class="d-inline" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
+          class="d-flex m-0 p-0" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
           @csrf @method('DELETE')
           <button class="btn btn-outline-danger">Excluir</button>
         </form>
+        </div>
         @endcan
       </div>
     </div>
@@ -402,16 +408,22 @@
                       @endif
                     </div>
                     @hasanyrole('administrador|formador')
-                    <div class="actions d-flex gap-2">
-                      <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-                      
-                      <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                    <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
+                      <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
+                          Ver
+                      </a>
+
+                      <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
+                          Editar
+                      </a>
+
                       <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                        class="d-inline" data-confirm="Tem certeza que deseja excluir este momento?">
-                        @csrf @method('DELETE')
-                        <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                            class="d-inline m-0 p-0"
+                            data-confirm="Tem certeza que deseja excluir este momento?">
+                          @csrf @method('DELETE')
+                          <button class="btn btn-sm btn-outline-danger">Excluir</button>
                       </form>
-                    </div>
+                  </div>
                     @endhasanyrole
                   </div>
                 </div>
@@ -426,4 +438,48 @@
   </div>
 
 </div>
+@hasanyrole('administrador|formador')
+<div class="modal fade" id="modalRelatoriosEvento" tabindex="-1" aria-labelledby="modalRelatoriosEventoLabel"
+  aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title fw-bold" id="modalRelatoriosEventoLabel">Relatórios da ação pedagógica</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-4">
+          Apenas participantes com presença confirmada serão considerados.
+        </p>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="h-100 border rounded p-3">
+              <h6 class="fw-bold mb-1">Participantes únicos</h6>
+              <p class="text-muted small mb-3">Consolida todos os participantes que tiveram presença confirmada em
+                qualquer momento desta ação.</p>
+              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral']) }}"
+                class="btn btn-engaja w-100">
+                Baixar XLSX
+              </a>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="h-100 border rounded p-3">
+              <h6 class="fw-bold mb-1">Participantes por momento</h6>
+              <p class="text-muted small mb-3">Lista os presentes por momento, com data e horários.</p>
+              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos']) }}"
+                class="btn btn-outline-secondary w-100">
+                Baixar XLSX
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+@endhasanyrole
 @endsection

@@ -6,6 +6,7 @@ use App\Http\Requests\UserManagementRequest;
 use App\Models\Municipio;
 use App\Models\Participante;
 use App\Models\User;
+use App\Models\ModeloCertificado;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -23,7 +24,7 @@ class UserManagementController extends Controller
             ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', self::PROTECTED_ROLES))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
-                    $sub->where('name', 'like', "%{$search}%")
+                    $sub->where('name', 'ilike', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
@@ -34,6 +35,7 @@ class UserManagementController extends Controller
         return view('usuarios.index', [
             'users' => $users,
             'search' => $search,
+            'modelosCertificado' => ModeloCertificado::orderBy('nome')->get(['id', 'nome']),
         ]);
     }
 

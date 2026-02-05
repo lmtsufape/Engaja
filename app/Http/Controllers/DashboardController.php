@@ -400,6 +400,7 @@ class DashboardController extends Controller
                     'media'   => null,
                     'resumo'  => null,
                     'exemplos'=> [],
+                    'respostas' => [],
                 ];
 
                 if ($tipo === 'boolean') {
@@ -456,12 +457,14 @@ class DashboardController extends Controller
                     return $bloco;
                 }
 
-                $bloco['exemplos'] = $items
+                $respostasTexto = $items
                     ->sortByDesc('created_at')
-                    ->take(5)
                     ->map(fn($r) => $this->respostaParaTexto($r->resposta))
                     ->filter()
                     ->values();
+
+                $bloco['respostas'] = $respostasTexto->all();
+                $bloco['exemplos'] = $respostasTexto->take(5)->values()->all();
 
                 return $bloco;
             });

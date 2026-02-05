@@ -131,7 +131,39 @@
   </div>
 </div>
 
+<div class="modal fade" id="textAnswersModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title js-text-modal-title">Respostas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-muted small mb-2 js-text-modal-count"></div>
+        <div class="vstack gap-2 js-text-modal-list" style="max-height: 60vh; overflow: auto;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  @media (max-width: 576px) {
+    #cards-questoes .question-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    #cards-questoes .question-controls {
+      width: 100%;
+      justify-content: flex-start;
+    }
+    #cards-questoes .question-controls select {
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>
 <script>
 (() => {
   const container = document.getElementById('avaliacoes-dashboard');
@@ -156,6 +188,11 @@
   const chartInstances = new Map();
   const chartPreferences = new Map();
   let cachedPerguntas = [];
+  const textModalEl = document.getElementById('textAnswersModal');
+  const textModalTitle = textModalEl?.querySelector('.js-text-modal-title');
+  const textModalList = textModalEl?.querySelector('.js-text-modal-list');
+  const textModalCount = textModalEl?.querySelector('.js-text-modal-count');
+  let textModalInstance = null;
   const palette = ['#421944', '#008BBC', '#FDB913', '#E62270', '#2EB57D', '#601F69', '#6C345E', '#9602C7', '#A95DB1', '#D9A8E2', '#ECDEEC'];
 
   function buildParams() {
@@ -183,6 +220,46 @@
     if (!value) return '';
     const text = String(value).replace(/<[^>]+>/g, ' ');
     return text.replace(/\s+/g, ' ').trim();
+  }
+
+  function openTextModal(pergunta, respostas) {
+    const lista = Array.isArray(respostas) ? respostas : [];
+    const titulo = cleanText(pergunta?.texto || 'Respostas');
+    const total = lista.length;
+
+    if (!textModalEl || !window.bootstrap?.Modal) {
+      const texto = lista.length ? lista.map((resp) => `- ${cleanText(resp)}`).join('\n') : 'Sem respostas abertas.';
+      alert(`${titulo}\n\n${texto}`);
+      return;
+    }
+
+    if (!textModalInstance) {
+      textModalInstance = new window.bootstrap.Modal(textModalEl);
+    }
+
+    if (textModalTitle) {
+      textModalTitle.textContent = titulo;
+    }
+
+    if (textModalCount) {
+      textModalCount.textContent = `${total} resposta(s)`;
+    }
+
+    if (textModalList) {
+      textModalList.innerHTML = '';
+      if (total === 0) {
+        textModalList.innerHTML = '<div class=\"text-muted\">Sem respostas abertas.</div>';
+      } else {
+        lista.forEach((resp) => {
+          const item = document.createElement('div');
+          item.className = 'p-2 rounded border bg-light';
+          item.textContent = cleanText(resp);
+          textModalList.appendChild(item);
+        });
+      }
+    }
+
+    textModalInstance.show();
   }
 
   function renderTotals(totais) {
@@ -226,12 +303,12 @@
       card.className = 'card border-0 shadow-sm h-100';
       card.innerHTML = `
         <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="d-flex justify-content-between align-items-start mb-2 question-header">
             <div>
               <div class="fw-bold">${titulo}</div>
               <small class="text-muted">${totalRespostas} resposta(s)</small>
             </div>
-            <div class="d-flex align-items-start gap-2 controls-slot">
+            <div class="d-flex align-items-start gap-2 controls-slot question-controls">
               ${resumo ? `<span class="badge bg-primary-subtle text-primary">${resumo}</span>` : ''}
             </div>
           </div>
@@ -242,22 +319,45 @@
       const controlsSlot = card.querySelector('.controls-slot');
 
       const isText = pergunta.tipo === 'texto';
+      const respostas = Array.isArray(pergunta.respostas) ? pergunta.respostas : [];
       const exemplos = Array.isArray(pergunta.exemplos) ? pergunta.exemplos : [];
 
       if (isText) {
+        const listaFonte = respostas.length ? respostas : exemplos;
+        const limitePreview = 5;
+
         const list = document.createElement('div');
         list.className = 'vstack gap-2';
-        if (exemplos.length === 0) {
+
+        const itens = listaFonte.slice(0, limitePreview);
+        if (itens.length === 0) {
           list.innerHTML = '<div class=\"text-muted\">Sem respostas abertas.</div>';
         } else {
-          exemplos.forEach((resp) => {
+          itens.forEach((resp) => {
             const item = document.createElement('div');
             item.className = 'p-2 rounded border bg-light';
             item.textContent = cleanText(resp);
             list.appendChild(item);
           });
         }
+
+        if (listaFonte.length > limitePreview) {
+          const hint = document.createElement('div');
+          hint.className = 'text-muted small';
+          hint.textContent = `Mostrando ${limitePreview} de ${listaFonte.length} resposta(s)`;
+          list.appendChild(hint);
+        }
+
         body.appendChild(list);
+
+        if (listaFonte.length > limitePreview) {
+          const toggleBtn = document.createElement('button');
+          toggleBtn.type = 'button';
+          toggleBtn.className = 'btn btn-outline-primary btn-sm align-self-start mt-1';
+          toggleBtn.textContent = `Ver todas as respostas (${listaFonte.length})`;
+          toggleBtn.addEventListener('click', () => openTextModal(pergunta, listaFonte));
+          body.appendChild(toggleBtn);
+        }
       } else {
         const canvas = document.createElement('canvas');
         canvas.height = 120;
