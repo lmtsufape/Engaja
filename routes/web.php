@@ -139,6 +139,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])
         ->whereNumber('certificado')
         ->name('certificados.download');
+    Route::get('/minhas-presencas', [ProfileController::class, 'presencas'])->name('profile.presencas');
 });
 Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
