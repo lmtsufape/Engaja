@@ -67,18 +67,24 @@
                                 @endif
                             </td>
                             <td>{{ $ev->user->name ?? '-' }}</td>
-                            <td class="text-end">
-                                <a href="{{ route('eventos.show', $ev) }}" class="btn btn-sm btn-outline-primary">
-                                    Ver
-                                </a>
-                                @can('update', $ev)
-                                <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                            <td class="text-end text-nowrap">
+                                <div class="d-inline-flex gap-2 align-items-center">
+                                    <a href="{{ route('eventos.show', $ev) }}" class="btn btn-sm btn-outline-primary">
+                                        Ver
+                                    </a>
 
-                                <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                                </form>
-                                @endcan
+                                    @can('update', $ev)
+                                        <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">
+                                            Editar
+                                        </a>
+
+                                        <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline m-0 p-0"
+                                            data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                                        </form>
+                                    @endcan
+                                </div>
                             </td>
                         </tr>
                     @empty

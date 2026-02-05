@@ -74,6 +74,8 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
         ->parameters(['templates-avaliacao' => 'template']);
     Route::resource('avaliacoes', AvaliacaoController::class)
         ->parameters(['avaliacoes' => 'avaliacao']);
+    Route::get('avaliacoes/{avaliacao}/respostas', [AvaliacaoController::class, 'respostas'])->name('avaliacoes.respostas');
+    Route::get('avaliacoes/{avaliacao}/respostas/{submissao}', [AvaliacaoController::class, 'respostasMostrar'])->name('avaliacoes.respostas.mostrar');
 });
 
 Route::middleware(['auth', 'role:administrador|gestor'])

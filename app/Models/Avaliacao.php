@@ -8,7 +8,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Avaliacao extends Model
 {
-    protected $fillable = ['template_avaliacao_id', 'inscricao_id', 'atividade_id'];
+    protected $fillable = ['template_avaliacao_id', 'inscricao_id', 'atividade_id', 'anonima'];
+
+    protected $casts = [
+        'anonima' => 'boolean',
+    ];
+
+    public function getAnonimaAttribute($value): bool
+    {
+        // Tratamos null como anônima para retrocompatibilidade
+        return $value === null ? true : (bool) $value;
+    }
 
     public function templateAvaliacao(): BelongsTo
     {

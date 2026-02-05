@@ -53,7 +53,7 @@ class AtividadeController extends Controller
         $this->authorize('update', $evento);
 
         $dados = $request->validate([
-            'municipios'          => 'required|array|min:1',
+            'municipios'          => 'nullable|array',
             'municipios.*'        => 'exists:municipios,id',
             'descricao'           => 'required|string',
             'dia'                 => 'required|date',
@@ -66,7 +66,8 @@ class AtividadeController extends Controller
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
-        $municipiosSelecionados = $dados['municipios'];
+
+        $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
 
         // Mantém o campo legado municipio_id preenchido com o primeiro selecionado (para compatibilidade).
@@ -114,7 +115,7 @@ class AtividadeController extends Controller
         $this->authorize('update', $evento);
 
         $dados = $request->validate([
-            'municipios'          => 'required|array|min:1',
+            'municipios'          => 'nullable|array',
             'municipios.*'        => 'exists:municipios,id',
             'descricao'           => 'required|string',
             'dia'                 => 'required|date',
@@ -127,7 +128,8 @@ class AtividadeController extends Controller
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
-        $municipiosSelecionados = $dados['municipios'];
+
+        $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
 
         $dados['municipio_id'] = $municipiosSelecionados[0] ?? null;

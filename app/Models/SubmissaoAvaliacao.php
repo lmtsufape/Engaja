@@ -14,6 +14,7 @@ class SubmissaoAvaliacao extends Model
         'codigo',
         'atividade_id',
         'avaliacao_id',
+        'presenca_id',
     ];
 
     public function atividade(): BelongsTo
@@ -29,5 +30,10 @@ class SubmissaoAvaliacao extends Model
     public function respostas(): HasMany
     {
         return $this->hasMany(RespostaAvaliacao::class);
+    }
+
+    public function presenca(): BelongsTo
+    {
+        return $this->belongsTo(Presenca::class);
     }
 }
