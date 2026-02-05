@@ -50,6 +50,7 @@
     }
   </style>
   @stack('styles')
+  @livewireStyles
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -103,6 +104,8 @@
       </div>
     </div>
   </div>
+
+  @livewireScripts
 </body>
 
 </html>
