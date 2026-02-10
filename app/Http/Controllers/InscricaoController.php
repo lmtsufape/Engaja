@@ -311,10 +311,17 @@ class InscricaoController extends Controller
                     $tag = null;
                 }
 
+                $telefoneRaw = $row['telefone'] ?? null;
+                $telefoneValue = is_string($telefoneRaw)
+                    ? trim($telefoneRaw)
+                    : (is_scalar($telefoneRaw) ? trim((string) $telefoneRaw) : null);
+
+                $telefoneValue = $telefoneValue !== '' ? $telefoneValue : null;
+
                 $dados = [
                     'municipio_id'     => ($row['municipio_id'] ?? null) ?: null,
                     'cpf'              => (($row['cpf'] ?? '') !== '') ? trim((string)$row['cpf']) : null,
-                    'telefone'         => (($row['telefone'] ?? '') !== '') ? trim((string)$row['telefone']) : null,
+                    'telefone'         => $telefoneValue,
                     'escola_unidade'   => ($org !== '') ? $org : null,
                     'tipo_organizacao' => ($tipoOrg !== '') ? $tipoOrg : null,
                     'tag'              => $tag,
@@ -322,8 +329,19 @@ class InscricaoController extends Controller
                 ];
 
                 if ($participantesExistentes->has($userId)) {
+                   $camposProtegidos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tipo_organizacao', 'tag', 'data_entrada'];
+                   foreach ($camposProtegidos as $campo) {
+                    if (array_key_exists($campo, $dados) && $dados[$campo] === null) {
+                        unset($dados[$campo]);
+                    }
+                }
+
+                if (!empty($dados)) {
                     $atualizacoes[] = ['user_id' => $userId] + $dados;
-                    $ids[] = $participantesExistentes[$userId]->id;
+                }
+
+                $ids[] = $participantesExistentes[$userId]->id;
+
                 } else {
                     $dados['user_id']    = $userId;
                     $dados['created_at'] = now();
@@ -346,6 +364,10 @@ class InscricaoController extends Controller
                 foreach ($campos as $field) {
                     $sql = "$field = CASE user_id\n";
                     foreach ($atualizacoes as $upd) {
+                        if (!array_key_exists($field, $upd)) {
+                            $sql .= "WHEN {$upd['user_id']} THEN $field\n";
+                            continue;
+                        }
                         $value = $upd[$field] === null ? 'NULL' : DB::getPdo()->quote($upd[$field]);
                         $sql .= "WHEN {$upd['user_id']} THEN $value\n";
                     }
