@@ -26,6 +26,10 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
             'Email',
             'CPF',
             'Telefone',
+            'Municipio',
+            'Tipo_organizacao',
+            'Organizacao',
+            'Tag',
         ];
     }
 
@@ -34,8 +38,12 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
         return [
             $user->name,
             $user->email,
-            $user->participante->cpf ?? null,      
+            $user->participante->cpf ?? null,
             $user->participante->telefone ?? null,
+            $user->participante->municipio->nome ?? null,
+            $user->participante->tipo_organizacao ?? null,
+            $user->participante->escola_unidade ?? null,
+            $user->participante->tag ?? null,
         ];
     }
 }
