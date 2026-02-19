@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Spatie\Permission\Models\Role;
+use App\Exports\UsersExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UserManagementController extends Controller
 {
@@ -121,5 +123,10 @@ class UserManagementController extends Controller
     private function isProtected(User $user): bool
     {
         return $user->hasAnyRole(self::PROTECTED_ROLES);
+    }
+
+    public function export()
+    {
+        return Excel::download(new UsersExport, 'usuarios.xlsx');
     }
 }

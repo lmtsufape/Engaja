@@ -108,6 +108,7 @@ Route::middleware(['auth', 'role:administrador|gestor'])
         Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
         Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
         Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
+        Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
     });
 
 Route::middleware(['auth', 'role:administrador|formador'])
@@ -139,6 +140,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])
         ->whereNumber('certificado')
         ->name('certificados.download');
+    Route::get('/minhas-presencas', [ProfileController::class, 'presencas'])->name('profile.presencas');
 });
 Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');

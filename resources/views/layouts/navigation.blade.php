@@ -73,6 +73,13 @@
           </ul>
         </li>
         @endhasanyrole
+        @role('participante')
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{{ route('profile.presencas') }}">
+              Minhas Presenças
+            </a>
+          </li>
+        @endrole
         @endauth
       </ul>
 
