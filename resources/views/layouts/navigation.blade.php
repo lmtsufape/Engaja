@@ -42,11 +42,19 @@
           </ul>
         </li>
         @endrole
+
         @hasanyrole('administrador|gestor')
-        <li class="nav-item">
-          <a class="nav-link text-white ms-lg-2" href="{{ route('usuarios.index') }}">
-            Gerenciar Usuários
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle text-white nav-dropdown-fallback" href="javascript:void(0)" role="button" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            Gerenciamento
           </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{{ route('usuarios.index') }}">Usuários</a></li>
+            <li><a class="dropdown-item" href="{{ route('regioes.index') }}">Regiões</a></li>
+            <li><a class="dropdown-item" href="{{ route('estados.index') }}">Estados</a></li>
+            <li><a class="dropdown-item" href="{{ route('municipios.index') }}">Municípios</a></li>
+          </ul>
         </li>
         @endhasanyrole
 
@@ -65,6 +73,13 @@
           </ul>
         </li>
         @endhasanyrole
+        @role('participante')
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{{ route('profile.presencas') }}">
+              Minhas Presenças
+            </a>
+          </li>
+        @endrole
         @endauth
       </ul>
 

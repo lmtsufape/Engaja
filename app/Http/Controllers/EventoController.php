@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\EventoParticipantesGeralExport;
+use App\Exports\EventoParticipantesPorMomentoExport;
 use App\Models\Evento;
 use App\Models\Eixo;
 use App\Models\User;
@@ -14,12 +16,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Imports\ParticipantesImport;
-use \Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\CadastroParticipanteStoreRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Presenca;
 
 class EventoController extends Controller
 {
@@ -105,6 +111,27 @@ class EventoController extends Controller
         return view('eventos.show', compact('evento'));
     }
 
+    public function relatorios(Request $request, Evento $evento)
+    {
+        $user = $request->user();
+        if (!$user || (!$user->hasRole('administrador') && !$user->hasRole('formador'))) {
+            abort(403);
+        }
+
+        $tipo = $request->get('tipo', 'geral');
+        $slug = Str::slug($evento->nome ?? 'acao-pedagogica');
+
+        if ($tipo === 'momentos') {
+            $nomeArquivo = $slug.'-participantes-por-momento.xlsx';
+
+            return Excel::download(new EventoParticipantesPorMomentoExport($evento), $nomeArquivo);
+        }
+
+        $nomeArquivo = $slug.'-participantes-geral.xlsx';
+
+        return Excel::download(new EventoParticipantesGeralExport($evento), $nomeArquivo);
+    }
+
     public function edit(Evento $evento)
     {
         $this->authorize('update', $evento);
@@ -162,6 +189,127 @@ class EventoController extends Controller
 
         $evento->delete();
         return redirect()->route('eventos.index')->with('success', 'Evento excluído.');
+    }
+
+    public function relatorioParticipantesUnicos(Request $request, Evento $evento)
+    {
+        $presencas = Presenca::with(['inscricao.participante.user', 'atividade'])
+            ->where('status', 'presente')
+            ->whereHas('atividade', fn ($q) => $q->where('evento_id', $evento->id))
+            ->get();
+
+        $grupo = $presencas->groupBy(fn ($p) => $p->inscricao->participante->id ?? 0);
+
+        $rows = $grupo->map(function ($lista) use ($evento) {
+            $p = $lista->first()->inscricao?->participante;
+            $user = $p?->user;
+            $carga = $lista->sum(fn ($item) => (float) ($item->atividade?->carga_horaria ?? 0));
+            $mun = $p?->municipio;
+            $estado = $mun?->estado;
+            $municipioFmt = $mun && $estado ? "{$mun->nome} - {$estado->sigla}" : ($mun->nome ?? '-');
+            return [
+                'Nome'                => $user->name ?? '-',
+                'Email'               => $user->email ?? '-',
+                'CPF'                 => $p->cpf ?? '-',
+                'Telefone'            => $p->telefone ?? '-',
+                'Escola/Unidade'      => $p->escola_unidade ?? '-',
+                'Tipo organização'    => $p->tipo_organizacao ?? '-',
+                'Município'           => $municipioFmt ?? '-',
+                'Região'              => $estado->regiao ?? '-',
+                'Tag'                 => $p->tag ?? '-',
+                'Ação pedagógica'     => $evento->nome,
+                'Carga horária total' => $carga,
+            ];
+        })->values();
+
+        $export = new class($rows) implements FromCollection, WithHeadings {
+            private $rows;
+            public function __construct($rows) { $this->rows = $rows; }
+            public function collection() { return collect($this->rows); }
+            public function headings(): array
+            {
+                return [
+                    'Nome',
+                    'Email',
+                    'CPF',
+                    'Telefone',
+                    'Escola/Unidade',
+                    'Tipo organização',
+                    'Município',
+                    'Região',
+                    'Tag',
+                    'Ação pedagógica',
+                    'Carga horária total',
+                ];
+            }
+        };
+
+        $nomeArquivo = 'relatorio-participantes-unicos-'.$evento->id.'.xlsx';
+        return Excel::download($export, $nomeArquivo);
+    }
+
+    public function relatorioParticipantesPorMomento(Request $request, Evento $evento)
+    {
+        $presencas = Presenca::with(['inscricao.participante.user', 'atividade'])
+            ->where('status', 'presente')
+            ->whereHas('atividade', fn ($q) => $q->where('evento_id', $evento->id))
+            ->get();
+
+        $rows = $presencas->map(function ($p) use ($evento) {
+            $participante = $p->inscricao?->participante;
+            $user = $participante?->user;
+            $atv  = $p->atividade;
+            $titulo = $atv->titulo ?? $atv->descricao ?? 'Momento';
+            $dia   = $atv->dia ? Carbon::parse($atv->dia)->format('d/m/Y') : '-';
+            $hora  = $atv->hora_inicio ? Carbon::parse($atv->hora_inicio)->format('H:i') : '-';
+            $mun = $participante?->municipio;
+            $estado = $mun?->estado;
+            $municipioFmt = $mun && $estado ? "{$mun->nome} - {$estado->sigla}" : ($mun->nome ?? '-');
+            return [
+                'Nome'                   => $user->name ?? '-',
+                'Email'                  => $user->email ?? '-',
+                'CPF'                    => $participante->cpf ?? '-',
+                'Telefone'               => $participante->telefone ?? '-',
+                'Escola/Unidade'         => $participante->escola_unidade ?? '-',
+                'Tipo organização'       => $participante->tipo_organizacao ?? '-',
+                'Município'              => $municipioFmt ?? '-',
+                'Região'                 => $estado->regiao ?? '-',
+                'Tag'                    => $participante->tag ?? '-',
+                'Ação pedagógica'        => $evento->nome,
+                'Momento'                => $titulo,
+                'Dia'                    => $dia,
+                'Hora início'            => $hora,
+                'Carga horária do momento' => (float) ($atv->carga_horaria ?? 0),
+            ];
+        })->values();
+
+        $export = new class($rows) implements FromCollection, WithHeadings {
+            private $rows;
+            public function __construct($rows) { $this->rows = $rows; }
+            public function collection() { return collect($this->rows); }
+            public function headings(): array
+            {
+                return [
+                    'Nome',
+                    'Email',
+                    'CPF',
+                    'Telefone',
+                    'Escola/Unidade',
+                    'Tipo organização',
+                    'Município',
+                    'Região',
+                    'Tag',
+                    'Ação pedagógica',
+                    'Momento',
+                    'Dia',
+                    'Hora início',
+                    'Carga horária do momento',
+                ];
+            }
+        };
+
+        $nomeArquivo = 'relatorio-participantes-momentos-'.$evento->id.'.xlsx';
+        return Excel::download($export, $nomeArquivo);
     }
 
     public function cadastro_inscricao($evento_id, $atividade_id)

@@ -74,6 +74,8 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
         ->parameters(['templates-avaliacao' => 'template']);
     Route::resource('avaliacoes', AvaliacaoController::class)
         ->parameters(['avaliacoes' => 'avaliacao']);
+    Route::get('avaliacoes/{avaliacao}/respostas', [AvaliacaoController::class, 'respostas'])->name('avaliacoes.respostas');
+    Route::get('avaliacoes/{avaliacao}/respostas/{submissao}', [AvaliacaoController::class, 'respostasMostrar'])->name('avaliacoes.respostas.mostrar');
 });
 
 Route::middleware(['auth', 'role:administrador|gestor'])
@@ -86,6 +88,19 @@ Route::middleware(['auth', 'role:administrador|gestor'])
     });
 
 Route::middleware(['auth', 'role:administrador|gestor'])
+    ->group(function () {
+        Route::resource('regioes', \App\Http\Controllers\RegiaoController::class)
+            ->parameters(['regioes' => 'regiao'])
+            ->except(['create', 'edit', 'show']);
+        Route::resource('estados', \App\Http\Controllers\EstadoController::class)
+            ->parameters(['estados' => 'estado'])
+            ->except(['create', 'edit', 'show']);
+        Route::resource('municipios', \App\Http\Controllers\MunicipioController::class)
+            ->parameters(['municipios' => 'municipio'])
+            ->except(['create', 'edit', 'show']);
+    });
+
+Route::middleware(['auth', 'role:administrador|gestor'])
     ->prefix('usuarios')
     ->name('usuarios.')
     ->group(function () {
@@ -93,7 +108,12 @@ Route::middleware(['auth', 'role:administrador|gestor'])
         Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
         Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
         Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
+        Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
     });
+
+Route::middleware(['auth', 'role:administrador|formador'])
+    ->get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
+    ->name('eventos.relatorios');
 
 Route::middleware(['auth', 'role:administrador|participante'])->group(function () {
     Route::resource('eventos', EventoController::class);
@@ -120,6 +140,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/certificados/{certificado}/download', [CertificadoController::class, 'download'])
         ->whereNumber('certificado')
         ->name('certificados.download');
+    Route::get('/minhas-presencas', [ProfileController::class, 'presencas'])->name('profile.presencas');
 });
 Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');

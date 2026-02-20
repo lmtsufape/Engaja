@@ -15,7 +15,7 @@
     ->all();
 @endphp
 <div class="mb-3">
-  <label for="municipios" class="form-label">Municípios <span class="text-danger">*</span></label>
+  <label for="municipios" class="form-label">Municípios </label>
   <select name="municipios[]" id="municipios" multiple
           class="form-select @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror"
           size="6">

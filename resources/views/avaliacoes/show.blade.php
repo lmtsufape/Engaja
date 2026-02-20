@@ -5,10 +5,15 @@
   <div class="col-xl-8">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="h3 fw-bold text-engaja mb-1">Avaliacao</h1>
+        <h1 class="h3 fw-bold text-engaja mb-1">Avaliação</h1>
         <p class="text-muted mb-0">Registrada em {{ $avaliacao->created_at?->format('d/m/Y H:i') ?? '-' }}</p>
       </div>
-      <a href="{{ route('avaliacoes.edit', $avaliacao) }}" class="btn btn-outline-secondary">Editar</a>
+      <div class="d-flex gap-2">
+        @if(!$avaliacao->anonima)
+          <a href="{{ route('avaliacoes.respostas', $avaliacao) }}" class="btn btn-primary">Ver respostas</a>
+        @endif
+        <a href="{{ route('avaliacoes.edit', $avaliacao) }}" class="btn btn-outline-secondary">Editar</a>
+      </div>
     </div>
 
     @php
