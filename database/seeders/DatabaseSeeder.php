@@ -22,8 +22,9 @@ class DatabaseSeeder extends Seeder
             EstadoSeeder::class,
             MunicipioSeeder::class,
             RolesPermissionsSeeder::class,
-            BiIndicadoresSeeder::class,
-            BiDimensoesSeeder::class,
+            BiFenomenoSeeder::class,
+            BiIndicadorSeeder::class,
+            BiDimensaoSeeder::class,
         ]);
 
         $administrador = User::factory()
