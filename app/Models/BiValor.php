@@ -3,14 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BiValor extends Model
 {
+    protected $table = 'bi_valores';
+
     protected $fillable = [
-        'indicador_id',
-        'municipio_id',
+        'valor',
         'ano',
-        'valor_numeric',
-        'valor_text',
+        'municipio_id',
+        'indicador_id',
+        'dimensao_valor_id'
     ];
+
+    public function indicador() {
+        return $this->belongsTo(BiIndicador::class, 'indicador_id');
+    }
 }

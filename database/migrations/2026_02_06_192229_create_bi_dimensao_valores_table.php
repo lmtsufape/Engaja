@@ -14,12 +14,9 @@ return new class extends Migration
         Schema::create('bi_dimensao_valores', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('dimensao_id')
-                ->constrained('bi_dimensoes')
-                ->cascadeOnDelete();
-
             $table->string('codigo'); // MAS, FEM, BRANCA, PRETA, etc
-            $table->string('nome');
+
+            $table->foreignId('dimensao_id')->constrained('bi_dimensoes')->cascadeOnDelete();
 
             $table->timestamps();
 

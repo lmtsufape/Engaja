@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class BiDimensao extends Model
 {
     protected $table = 'bi_dimensoes';
-    protected $fillable = ['codigo', 'nome'];
+    protected $fillable = ['codigo'];
 
     public function valores()
     {

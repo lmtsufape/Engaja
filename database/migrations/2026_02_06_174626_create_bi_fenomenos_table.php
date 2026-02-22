@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('bi_dimensoes', function (Blueprint $table) {
+        Schema::create('bi_fenomenos', function (Blueprint $table) {
             $table->id();
 
-            $table->string('codigo')->unique(); // SEXO, RACA, RESIDENCIA
+            $table->string('codigo')->unique();
 
             $table->timestamps();
         });
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('bi_dimensoes');
+        Schema::dropIfExists('bi_fenomenos');
     }
 };

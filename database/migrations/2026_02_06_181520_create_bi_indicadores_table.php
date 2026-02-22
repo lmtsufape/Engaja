@@ -13,11 +13,12 @@ return new class extends Migration
     {
         Schema::create('bi_indicadores', function (Blueprint $table) {
             $table->id();
+
             $table->string('codigo')->unique(); // ex: TAXA_ANALFABETISMO
-            $table->string('nome');
-            $table->string('unidade')->nullable(); // %, número, texto
-            $table->string('fonte')->nullable();   // Censo Escolar, IBGE, etc
-            $table->text('descricao')->nullable();
+            $table->string('tipo_valor'); // ABSOLUTO | PERCENTUAL | ETC
+
+            $table->foreignId('fenomeno_id')->nullable()->constrained('bi_fenomenos')->nullOnDelete();
+
             $table->timestamps();
         });
     }
