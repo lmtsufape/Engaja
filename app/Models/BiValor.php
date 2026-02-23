@@ -17,7 +17,13 @@ class BiValor extends Model
         'dimensao_valor_id'
     ];
 
-    public function indicador() {
+    public function indicador()
+    {
         return $this->belongsTo(BiIndicador::class, 'indicador_id');
+    }
+
+    public function municipio()
+    {
+        return $this->belongsTo(Municipio::class, 'municipio_id');
     }
 }

@@ -44,4 +44,9 @@ class BiIndicador extends Model
     {
         return $this->hasMany(BiValor::class);
     }
+
+    public function municipio()
+    {
+        return $this->belongsTo(Municipio::class);
+    }
 }

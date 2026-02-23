@@ -1,33 +1,32 @@
-﻿import './bootstrap';
+﻿import "./bootstrap";
+import "./graficos-ranking-municipios";
 
 // import bundle com Popper e exporta classes Bootstrap
-import * as bootstrap from 'bootstrap';
-import { initResponsesChart } from './bi/dashboard';
-import { initAnalfabetismoChart } from './bi/dashboard';
+import * as bootstrap from "bootstrap";
 
 window.bootstrap = bootstrap;
-window.initResponsesChart = initResponsesChart;
-window.initAnalfabetismoChart = initAnalfabetismoChart;
 
 // Carrega Fabric.js apenas nas telas que têm o canvas de certificado
 const loadFabricIfNeeded = () => {
-  const hasCanvas =
-    document.getElementById('canvas-frente') ||
-    document.getElementById('canvas-verso');
+    const hasCanvas =
+        document.getElementById("canvas-frente") ||
+        document.getElementById("canvas-verso");
 
-  if (!hasCanvas || window.fabric) return;
+    if (!hasCanvas || window.fabric) return;
 
-  import('fabric').then((mod) => {
-    const fabric = mod.fabric || mod.default || mod;
-    window.fabric = fabric;
-    document.dispatchEvent(new Event('fabric:ready'));
-  });
+    import("fabric").then((mod) => {
+        const fabric = mod.fabric || mod.default || mod;
+        window.fabric = fabric;
+        document.dispatchEvent(new Event("fabric:ready"));
+    });
 };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadFabricIfNeeded, { once: true });
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadFabricIfNeeded, {
+        once: true,
+    });
 } else {
-  loadFabricIfNeeded();
+    loadFabricIfNeeded();
 }
 
 let confirmModalInstance;
@@ -36,80 +35,82 @@ let confirmAcceptBtn;
 let pendingForm = null;
 
 const submitWithConfirmation = () => {
-  if (!pendingForm) {
-    return;
-  }
+    if (!pendingForm) {
+        return;
+    }
 
-  pendingForm.dataset.confirmed = 'true';
+    pendingForm.dataset.confirmed = "true";
 
-  const formToSubmit = pendingForm;
-  pendingForm = null;
+    const formToSubmit = pendingForm;
+    pendingForm = null;
 
-  if (typeof formToSubmit.requestSubmit === 'function') {
-    formToSubmit.requestSubmit();
-  } else {
-    formToSubmit.submit();
-  }
+    if (typeof formToSubmit.requestSubmit === "function") {
+        formToSubmit.requestSubmit();
+    } else {
+        formToSubmit.submit();
+    }
 };
 
 const ensureModalSetup = () => {
-  if (confirmModalInstance || !bootstrap?.Modal) {
-    return;
-  }
+    if (confirmModalInstance || !bootstrap?.Modal) {
+        return;
+    }
 
-  const modalEl = document.getElementById('confirmModal');
-  if (!modalEl) {
-    return;
-  }
+    const modalEl = document.getElementById("confirmModal");
+    if (!modalEl) {
+        return;
+    }
 
-  confirmModalInstance = new bootstrap.Modal(modalEl);
-  confirmMessageEl = modalEl.querySelector('.js-confirm-message');
-  confirmAcceptBtn = modalEl.querySelector('.js-confirm-accept');
+    confirmModalInstance = new bootstrap.Modal(modalEl);
+    confirmMessageEl = modalEl.querySelector(".js-confirm-message");
+    confirmAcceptBtn = modalEl.querySelector(".js-confirm-accept");
 
-  confirmAcceptBtn?.addEventListener('click', () => {
-    confirmModalInstance?.hide();
-    submitWithConfirmation();
-  });
+    confirmAcceptBtn?.addEventListener("click", () => {
+        confirmModalInstance?.hide();
+        submitWithConfirmation();
+    });
 };
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', ensureModalSetup, { once: true });
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureModalSetup, {
+        once: true,
+    });
 } else {
-  ensureModalSetup();
+    ensureModalSetup();
 }
 
-document.addEventListener('submit', (event) => {
-  const form = event.target;
+document.addEventListener("submit", (event) => {
+    const form = event.target;
 
-  if (!(form instanceof HTMLFormElement)) {
-    return;
-  }
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
 
-  const confirmMessage = form.dataset.confirm;
+    const confirmMessage = form.dataset.confirm;
 
-  if (!confirmMessage) {
-    return;
-  }
+    if (!confirmMessage) {
+        return;
+    }
 
-  if (form.dataset.confirmed === 'true') {
-    delete form.dataset.confirmed;
-    return;
-  }
+    if (form.dataset.confirmed === "true") {
+        delete form.dataset.confirmed;
+        return;
+    }
 
-  event.preventDefault();
-  pendingForm = form;
+    event.preventDefault();
+    pendingForm = form;
 
-  ensureModalSetup();
+    ensureModalSetup();
 
-  if (confirmMessageEl) {
-    confirmMessageEl.textContent = confirmMessage;
-  }
+    if (confirmMessageEl) {
+        confirmMessageEl.textContent = confirmMessage;
+    }
 
-  if (confirmModalInstance) {
-    confirmModalInstance.show();
-  } else if (window.confirm(confirmMessage)) {
-    submitWithConfirmation();
-  } else {
-    pendingForm = null;
-  }
+    if (confirmModalInstance) {
+        confirmModalInstance.show();
+    } else if (window.confirm(confirmMessage)) {
+        submitWithConfirmation();
+    } else {
+        pendingForm = null;
+    }
 });
