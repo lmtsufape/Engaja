@@ -64,12 +64,14 @@
           <td class="text-end">
             <a href="{{ route('dimensaos.show', $dimensao) }}" class="btn btn-sm btn-outline-primary">Ver</a>
             <a href="{{ route('dimensaos.edit', $dimensao) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            @hasanyrole('administrador|gerente|eq_pedagogica')
             <form action="{{ route('dimensaos.destroy', $dimensao) }}" method="POST" class="d-inline">
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-sm btn-outline-danger"
                 onclick="return confirm('Tem certeza que deseja excluir esta dimensão?')">Excluir</button>
             </form>
+            @endhasanyrole
           </td>
         </tr>
         @empty

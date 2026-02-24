@@ -96,12 +96,14 @@
           <td class="text-end">
             <a href="{{ route('avaliacoes.show', $avaliacao) }}" class="btn btn-sm btn-outline-primary">Ver</a>
             <a href="{{ route('avaliacoes.edit', $avaliacao) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            @hasanyrole('administrador|gerente|eq_pedagogica')
             <form action="{{ route('avaliacoes.destroy', $avaliacao) }}" method="POST" class="d-inline">
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-sm btn-outline-danger"
                 onclick="return confirm('Tem certeza que deseja excluir esta avaliação?')">Excluir</button>
             </form>
+            @endhasanyrole
           </td>
         </tr>
         @empty

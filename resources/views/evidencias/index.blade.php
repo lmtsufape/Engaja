@@ -76,12 +76,14 @@
           <td class="text-end">
             <a href="{{ route('evidencias.show', $evidencia) }}" class="btn btn-sm btn-outline-primary">Ver</a>
             <a href="{{ route('evidencias.edit', $evidencia) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            @hasanyrole('administrador|gerente|eq_pedagogica')
             <form action="{{ route('evidencias.destroy', $evidencia) }}" method="POST" class="d-inline">
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-sm btn-outline-danger"
                 onclick="return confirm('Tem certeza que deseja excluir esta evidência?')">Excluir</button>
             </form>
+            @endhasanyrole
           </td>
         </tr>
         @empty

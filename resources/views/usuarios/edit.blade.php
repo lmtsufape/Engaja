@@ -127,6 +127,19 @@
               </select>
               @error('municipio_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
+              @role('administrador')
+              <div class="mb-3">
+                  <label for="role" class="form-label">Papel / Acesso no Sistema</label>
+                  <select name="role" id="role" class="form-select">
+                      @foreach($roles as $role)
+                          <option value="{{ $role->name }}" {{ $currentRole == $role->name ? 'selected' : '' }}>
+                              {{ ucfirst($role->name) }}
+                          </option>
+                      @endforeach
+                  </select>
+                  <div class="form-text">Apenas administradores podem alterar os papéis de acesso.</div>
+              </div>
+              @endrole
           </div>
         </div>
       </div>

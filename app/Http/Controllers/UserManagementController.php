@@ -16,7 +16,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UserManagementController extends Controller
 {
-    private const PROTECTED_ROLES = ['administrador', 'gestor'];
+    private const PROTECTED_ROLES = ['administrador'];
 
     public function index(Request $request): View
     {
@@ -103,9 +103,15 @@ class UserManagementController extends Controller
             ]
         );
 
-        $roleToApply = $data['role'] ?? $managedUser->roles->first()?->name;
-        if ($roleToApply) {
-            $managedUser->syncRoles([$roleToApply]);
+        if (auth()->user()->hasRole('administrador')) {
+            //se a role vier preenchida no request, aplica. Se vier vazia, remove os acessos.
+            $roleToApply = $data['role'] ?? null;
+
+            if ($roleToApply) {
+                $managedUser->syncRoles([$roleToApply]);
+            } else {
+                $managedUser->syncRoles([]);
+            }
         }
 
         return redirect()

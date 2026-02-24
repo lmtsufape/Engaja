@@ -6,8 +6,10 @@
             <h1 class="h3 fw-bold text-engaja mb-0">Ações pedagógicas</h1>
 
             <div class="d-flex align-items-center gap-2">
+                @hasanyrole('administrador|gerente')
                 <button type="button" class="btn btn-outline-primary" id="btn-emitir-certificados" data-bs-toggle="modal" data-bs-target="#modalEmitirCertificados" disabled>Emitir certificados</button>
-                @hasanyrole('administrador|formador')
+                @endhasanyrole
+                @hasanyrole('administrador|gerente|eq_pedagogica')
                 <a href="{{ route('eventos.create') }}" class="btn btn-engaja">Nova ação pedagógica</a>
                 @endhasanyrole
             </div>
@@ -74,15 +76,18 @@
                                     </a>
 
                                     @can('update', $ev)
+                                        @hasanyrole('administrador|gerente|eq_pedagogica')
                                         <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">
                                             Editar
                                         </a>
-
+                                        @role('administrador')
                                         <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline m-0 p-0"
                                             data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
                                             @csrf @method('DELETE')
                                             <button class="btn btn-sm btn-outline-danger">Excluir</button>
                                         </form>
+                                        @endrole
+                                        @endhasanyrole
                                     @endcan
                                 </div>
                             </td>
@@ -99,6 +104,7 @@
         {{ $eventos->withQueryString()->links() }}
     </div>
 
+    @hasanyrole('administrador|gerente')
     <form method="POST" action="{{ route('certificados.emitir') }}">
         @csrf
         <input type="hidden" name="eventos" id="eventosSelecionados">
@@ -133,6 +139,7 @@
             </div>
         </div>
     </form>
+    @endhasanyrole
 
 @push('scripts')
 <script>

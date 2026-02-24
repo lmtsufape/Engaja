@@ -67,12 +67,14 @@
           <td class="text-end">
             <a href="{{ route('indicadors.show', $indicador) }}" class="btn btn-sm btn-outline-primary">Ver</a>
             <a href="{{ route('indicadors.edit', $indicador) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            @hasanyrole('administrador|gerente|eq_pedagogica')
             <form action="{{ route('indicadors.destroy', $indicador) }}" method="POST" class="d-inline">
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-sm btn-outline-danger"
                 onclick="return confirm('Tem certeza que deseja excluir este indicador?')">Excluir</button>
             </form>
+            @endhasanyrole
           </td>
         </tr>
         @empty

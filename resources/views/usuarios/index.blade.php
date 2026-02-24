@@ -78,13 +78,18 @@
       </div>
     </div>
 
+
     <div class="mt-3 text-end d-flex flex-wrap justify-content-end gap-2">
-      <a href="{{ route('usuarios.export') }}" class="btn btn-success">
+    @can('user.ver')
+      <a href="{{ route('usuarios.export') }}" class="btn btn-engaja">
         Exportar planilha de usuários
       </a>
+    @endcan
+    @hasanyrole('administrador|gerente')
       <button type="button" class="btn btn-outline-secondary" id="btn-select-all-page">Selecionar todos da página</button>
       <button type="button" class="btn btn-outline-secondary" id="btn-select-all-global">Selecionar todos (todas as páginas)</button>
       <button type="button" class="btn btn-engaja" id="btn-open-modal">Emitir certificados</button>
+    @endhasanyrole
     </div>
   </form>
 

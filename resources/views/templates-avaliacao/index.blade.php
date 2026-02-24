@@ -72,12 +72,14 @@
           <td class="text-end">
             <a href="{{ route('templates-avaliacao.show', $template) }}" class="btn btn-sm btn-outline-primary">Ver</a>
             <a href="{{ route('templates-avaliacao.edit', $template) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+            @hasanyrole('administrador|gerente|eq_pedagogica')
             <form action="{{ route('templates-avaliacao.destroy', $template) }}" method="POST" class="d-inline">
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-sm btn-outline-danger"
                 onclick="return confirm('Tem certeza que deseja excluir este modelo?')">Excluir</button>
             </form>
+            @endhasanyrole
           </td>
         </tr>
         @empty

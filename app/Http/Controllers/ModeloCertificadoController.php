@@ -14,7 +14,7 @@ class ModeloCertificadoController extends Controller
 {
     public function __construct()
     {
-        //$this->middleware(['auth', 'role:administrador|gestor']);
+        //$this->middleware(['auth', 'role:administrador|gerente']);
     }
 
     public function index(): View

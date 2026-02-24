@@ -26,10 +26,10 @@ class UsersExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
             'Email',
             'CPF',
             'Telefone',
-            'Municipio',
-            'Tipo_organizacao',
-            'Organizacao',
-            'Tag',
+            'Município',
+            'Tipo de organização',
+            'Organização',
+            'Vínculo',
         ];
     }
 
