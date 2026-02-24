@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Atividade;
-use App\Models\BiValor;
 use App\Models\Evento;
 use App\Models\Inscricao;
 use App\Models\Municipio;
@@ -31,61 +30,9 @@ class DashboardController extends Controller
         return view('dashboards.home', compact('resumo', 'templatesDisponiveis', 'eventosRecentes'));
     }
 
-    public function bi(Request $request)
+    public function bi()
     {
-        $indicador = 'ANALFABETISMO_TAXA';
-        $indicadorDimensoes = 'ANALFABETISMO_QTDE';
-
-        $anosDisponiveis = BiValor::query()
-            ->select('ano')
-            ->distinct()
-            ->orderByDesc('ano')
-            ->pluck('ano')
-            ->map(fn ($ano) => (int) $ano)
-            ->values();
-
-        $anoPadrao = $anosDisponiveis->first() ?? (int) now()->year;
-        $ano = $request->integer('ano', $anoPadrao);
-
-        if (!$anosDisponiveis->contains($ano)) {
-            $ano = $anoPadrao;
-        }
-
-        $municipiosDisponiveis = Municipio::query()
-            ->join('bi_valores', 'bi_valores.municipio_id', '=', 'municipios.id')
-            ->join('bi_indicadores', 'bi_indicadores.id', '=', 'bi_valores.indicador_id')
-            ->where('bi_indicadores.codigo', $indicadorDimensoes)
-            ->where('bi_valores.ano', $ano)
-            ->whereNotNull('bi_valores.dimensao_valor_id')
-            ->select('municipios.id', 'municipios.nome')
-            ->distinct()
-            ->orderBy('municipios.nome')
-            ->get();
-
-        $municipioId = $request->integer('municipio_id');
-        if ($municipioId <= 0) {
-            $municipioId = null;
-        }
-
-        if (
-            $municipioId !== null &&
-            !$municipiosDisponiveis->contains(fn ($municipio) => (int) $municipio->id === $municipioId)
-        ) {
-            $municipioId = null;
-        }
-
-        $municipioSelecionado = $municipioId !== null
-            ? $municipiosDisponiveis->first(fn ($municipio) => (int) $municipio->id === $municipioId)
-            : null;
-
-        return view('dashboards.bi', compact(
-            'ano',
-            'indicador',
-            'anosDisponiveis',
-            'municipioId',
-            'municipiosDisponiveis',
-            'municipioSelecionado'
-        ));
+        return view('dashboards.bi');
     }
 
     public function index(Request $request)
