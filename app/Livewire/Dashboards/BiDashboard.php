@@ -4,6 +4,7 @@ namespace App\Livewire\Dashboards;
 
 use App\Models\BiValor;
 use App\Models\Municipio;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class BiDashboard extends Component
@@ -11,24 +12,26 @@ class BiDashboard extends Component
     public array $anosDisponiveis = [];
     public array $municipiosDisponiveis = [];
 
+    #[Url(nullable: true)]
     public $ano = null;
+
+    #[Url(as: 'municipio_id', nullable: true)]
     public $municipioId = null;
 
-    public string $indicador = 'ANALFABETISMO_TAXA';
     public string $indicadorDimensoes = 'ANALFABETISMO_QTDE';
 
-    public function mount(?int $anoInicial = null, ?int $municipioIdInicial = null): void
+    public function mount(): void
     {
         $this->carregarAnosDisponiveis();
 
         $anoPadrao = $this->anosDisponiveis[0] ?? (int) now()->year;
-        $this->ano = in_array($anoInicial, $this->anosDisponiveis, true)
-            ? $anoInicial
+        $anoInformado = (int) ($this->ano ?? 0);
+        $this->ano = in_array($anoInformado, $this->anosDisponiveis, true)
+            ? $anoInformado
             : $anoPadrao;
 
         $this->carregarMunicipiosDisponiveis();
 
-        $this->municipioId = $municipioIdInicial;
         $this->normalizarMunicipioSelecionado();
     }
 

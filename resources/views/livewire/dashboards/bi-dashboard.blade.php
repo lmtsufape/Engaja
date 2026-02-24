@@ -46,14 +46,25 @@
         @php($anoAtual = (int) $ano)
         @php($municipioIdAtual = $this->municipioIdNormalizado())
         @php($municipioSelecionadoNome = $this->municipioSelecionadoNome())
-        @php($tituloGrafico = "Ranking de taxa de analfabetismo por municipios ({$anoAtual})")
+        @php($tituloRankingAnalfabetismo = "Ranking de analfabetismo por municipios ({$anoAtual})")
+        @php($tituloRankingEja = "Ranking de acesso EJA por municipios ({$anoAtual})")
         @php($sufixoMunicipioDimensao = $municipioSelecionadoNome ? " - {$municipioSelecionadoNome}" : '')
 
         <livewire:graficos.ranking-municipios
-            :indicador="$indicador"
+            :indicador-percentual="'ANALFABETISMO_TAXA'"
+            :indicador-absoluto="'ANALFABETISMO_QTDE'"
             :ano="$anoAtual"
-            :titulo="$tituloGrafico"
-            :key="'ranking-'.$anoAtual" />
+            :titulo="$tituloRankingAnalfabetismo"
+            :cor="'--engaja-purple'"
+            :key="'ranking-analfabetismo-'.$anoAtual" />
+
+        <livewire:graficos.ranking-municipios
+            :indicador-percentual="'EJA_ACESSO_TAXA'"
+            :indicador-absoluto="'EJA_MATRICULAS_QTDE'"
+            :ano="$anoAtual"
+            :titulo="$tituloRankingEja"
+            :cor="'--engaja-blue'"
+            :key="'ranking-eja-'.$anoAtual" />
 
         <div class="row g-3 mt-1">
             <div class="col-lg-4">

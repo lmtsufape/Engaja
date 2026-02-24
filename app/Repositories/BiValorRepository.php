@@ -52,6 +52,106 @@ class BiValorRepository
         });
     }
 
+    public function rankingMunicipiosComIndicadores(
+        string $codigoIndicadorPercentual,
+        string $codigoIndicadorAbsoluto,
+        int $ano,
+        ?int $dimensaoValorId = null
+    ): array
+    {
+        return $this->setCache('rankingMunicipiosComIndicadores', [
+            'codigoIndicadorPercentual' => $codigoIndicadorPercentual,
+            'codigoIndicadorAbsoluto' => $codigoIndicadorAbsoluto,
+            'ano' => $ano,
+            'dimensaoValorId' => $dimensaoValorId,
+        ], function () use ($codigoIndicadorPercentual, $codigoIndicadorAbsoluto, $ano, $dimensaoValorId) {
+            $indicadorPercentual = BiIndicador::where('codigo', $codigoIndicadorPercentual)->firstOrFail();
+            $indicadorAbsoluto = BiIndicador::where('codigo', $codigoIndicadorAbsoluto)->firstOrFail();
+
+            $query = BiValor::query()
+                ->join('municipios', 'municipios.id', '=', 'bi_valores.municipio_id')
+                ->whereIn('bi_valores.indicador_id', [$indicadorPercentual->id, $indicadorAbsoluto->id])
+                ->where('bi_valores.ano', $ano)
+                ->whereNotNull('bi_valores.valor');
+
+            if ($dimensaoValorId !== null) {
+                $query->where('bi_valores.dimensao_valor_id', $dimensaoValorId);
+            }
+
+            $valores = $query->get([
+                'bi_valores.municipio_id',
+                'municipios.nome as municipio',
+                'bi_valores.indicador_id',
+                'bi_valores.valor',
+            ]);
+
+            $valoresPorMunicipio = $valores->groupBy('municipio_id');
+
+            $percentuaisPorMunicipio = $valoresPorMunicipio
+                ->mapWithKeys(function ($itensMunicipio, $municipioId) use ($indicadorPercentual) {
+                    $itens = $itensMunicipio->where('indicador_id', $indicadorPercentual->id);
+                    if ($itens->isEmpty()) {
+                        return [];
+                    }
+
+                    return [$municipioId => (float) $itens->avg('valor')];
+                });
+
+            $absolutosPorMunicipio = $valoresPorMunicipio
+                ->mapWithKeys(function ($itensMunicipio, $municipioId) use ($indicadorAbsoluto) {
+                    $itens = $itensMunicipio->where('indicador_id', $indicadorAbsoluto->id);
+                    if ($itens->isEmpty()) {
+                        return [];
+                    }
+
+                    return [$municipioId => (float) $itens->sum('valor')];
+                });
+
+            $dados = $valoresPorMunicipio
+                ->map(function ($itensMunicipio, $municipioId) use ($percentuaisPorMunicipio, $absolutosPorMunicipio) {
+                    return [
+                        'municipio' => (string) ($itensMunicipio->first()->municipio ?? ''),
+                        'percentual' => $percentuaisPorMunicipio->get($municipioId),
+                        'absoluto' => $absolutosPorMunicipio->get($municipioId),
+                    ];
+                })
+                ->filter(fn (array $item) => $item['municipio'] !== '' && $item['percentual'] !== null)
+                ->sortByDesc('percentual')
+                ->values();
+
+            $mediaPercentual = $percentuaisPorMunicipio->isNotEmpty()
+                ? round((float) $percentuaisPorMunicipio->avg(), 2)
+                : 0.0;
+
+            $totalAbsoluto = (float) $absolutosPorMunicipio->sum();
+
+            $municipiosComDado = $percentuaisPorMunicipio
+                ->keys()
+                ->merge($absolutosPorMunicipio->keys())
+                ->unique()
+                ->count();
+
+            return [
+                'dados' => $dados->all(),
+                'indicador_percentual' => [
+                    'codigo' => $indicadorPercentual->codigo,
+                    'label' => $this->formatarIndicadorCodigo($indicadorPercentual->codigo),
+                    'tipo_valor' => $indicadorPercentual->tipo_valor,
+                ],
+                'indicador_absoluto' => [
+                    'codigo' => $indicadorAbsoluto->codigo,
+                    'label' => $this->formatarIndicadorCodigo($indicadorAbsoluto->codigo),
+                    'tipo_valor' => $indicadorAbsoluto->tipo_valor,
+                ],
+                'resumo' => [
+                    'total_absoluto' => $totalAbsoluto,
+                    'media_percentual' => $mediaPercentual,
+                    'municipios' => $municipiosComDado,
+                ],
+            ];
+        });
+    }
+
     public function distribuicaoPorDimensao(
         string $codigoIndicador,
         int $ano,
@@ -161,5 +261,17 @@ class BiValorRepository
         ];
 
         return $mapa[$codigoDimensao][$codigoValor] ?? $codigoValor;
+    }
+
+    protected function formatarIndicadorCodigo(string $codigoIndicador): string
+    {
+        $mapa = [
+            'ANALFABETISMO_TAXA' => 'Taxa de analfabetismo',
+            'ANALFABETISMO_QTDE' => 'Quantidade de analfabetos',
+            'EJA_ACESSO_TAXA' => 'Taxa de acesso EJA',
+            'EJA_MATRICULAS_QTDE' => 'Matriculas EJA',
+        ];
+
+        return $mapa[$codigoIndicador] ?? str_replace('_', ' ', $codigoIndicador);
     }
 }

@@ -7,13 +7,24 @@ let hooksLivewireRegistrados = false;
 
 const formatadorAbsoluto = new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
 });
 
-const obterCorPadrao = () =>
-    getComputedStyle(document.documentElement)
-        .getPropertyValue("--engaja-purple")
-        .trim() || "#421944";
+const obterCorPadrao = (corBruta) => {
+    const css = getComputedStyle(document.documentElement);
+    const fallback = "#421944";
+    const cor = String(corBruta ?? "").trim();
+
+    if (!cor) {
+        return css.getPropertyValue("--engaja-purple").trim() || fallback;
+    }
+
+    if (cor.startsWith("--")) {
+        return css.getPropertyValue(cor).trim() || fallback;
+    }
+
+    return cor;
+};
 
 const parseDados = (dadosBrutos) => {
     if (!dadosBrutos) {
@@ -27,11 +38,23 @@ const parseDados = (dadosBrutos) => {
         }
 
         return dados
-            .map((item) => ({
-                municipio: String(item?.municipio ?? "").trim(),
-                valor: Number(item?.valor),
-            }))
-            .filter((item) => item.municipio && Number.isFinite(item.valor));
+            .map((item) => {
+                const percentual = Number(item?.percentual);
+                const absoluto = Number(item?.absoluto);
+                const valor = Number(item?.valor);
+
+                return {
+                    municipio: String(item?.municipio ?? "").trim(),
+                    percentual: Number.isFinite(percentual) ? percentual : null,
+                    absoluto: Number.isFinite(absoluto) ? absoluto : null,
+                    valor: Number.isFinite(valor) ? valor : null,
+                };
+            })
+            .filter(
+                (item) =>
+                    item.municipio &&
+                    (item.percentual !== null || item.valor !== null)
+            );
     } catch (error) {
         console.error("Erro ao processar dados do grafico de ranking:", error);
         return [];
@@ -62,7 +85,15 @@ const renderizarGrafico = (elemento) => {
 
     const titulo = elemento.dataset.titulo?.trim() || "Ranking de Municipios";
     const tipoValor = (elemento.dataset.tipoValor || "PERCENTUAL").toUpperCase();
-    const assinaturaDados = `${elemento.dataset.dados || ""}|${titulo}|${tipoValor}`;
+    const labelIndicadorPercentual =
+        elemento.dataset.labelIndicadorPercentual?.trim() || "Taxa";
+    const labelIndicadorAbsoluto =
+        elemento.dataset.labelIndicadorAbsoluto?.trim() || "Quantidade";
+    const cor = obterCorPadrao(elemento.dataset.cor);
+    const possuiIndicadorComposto = dados.some(
+        (item) => item.percentual !== null
+    );
+    const assinaturaDados = `${elemento.dataset.dados || ""}|${titulo}|${tipoValor}|${labelIndicadorPercentual}|${labelIndicadorAbsoluto}|${cor}`;
 
     if (elemento.dataset.chartAssinatura === assinaturaDados) {
         return;
@@ -77,21 +108,70 @@ const renderizarGrafico = (elemento) => {
     }
 
     const percentual = tipoValor === "PERCENTUAL";
-    const formatarValor = percentual
+    const valoresSerie = possuiIndicadorComposto
+        ? dados.map((item) => Number(item.percentual ?? 0))
+        : dados.map((item) => Number(item.valor ?? 0));
+
+    const formatarValor = possuiIndicadorComposto
         ? (valor) => `${Number(valor).toFixed(2)}%`
-        : (valor) => formatadorAbsoluto.format(Number(valor));
+        : percentual
+          ? (valor) => `${Number(valor).toFixed(2)}%`
+          : (valor) => formatadorAbsoluto.format(Number(valor));
 
     const config = getGraficoPadraoConfig({
         titulo,
         categorias: dados.map((item) => item.municipio),
-        valores: dados.map((item) => item.valor),
-        cor: obterCorPadrao(),
+        valores: valoresSerie,
+        cor,
         altura: 500,
         tipo: "bar",
         horizontal: true,
-        nomeSerie: percentual ? "Valor (%)" : "Valor",
+        nomeSerie: possuiIndicadorComposto
+            ? `${labelIndicadorPercentual} (%)`
+            : percentual
+              ? "Valor (%)"
+              : "Valor",
         formatarValor,
     });
+
+    if (possuiIndicadorComposto) {
+        config.tooltip = {
+            y: {
+                formatter: (val, { dataPointIndex } = {}) => {
+                    const idx =
+                        Number.isInteger(dataPointIndex) && dataPointIndex >= 0
+                            ? dataPointIndex
+                            : 0;
+                    const percentualItem = Number(
+                        dados[idx]?.percentual ?? val ?? 0
+                    );
+                    const absolutoItem = dados[idx]?.absoluto;
+
+                    if (absolutoItem === null || absolutoItem === undefined) {
+                        return `${percentualItem.toFixed(2)}%`;
+                    }
+
+                    return `${percentualItem.toFixed(2)}% | ${labelIndicadorAbsoluto}: ${formatadorAbsoluto.format(
+                        Number(absolutoItem)
+                    )}`;
+                },
+            },
+        };
+
+        config.dataLabels = {
+            ...config.dataLabels,
+            formatter: (val, { dataPointIndex } = {}) => {
+                const idx =
+                    Number.isInteger(dataPointIndex) && dataPointIndex >= 0
+                        ? dataPointIndex
+                        : 0;
+                const percentualItem = Number(
+                    dados[idx]?.percentual ?? val ?? 0
+                );
+                return `${percentualItem.toFixed(2)}%`;
+            },
+        };
+    }
 
     const chart = new ApexCharts(elemento, config);
     chart.render();
