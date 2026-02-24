@@ -78,6 +78,7 @@
       </div>
     </div>
 
+    @hasanyrole('administrador|gerente')
     <div class="mt-3 text-end d-flex flex-wrap justify-content-end gap-2">
       <a href="{{ route('usuarios.export') }}" class="btn btn-success">
         Exportar planilha de usuários
@@ -86,6 +87,7 @@
       <button type="button" class="btn btn-outline-secondary" id="btn-select-all-global">Selecionar todos (todas as páginas)</button>
       <button type="button" class="btn btn-engaja" id="btn-open-modal">Emitir certificados</button>
     </div>
+    @endhasanyrole
   </form>
 
   <input type="hidden" name="select_all_pages" id="select_all_pages_hidden" form="form-emitir-certificados" value="">

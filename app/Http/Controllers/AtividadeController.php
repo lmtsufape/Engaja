@@ -27,7 +27,7 @@ class AtividadeController extends Controller
 
     public function create(Evento $evento)
     {
-        $this->authorize('update', $evento);
+        $this->authorize('atividade.criar');
         $municipios = Municipio::with(['estado.regiao'])
             ->get(['id', 'nome', 'estado_id'])
             ->sortBy(function ($m) {
@@ -50,7 +50,7 @@ class AtividadeController extends Controller
 
     public function store(Request $request, Evento $evento)
     {
-        $this->authorize('update', $evento);
+        $this->authorize('atividade.criar');
 
         $dados = $request->validate([
             'municipios'          => 'nullable|array',
@@ -85,7 +85,7 @@ class AtividadeController extends Controller
     public function edit(Atividade $atividade)
     {
         $evento = $atividade->evento;
-        $this->authorize('update', $evento);
+        $this->authorize('atividade.editar');
 
         $atividade->load('municipios');
 
@@ -112,7 +112,7 @@ class AtividadeController extends Controller
     public function update(Request $request, Atividade $atividade)
     {
         $evento = $atividade->evento;
-        $this->authorize('update', $evento);
+        $this->authorize('atividade.editar');
 
         $dados = $request->validate([
             'municipios'          => 'nullable|array',
@@ -145,8 +145,7 @@ class AtividadeController extends Controller
 
     public function destroy(Atividade $atividade)
     {
-        $evento = $atividade->evento;
-        $this->authorize('delete', $evento);
+        $this->authorize('atividade.excluir');
 
         $atividade->delete();
 

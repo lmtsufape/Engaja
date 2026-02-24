@@ -44,7 +44,7 @@ Route::middleware(['auth', 'permission:presenca.abrir'])->group(function () {
     Route::patch('/atividades/{atividade}/presenca/toggle', [AtividadeController::class, 'togglePresenca'])->name('atividades.presenca.toggle');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::get('/atividades/{atividade}/presencas/import', [PresencaImportController::class, 'import'])->name('atividades.presencas.import');
     Route::post('/atividades/{atividade}/presencas/import', [PresencaImportController::class, 'cadastro'])->name('atividades.presencas.cadastro');
 
@@ -55,16 +55,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
 });
 
-Route::middleware(['auth', 'role:administrador'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica'])->group(function () {
     Route::get('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'import'])->name('inscricoes.import');
     Route::post('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'cadastro'])->name('inscricoes.cadastro');
     Route::get('/eventos/{evento}/inscricoes/preview', [InscricaoController::class, 'preview'])->name('inscricoes.preview');
     Route::post('/eventos/{evento}/inscricoes/preview/save', [InscricaoController::class, 'savePage'])->name('inscricoes.preview.save');
     Route::post('/eventos/{evento}/inscricoes/confirmar', [InscricaoController::class, 'confirmar'])->name('inscricoes.confirmar');
-    Route::get('/eventos/{evento}/inscritos', [InscricaoController::class, 'inscritos'])->name('inscricoes.inscritos');
     Route::get('/eventos/{evento}/inscricoes/selecionar', [InscricaoController::class, 'selecionar'])->name('inscricoes.selecionar');
     Route::post('/eventos/{evento}/inscricoes/selecionar', [InscricaoController::class, 'selecionarStore'])->name('inscricoes.selecionar.store');
+});
 
+Route::middleware(['auth','permission:inscricao.ver'])->group(function () {
+    Route::get('/eventos/{evento}/inscritos', [InscricaoController::class, 'inscritos'])->name('inscricoes.inscritos');
+});
+
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::resource('dimensaos', DimensaoController::class);
     Route::resource('indicadors', IndicadorController::class);
     Route::resource('evidencias', EvidenciaController::class);
@@ -78,7 +83,7 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::get('avaliacoes/{avaliacao}/respostas/{submissao}', [AvaliacaoController::class, 'respostasMostrar'])->name('avaliacoes.respostas.mostrar');
 });
 
-Route::middleware(['auth', 'role:administrador|gestor'])
+Route::middleware(['auth', 'role:administrador|gerente'])
     ->prefix('certificados')
     ->name('certificados.')
     ->group(function () {
@@ -87,7 +92,7 @@ Route::middleware(['auth', 'role:administrador|gestor'])
         Route::post('emitir', [CertificadoController::class, 'emitir'])->name('emitir');
     });
 
-Route::middleware(['auth', 'role:administrador|gestor'])
+Route::middleware(['auth', 'role:administrador'])
     ->group(function () {
         Route::resource('regioes', \App\Http\Controllers\RegiaoController::class)
             ->parameters(['regioes' => 'regiao'])
@@ -100,7 +105,7 @@ Route::middleware(['auth', 'role:administrador|gestor'])
             ->except(['create', 'edit', 'show']);
     });
 
-Route::middleware(['auth', 'role:administrador|gestor'])
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])
     ->prefix('usuarios')
     ->name('usuarios.')
     ->group(function () {
@@ -115,15 +120,14 @@ Route::middleware(['auth', 'role:administrador|formador'])
     ->get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
     ->name('eventos.relatorios');
 
-Route::middleware(['auth', 'role:administrador|participante'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::resource('eventos', EventoController::class);
+    Route::get('eventos/{evento}', [EventoController::class, 'show'])->name('eventos.show');
 });
 
 Route::resource('eventos.atividades', AtividadeController::class)
     ->parameters(['atividades' => 'atividade'])
     ->shallow();
-
-Route::get('eventos/{evento}', [EventoController::class, 'show'])->name('eventos.show');
 
 Route::get('/eventos/{evento_id}/{atividade_id}/cadastro-e-inscricao', [EventoController::class, 'cadastro_inscricao'])->name('evento.cadastro_inscricao');
 Route::post('/eventos/cadastro-e-inscricao/store', [EventoController::class, 'store_cadastro_inscricao'])->name('evento.store_cadastro_inscricao');
@@ -142,7 +146,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('certificados.download');
     Route::get('/minhas-presencas', [ProfileController::class, 'presencas'])->name('profile.presencas');
 });
-Route::middleware(['auth', 'role:administrador|gestor'])->group(function () {
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
     Route::get('/certificados/{certificado}/edit', [CertificadoController::class, 'edit'])
         ->whereNumber('certificado')

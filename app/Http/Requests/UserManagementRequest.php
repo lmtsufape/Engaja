@@ -11,7 +11,7 @@ class UserManagementRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasAnyRole(['administrador', 'gestor']);
+        return (bool) $this->user()?->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica', 'articulador']);
     }
 
     protected function prepareForValidation(): void
@@ -142,7 +142,7 @@ class UserManagementRequest extends FormRequest
 
     private function assignableRoleNames(): array
     {
-        return Role::whereNotIn('name', ['administrador', 'gestor'])
+        return Role::whereNotIn('name', ['administrador', 'gerente', 'eq_pedagogica', 'articulador', 'participante'])
             ->pluck('name')
             ->toArray();
     }

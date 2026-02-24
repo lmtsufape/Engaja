@@ -8,7 +8,7 @@ class ModeloCertificadoRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasAnyRole(['administrador', 'gestor']);
+        return (bool) $this->user()?->hasAnyRole(['administrador', 'gerente']);
     }
 
     protected function prepareForValidation(): void

@@ -220,27 +220,32 @@
         @endif
         @endauth -->
 
-        @hasanyrole('administrador|formador')
+        @hasanyrole('administrador|gerente|eq_pedagogica')
         <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
         <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
         <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
+        @endhasanyrole
+
+        @can('participante.ver')
         <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">
           Ver inscritos
         </a>
+        @endcan
+
         <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
           data-bs-target="#modalRelatoriosEvento">
           Relatórios
         </button>
-        @endhasanyrole
 
         @can('update', $evento)
         <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
-
+        @role('administrador')
         <form action="{{ route('eventos.destroy', $evento) }}" method="POST"
           class="d-flex m-0 p-0" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
           @csrf @method('DELETE')
           <button class="btn btn-outline-danger">Excluir</button>
         </form>
+        @endrole
         </div>
         @endcan
       </div>
@@ -313,7 +318,7 @@
       <h2 class="h5 fw-bold mb-0">Programação</h2>
 
       <div class="d-flex gap-2">
-        @hasanyrole('administrador|formador')
+        @hasanyrole('administrador|gerente|eq_pedagogica')
         <a href="{{ route('eventos.atividades.create', $evento) }}" class="btn btn-engaja btn-sm">
           + Novo momento
         </a>
@@ -407,24 +412,29 @@
                       </div>
                       @endif
                     </div>
-                    @hasanyrole('administrador|formador')
+                    @can('atividade.ver')
                     <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
                       <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
                           Ver
                       </a>
+                    @endcan
 
+                    @hasanyrole('administrador|gerente|eq_pedagogica')
                       <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
                           Editar
                       </a>
+                    @endhasanyrole
 
+                    @hasanyrole('administrador|gerente')
                       <form action="{{ route('atividades.destroy', $at) }}" method="POST"
                             class="d-inline m-0 p-0"
                             data-confirm="Tem certeza que deseja excluir este momento?">
                           @csrf @method('DELETE')
                           <button class="btn btn-sm btn-outline-danger">Excluir</button>
                       </form>
-                  </div>
                     @endhasanyrole
+                  </div>
+
                   </div>
                 </div>
               </div>

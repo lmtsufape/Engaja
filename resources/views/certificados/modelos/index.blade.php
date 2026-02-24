@@ -36,11 +36,13 @@
               <td class="text-end pe-4">
                 <div class="d-inline-flex gap-2">
                   <a href="{{ route('certificados.modelos.edit', $m) }}" class="btn btn-sm btn-engaja">Editar</a>
+                  @role('administrador')
                   <form action="{{ route('certificados.modelos.destroy', $m) }}" method="POST" onsubmit="return confirm('Remover este modelo?')">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
                   </form>
+                  @endrole
                 </div>
               </td>
             </tr>
