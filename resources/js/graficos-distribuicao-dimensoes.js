@@ -38,11 +38,6 @@ const isTruthyData = (valor) =>
     String(valor).toLowerCase() === "1" ||
     String(valor).toLowerCase() === "true";
 
-const formatarAbsolutoSemSeparador = (valor) => {
-    const numero = toNumber(valor);
-    return Number.isInteger(numero) ? String(numero) : numero.toFixed(2);
-};
-
 const parseDados = (dadosBrutos) => {
     if (!dadosBrutos) {
         return [];
@@ -158,7 +153,7 @@ const montarConfig = ({
                     const absoluto = valores[idx] ?? 0;
 
                     if (usarPercentual) {
-                        return `${formatarAbsolutoSemSeparador(absoluto)} (${pct.toFixed(2)}%)`;
+                        return `${formatadorNumero.format(absoluto)} (${pct.toFixed(2)}%)`;
                     }
 
                     return `${formatarValor(valor)} (${pct.toFixed(casasDecimaisPercentual)}%)`;
@@ -205,19 +200,22 @@ const montarConfig = ({
                 ...base.tooltip,
                 x: { show: false },
                 marker: { show: false },
-                custom: ({ dataPointIndex } = {}) => {
+                custom: ({ dataPointIndex, w } = {}) => {
                     const idx =
                         Number.isInteger(dataPointIndex) && dataPointIndex >= 0
                             ? dataPointIndex
                             : 0;
+                    const tooltipWrapper =
+                        w?.globals?.dom?.baseEl?.querySelector(".apexcharts-tooltip");
+                    tooltipWrapper?.classList.add("tooltip-grafico-apex-wrapper");
                     const label = labels[idx] ?? "";
                     const pct = percentuais[idx] ?? 0;
                     const absoluto = valores[idx] ?? 0;
                     const texto = usarPercentual
-                        ? `${formatarAbsolutoSemSeparador(absoluto)} (${pct.toFixed(2)}%)`
+                        ? `${formatadorNumero.format(absoluto)} (${pct.toFixed(2)}%)`
                         : `${formatarValor(absoluto)} (${pct.toFixed(casasDecimaisPercentual)}%)`;
 
-                    return `<div class="tooltip-dimensao-apex"><span>${label}:</span> <strong>${texto}</strong></div>`;
+                    return `<div class="tooltip-grafico-apex"><span class="tooltip-grafico-apex__label">${label}:</span> <span class="tooltip-grafico-apex__value">${texto}</span></div>`;
                 },
             },
         };

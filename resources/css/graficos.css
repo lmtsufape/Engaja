@@ -11,26 +11,31 @@
     min-height: 460px;
 }
 
-[data-chart="distribuicao-dimensao"][data-tipo-grafico="bar"] .apexcharts-tooltip {
+.apexcharts-tooltip.tooltip-grafico-apex-wrapper {
     background: transparent !important;
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
 }
 
-[data-chart="distribuicao-dimensao"][data-tipo-grafico="bar"] .tooltip-dimensao-apex {
+.tooltip-grafico-apex {
     background: var(--engaja-purple, #421944);
     color: #fff;
     padding: 7px 10px;
     border-radius: 5px;
-    font-size: 13px;
-    line-height: 1.2;
+    font-size: 12px;
+    line-height: 1.25;
     font-family: "Montserrat", sans-serif;
+    font-weight: 500;
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
     white-space: nowrap;
 }
 
-[data-chart="distribuicao-dimensao"][data-tipo-grafico="bar"] .tooltip-dimensao-apex strong {
+.tooltip-grafico-apex__label {
+    font-weight: 500;
+}
+
+.tooltip-grafico-apex__value {
     color: #fff;
     font-weight: 700;
 }

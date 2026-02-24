@@ -52,13 +52,19 @@ class BiValorRepository
         });
     }
 
-    public function distribuicaoPorDimensao(string $codigoIndicador, int $ano, string $codigoDimensao): array
+    public function distribuicaoPorDimensao(
+        string $codigoIndicador,
+        int $ano,
+        string $codigoDimensao,
+        ?int $municipioId = null
+    ): array
     {
         return $this->setCache('distribuicaoPorDimensao', [
             'codigoIndicador' => $codigoIndicador,
             'ano' => $ano,
             'codigoDimensao' => $codigoDimensao,
-        ], function () use ($codigoIndicador, $ano, $codigoDimensao) {
+            'municipioId' => $municipioId,
+        ], function () use ($codigoIndicador, $ano, $codigoDimensao, $municipioId) {
             $indicador = BiIndicador::where('codigo', $codigoIndicador)->firstOrFail();
             $dimensao = BiDimensao::where('codigo', $codigoDimensao)->firstOrFail();
 
@@ -68,6 +74,7 @@ class BiValorRepository
                 ->where('bi_valores.ano', $ano)
                 ->where('bi_dimensao_valores.dimensao_id', $dimensao->id)
                 ->whereNotNull('bi_valores.valor')
+                ->when($municipioId !== null, fn ($query) => $query->where('bi_valores.municipio_id', $municipioId))
                 ->groupBy('bi_dimensao_valores.codigo')
                 ->orderByDesc(DB::raw('SUM(bi_valores.valor)'))
                 ->get([

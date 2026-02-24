@@ -33,6 +33,9 @@ class DashboardController extends Controller
 
     public function bi(Request $request)
     {
+        $indicador = 'ANALFABETISMO_TAXA';
+        $indicadorDimensoes = 'ANALFABETISMO_QTDE';
+
         $anosDisponiveis = BiValor::query()
             ->select('ano')
             ->distinct()
@@ -48,9 +51,41 @@ class DashboardController extends Controller
             $ano = $anoPadrao;
         }
 
-        $indicador = 'ANALFABETISMO_TAXA';
+        $municipiosDisponiveis = Municipio::query()
+            ->join('bi_valores', 'bi_valores.municipio_id', '=', 'municipios.id')
+            ->join('bi_indicadores', 'bi_indicadores.id', '=', 'bi_valores.indicador_id')
+            ->where('bi_indicadores.codigo', $indicadorDimensoes)
+            ->where('bi_valores.ano', $ano)
+            ->whereNotNull('bi_valores.dimensao_valor_id')
+            ->select('municipios.id', 'municipios.nome')
+            ->distinct()
+            ->orderBy('municipios.nome')
+            ->get();
 
-        return view('dashboards.bi', compact('ano', 'indicador', 'anosDisponiveis'));
+        $municipioId = $request->integer('municipio_id');
+        if ($municipioId <= 0) {
+            $municipioId = null;
+        }
+
+        if (
+            $municipioId !== null &&
+            !$municipiosDisponiveis->contains(fn ($municipio) => (int) $municipio->id === $municipioId)
+        ) {
+            $municipioId = null;
+        }
+
+        $municipioSelecionado = $municipioId !== null
+            ? $municipiosDisponiveis->first(fn ($municipio) => (int) $municipio->id === $municipioId)
+            : null;
+
+        return view('dashboards.bi', compact(
+            'ano',
+            'indicador',
+            'anosDisponiveis',
+            'municipioId',
+            'municipiosDisponiveis',
+            'municipioSelecionado'
+        ));
     }
 
     public function index(Request $request)

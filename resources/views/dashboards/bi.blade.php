@@ -28,6 +28,17 @@
                         @endforelse
                     </select>
                 </div>
+                <div class="col-md-5">
+                    <label for="bi-municipio" class="form-label mb-1">Municipio (graficos por dimensao)</label>
+                    <select id="bi-municipio" name="municipio_id" class="form-select">
+                        <option value="">Todos os municipios</option>
+                        @foreach($municipiosDisponiveis as $municipio)
+                            <option value="{{ $municipio->id }}" @selected((int) $municipio->id === (int) ($municipioId ?? 0))>
+                                {{ $municipio->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="col-md-auto">
                     <button type="submit" class="btn btn-primary">Atualizar painel</button>
                 </div>
@@ -41,6 +52,7 @@
         </div>
     @else
         @php($tituloGrafico = "Ranking de taxa de analfabetismo por municipios ({$ano})")
+        @php($sufixoMunicipioDimensao = $municipioSelecionado?->nome ? " - {$municipioSelecionado->nome}" : '')
         <livewire:graficos.ranking-municipios :indicador="$indicador" :ano="$ano" :titulo="$tituloGrafico" />
 
         <div class="row g-3 mt-1">
@@ -48,31 +60,34 @@
                 <livewire:graficos.distribuicao-dimensao
                     :indicador="'ANALFABETISMO_QTDE'"
                     :ano="$ano"
+                    :municipio-id="$municipioId"
                     :dimensao="'SEXO'"
-                    :titulo="'Distribuicao por sexo'"
+                    :titulo="'Distribuicao por sexo'.$sufixoMunicipioDimensao"
                     :tipo-grafico="'donut'"
-                    :key="'dimensao-sexo-'.$ano" />
+                    :key="'dimensao-sexo-'.$ano.'-'.($municipioId ?? 'todos')" />
             </div>
             <div class="col-lg-4">
                 <livewire:graficos.distribuicao-dimensao
                     :indicador="'ANALFABETISMO_QTDE'"
                     :ano="$ano"
+                    :municipio-id="$municipioId"
                     :dimensao="'RACA'"
-                    :titulo="'Distribuicao por raca'"
+                    :titulo="'Distribuicao por raca'.$sufixoMunicipioDimensao"
                     :tipo-grafico="'polarArea'"
-                    :key="'dimensao-raca-'.$ano" />
+                    :key="'dimensao-raca-'.$ano.'-'.($municipioId ?? 'todos')" />
             </div>
             <div class="col-lg-4">
                 <livewire:graficos.distribuicao-dimensao
                     :indicador="'ANALFABETISMO_QTDE'"
                     :ano="$ano"
+                    :municipio-id="$municipioId"
                     :dimensao="'RESIDENCIA'"
-                    :titulo="'Distribuicao por residencia'"
+                    :titulo="'Distribuicao por residencia'.$sufixoMunicipioDimensao"
                     :tipo-grafico="'bar'"
                     :mostrar-valores="false"
                     :usar-percentual="true"
                     :casas-decimais-percentual="0"
-                    :key="'dimensao-residencia-'.$ano" />
+                    :key="'dimensao-residencia-'.$ano.'-'.($municipioId ?? 'todos')" />
             </div>
         </div>
     @endif

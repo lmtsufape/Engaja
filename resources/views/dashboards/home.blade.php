@@ -71,7 +71,7 @@
               <p class="text-muted mb-3">
                 Acompanhe o ranking de taxa de analfabetismo por municipio e amplie com novos graficos BI.
               </p>
-              <a href="{{ route('dashboards.bi') }}" class="btn btn-outline-secondary">
+              <a href="{{ route('dashboards.bi') }}" class="btn btn-secondary">
                 Abrir dashboard BI
               </a>
             </div>

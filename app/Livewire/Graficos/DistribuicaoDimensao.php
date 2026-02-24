@@ -11,6 +11,7 @@ class DistribuicaoDimensao extends Component
     public int $ano;
     public string $indicador;
     public string $dimensao;
+    public ?int $municipioId = null;
     public string $titulo = 'Distribuicao por dimensao';
     public string $tipoValor = 'ABSOLUTO';
     public string $tipoGrafico = 'donut';
@@ -23,7 +24,8 @@ class DistribuicaoDimensao extends Component
         $resultado = $repository->distribuicaoPorDimensao(
             $this->indicador,
             $this->ano,
-            $this->dimensao
+            $this->dimensao,
+            $this->municipioId
         );
 
         $this->dados = $resultado['dados'] ?? [];
