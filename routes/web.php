@@ -17,6 +17,7 @@ use App\Http\Controllers\TemplateAvaliacaoController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\ModeloCertificadoController;
 use App\Http\Controllers\CertificadoController;
+use App\Http\Controllers\AvaliacaoAtividadeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::post('/profile/demographics', [ProfileController::class, 'completeDemographics'])->name('profile.complete-demographics');
 
     Route::post('/eventos/{evento}/inscrever', [InscricaoController::class, 'inscrever'])->name('inscricoes.inscrever');
     Route::delete('/eventos/{evento}/cancelar', [InscricaoController::class, 'cancelar'])->name('inscricoes.cancelar');
@@ -118,9 +121,19 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
     });
 
-Route::middleware(['auth', 'role:administrador|gerente'])
-    ->get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
-    ->name('eventos.relatorios');
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+        Route::get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
+        ->name('eventos.relatorios');
+    Route::controller(AvaliacaoAtividadeController::class)
+        ->prefix('atividades/{atividade}/relatorio')
+        ->name('avaliacao-atividade.')
+        ->group(function () {
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/edit', 'edit')->name('edit');
+            Route::put('/', 'update')->name('update');
+        });
+});
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::resource('eventos', EventoController::class);

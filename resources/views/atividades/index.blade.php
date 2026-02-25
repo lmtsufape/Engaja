@@ -56,6 +56,16 @@
               <td class="text-end">
                 <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
                 <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+
+                {{-- Botão Relatório de Avaliação --}}
+                <a href="{{ $at->avaliacaoAtividade 
+                        ? route('avaliacao-atividade.edit',   $at) 
+                        : route('avaliacao-atividade.create', $at) }}"
+                   class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}"
+                   title="{{ $at->avaliacaoAtividade ? 'Editar relatório' : 'Criar relatório' }}">
+                   📋 Avaliação
+                </a>
+
                 <form class="d-inline" method="POST" action="{{ route('atividades.destroy', $at) }}"
                   data-confirm="Tem certeza que deseja excluir este momento?">
                   @csrf @method('DELETE')
@@ -66,7 +76,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="{{ $temPermissao ? 7 : 6 }}" class="text-center text-muted py-4">Nenhum momento cadastrada.</td>
+              <td colspan="{{ $temPermissao ? 7 : 6 }}" class="text-center text-muted py-4">Nenhum momento cadastrado.</td>
             </tr>
           @endforelse
         </tbody>

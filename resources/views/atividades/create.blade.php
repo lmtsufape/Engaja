@@ -13,7 +13,7 @@
 
   <div class="card shadow-sm">
     <div class="card-body">
-      <form method="POST" action="{{ route('eventos.atividades.store', $evento) }}">
+      <form method="POST" action="{{ route('eventos.atividades.store', $evento) }}" id="form-novo-momento">
         @include('atividades._form', [
           'evento' => $evento,
           'municipios' => $municipios,
@@ -24,4 +24,47 @@
     </div>
   </div>
 </div>
+
+{{-- Instância do Modal Pós-ação --}}
+<x-checklist-modal
+    id="modalChecklistPosAcao"
+    title="Checklist de Encerramento"
+    btn-label="Confirmar e Salvar"
+    :items="[
+        'Verifiquei se os municípios estão corretos?',
+        'Confirmei a carga horária e os horários de início e término?',
+        'O público esperado e os dados do momento estão preenchidos corretamente?'
+    ]"
+/>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const form = document.getElementById('form-novo-momento');
+    
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!this.dataset.checklistConfirmed) {
+                e.preventDefault(); 
+                const modal = new bootstrap.Modal(document.getElementById('modalChecklistPosAcao'));
+                modal.show();
+            }
+        });
+    }
+
+    const btnConfirmarPos = document.querySelector('.js-checklist-confirm[data-modal="modalChecklistPosAcao"]');
+    if (btnConfirmarPos) {
+        btnConfirmarPos.addEventListener('click', function () {
+            const modalEl = document.getElementById('modalChecklistPosAcao');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal?.hide();
+            form.dataset.checklistConfirmed = 'true';
+            form.submit();
+        });
+    }
+
+});
+</script>
+@endpush

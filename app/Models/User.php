@@ -25,6 +25,15 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'identidade_genero',
+        'identidade_genero_outro',
+        'raca_cor',
+        'comunidade_tradicional',
+        'comunidade_tradicional_outro',
+        'faixa_etaria',
+        'pcd',
+        'orientacao_sexual',
+        'orientacao_sexual_outra',
     ];
 
     /**

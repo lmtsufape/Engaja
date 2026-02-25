@@ -78,8 +78,8 @@ class AtividadeController extends Controller
         $copiados = $this->copiarInscritos($copiarDe, $atividade);
 
         return redirect()
-            ->route('eventos.show', $evento)
-            ->with('success', $this->mensagemSucesso('Momento adicionado com sucesso!', $copiados));
+        ->route('eventos.show', $evento)
+        ->with('success', 'Momento criado com sucesso!');
     }
 
     public function edit(Atividade $atividade)
