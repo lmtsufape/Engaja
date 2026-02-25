@@ -48,6 +48,21 @@ class AtividadeController extends Controller
         return view('atividades.create', compact('evento', 'municipios', 'atividadesCopiaveis'));
     }
 
+    public function saveChecklist(Request $request, Atividade $atividade)
+    {
+        $request->validate([
+            'tipo'   => 'required|in:planejamento,encerramento',
+            'itens'  => 'nullable|array',
+            'itens.*'=> 'integer|min:0',
+        ]);
+
+        $campo = 'checklist_' . $request->tipo;
+        $atividade->$campo = $request->input('itens', []);
+        $atividade->save();
+
+        return response()->json(['status' => 'ok', 'saved' => $atividade->$campo]);
+    }
+
     public function store(Request $request, Evento $evento)
     {
         $this->authorize('atividade.criar');
@@ -62,6 +77,10 @@ class AtividadeController extends Controller
             'publico_esperado'    => 'nullable|integer|min:0',
             'carga_horaria'       => 'nullable|integer|min:0',
             'copiar_inscritos_de' => 'nullable|exists:atividades,id',
+            'checklist_planejamento'      => 'nullable|array',
+            'checklist_planejamento.*'    => 'integer|min:0',
+            'checklist_encerramento'      => 'nullable|array',
+            'checklist_encerramento.*'    => 'integer|min:0',
         ]);
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
@@ -124,6 +143,10 @@ class AtividadeController extends Controller
             'publico_esperado'    => 'nullable|integer|min:0',
             'carga_horaria'       => 'nullable|integer|min:0',
             'copiar_inscritos_de' => 'nullable|exists:atividades,id',
+            'checklist_planejamento'      => 'nullable|array',
+            'checklist_planejamento.*'    => 'integer|min:0',
+            'checklist_encerramento'      => 'nullable|array',
+            'checklist_encerramento.*'    => 'integer|min:0',
         ]);
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;

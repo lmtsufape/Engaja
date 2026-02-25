@@ -24,7 +24,28 @@ class Atividade extends Model
         'publico_esperado',
         'carga_horaria',
         'presenca_ativa',
+        'checklist_planejamento',
+        'checklist_encerramento',
     ];
+
+    protected $casts = [
+        'checklist_planejamento' => 'array',
+        'checklist_encerramento' => 'array',
+    ];
+
+    public function getChecklistsIncompletosAttribute(): bool
+    {
+        $totalPlanejamento = 13; 
+        $totalEncerramento = 3;
+
+        $pl = $this->checklist_planejamento ?? [];
+        $en = $this->checklist_encerramento ?? [];
+
+        $plIncompleto = count($pl) < $totalPlanejamento;
+        $enIncompleto = count($en) < $totalEncerramento;
+
+        return $plIncompleto || $enIncompleto;
+    }
 
     public function evento()
     {

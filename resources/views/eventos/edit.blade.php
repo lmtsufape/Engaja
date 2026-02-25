@@ -188,7 +188,7 @@
                     <hr class="my-1">
                     <h5 class="fw-semibold text-muted mb-2">Situações Desafiadoras da EJA</h5>
                     @foreach($situacoes as $categoria => $itens)
-                        <p class="fw-semibold text-uppercase small text-secondary mb-1 mt-3">{{ $categoria }}</p>
+                        <p class="text-uppercase small text-secondary mb-1 mt-3">{{ $categoria }}</p>
                         <div class="border rounded p-3" style="max-height:200px; overflow-y:auto;">
                             @foreach($itens as $situacao)
                             <div class="form-check mb-1">
@@ -198,7 +198,7 @@
                                     value="{{ $situacao->id }}"
                                     @checked(in_array($situacao->id, $sitsSelecionadas))>
                                 <label class="form-check-label small" for="sit_{{ $situacao->id }}">
-                                    <strong>{{ $situacao->nome }}</strong>
+                                {{ $situacao->nome }}
                                 </label>
                             </div>
                             @endforeach
