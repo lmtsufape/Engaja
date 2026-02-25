@@ -57,6 +57,8 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     Route::post('/atividades/{atividade}/presencas/savepage', [PresencaImportController::class, 'savePage'])->name('atividades.presencas.savepage');
     Route::post('/atividades/{atividade}/presencas/confirmar', [PresencaImportController::class, 'confirmar'])->name('atividades.presencas.confirmar');
 
+    Route::post('/atividades/{atividade}/checklist', [AtividadeController::class, 'saveChecklist'])->name('atividades.checklist.save');
+
     Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
 });
 
@@ -132,7 +134,7 @@ Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('/edit', 'edit')->name('edit');
             Route::put('/', 'update')->name('update');
-        });
+    });
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {

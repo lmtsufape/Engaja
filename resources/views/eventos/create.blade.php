@@ -120,15 +120,6 @@
                          alt="Pré-visualização" style="max-height:160px">
                 </div>
 
-                {{-- Resumo Curto --}}
-                <div class="col-12">
-                    <label for="resumo" class="form-label">Resumo de Divulgação</label>
-                    <textarea id="resumo" name="resumo" rows="2"
-                        class="form-control @error('resumo') is-invalid @enderror"
-                        placeholder="Breve descrição para divulgação…">{{ old('resumo') }}</textarea>
-                    @error('resumo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
                 {{-- ══ OBJETIVOS E CONTEXTO ══ --}}
                 <div class="col-12">
                     <hr class="my-1">
@@ -136,14 +127,6 @@
                 </div>
 
                 {{-- Objetivo Original --}}
-                <div class="col-12">
-                    <label for="objetivo" class="form-label">Objetivo Principal</label>
-                    <textarea id="objetivo" name="objetivo" rows="2"
-                        class="form-control @error('objetivo') is-invalid @enderror"
-                        placeholder="Descreva o objetivo principal…">{{ old('objetivo') }}</textarea>
-                    @error('objetivo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
                 <div class="col-12">
                     <label for="objetivos_gerais" class="form-label">Objetivos Gerais</label>
                     <textarea id="objetivos_gerais" name="objetivos_gerais" rows="3"
@@ -200,7 +183,7 @@
                                     value="{{ $situacao->id }}"
                                     @checked(in_array($situacao->id, old('situacoes_desafiadoras', [])))>
                                 <label class="form-check-label small" for="sit_{{ $situacao->id }}">
-                                    <strong>{{ $situacao->nome }}</strong>
+                                {{ $situacao->nome }}
                                 </label>
                             </div>
                             @endforeach

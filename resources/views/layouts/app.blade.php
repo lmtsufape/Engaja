@@ -344,6 +344,7 @@
       }
   </script>
   @endif
+
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       
@@ -372,31 +373,20 @@
               bar.setAttribute('aria-valuenow', pct);
           }
 
-          // ── Botão confirmar ─────────────────────────────
+          // ── Botão confirmar ─────────
           const btn = document.querySelector(`.js-checklist-confirm[data-modal="${modalId}"]`);
-          if (btn) btn.disabled = (checked < total);
+          if (btn) btn.disabled = false; 
       });
 
       // ── Reset ao fechar ─────────────────────────────────
       document.querySelectorAll('.modal').forEach(function (modalEl) {
           modalEl.addEventListener('hidden.bs.modal', function () {
               const id    = modalEl.id;
-              const total = modalEl.querySelectorAll('.js-checklist-item').length;
-
-              modalEl.querySelectorAll('.js-checklist-item').forEach(cb => {
-                  cb.checked = false;
-                  const card = cb.closest('.checklist-card');
-                  if (card) card.classList.remove('checked');
-              });
-
-              const counter = modalEl.querySelector('.js-counter');
-              if (counter) counter.textContent = `0 / ${total}`;
-
-              const bar = modalEl.querySelector('.js-progress');
-              if (bar) { bar.style.width = '0%'; bar.setAttribute('aria-valuenow', 0); }
+              
+              if (id === 'modalCompletarPerfil') return;
 
               const btn = modalEl.querySelector('.js-checklist-confirm');
-              if (btn) btn.disabled = true;
+              if (btn) btn.disabled = false; 
           });
       });
 

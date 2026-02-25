@@ -384,7 +384,21 @@
                   <div class="d-flex justify-content-between align-items-start gap-3">
                     <div>
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
-                      <div class="program-title">{{ $momento }}</div>
+                      
+                      <div class="program-title d-flex align-items-center flex-wrap gap-2">
+                        <span>{{ $momento }}</span>
+                        {{-- ⚠️ Badge de checklist incompleto --}}
+                        @if($at->checklists_incompletos)
+                          <button type="button"
+                                  class="badge bg-warning text-dark border-0 btn-checklist-reabrir"
+                                  data-atividade-id="{{ $at->id }}"
+                                  data-checklist-pl="{{ json_encode($at->checklist_planejamento ?? []) }}"
+                                  data-checklist-en="{{ json_encode($at->checklist_encerramento ?? []) }}"
+                                  style="cursor:pointer; font-size: 0.75rem; padding: 0.35rem 0.5rem;">
+                            ⚠️ Checklist incompleto
+                          </button>
+                        @endif
+                      </div>
 
                       @if($local || $municipio || $chLabel || $publicoEsperado || $cargaLabel)
                       <div class="program-meta">
@@ -440,6 +454,7 @@
   </div>
 
 </div>
+
 @hasanyrole('administrador|gerente')
 <div class="modal fade" id="modalRelatoriosEvento" tabindex="-1" aria-labelledby="modalRelatoriosEventoLabel"
   aria-hidden="true">
@@ -490,6 +505,8 @@
     id="modalChecklistPreAcao"
     title="Checklist de Planejamento"
     btn-label="Prosseguir para criar momento"
+    tipo="planejamento"
+    :marcados="[]"
     :items="[
         'Ao planejar cada ação, recorri aos objetivos gerais do projeto, em diálogo com os dados da Leitura do Mundo?',
         'Ao planejar, estabeleci conexão com as outras ações do projeto? (Ex: Cartas para Esperançar, Semear Palavras)',
@@ -507,22 +524,137 @@
     ]"
 />
 
+{{-- Modal de reabertura de checklist --}}
+<div class="modal fade" id="modalReopenChecklist" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-engaja text-white border-0">
+        <h5 class="modal-title fw-bold">⚠️ Checklist Incompleto</h5>
+      </div>
+      <div class="modal-body" id="reopen-checklist-body">
+        {{-- preenchido por JS --}}
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-engaja" id="btn-salvar-checklist-reopen">Salvar progresso</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const btnConfirmarPreAcao = document.querySelector('.js-checklist-confirm[data-modal="modalChecklistPreAcao"]');
-    
-    if (btnConfirmarPreAcao) {
-        btnConfirmarPreAcao.addEventListener('click', function () {
-            const modalEl = document.getElementById('modalChecklistPreAcao');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            modal?.hide();
-            
-            window.location.href = "{{ route('eventos.atividades.create', $evento) }}";
-        });
-    }
-});
+  document.addEventListener('DOMContentLoaded', function () {
+      
+      // Lógica 1: Criação de novo Momento
+      const btnConfirmarPreAcao = document.querySelector('.js-checklist-confirm[data-modal="modalChecklistPreAcao"]');
+      
+      if (btnConfirmarPreAcao) {
+          btnConfirmarPreAcao.addEventListener('click', function () {
+              const marcados = [];
+              document.querySelectorAll('#modalChecklistPreAcao .js-checklist-item:checked').forEach(cb => {
+                  marcados.push(cb.dataset.index);
+              });
+              
+              const url = new URL("{{ route('eventos.atividades.create', $evento) }}");
+              
+              if (marcados.length > 0) {
+                  url.searchParams.append('marcados', marcados.join(','));
+              }
+
+              const modalEl = document.getElementById('modalChecklistPreAcao');
+              bootstrap.Modal.getInstance(modalEl)?.hide();
+              
+              window.location.href = url.toString();
+          });
+      }
+
+      // Lógica 2: Edição/Reabertura de Checklist existente (Tarefa 2)
+      const ITENS_PLANEJAMENTO = [
+          'Ao planejar cada ação, recorri aos objetivos gerais do projeto, em diálogo com os dados da Leitura do Mundo?',
+          'Ao planejar, estabeleci conexão com as outras ações do projeto? (Ex: Cartas para Esperançar, Semear Palavras)',
+          'Preparei listas de presença impressas de acordo com os dados a serem inseridos no sistema ENGAJA?',
+          'Preparei formulários de avaliação de cada ação de formação, para medir os impactos?',
+          'Organizei a lista de materiais necessários e apresentei à coordenação com antecedência?',
+          'Organizei a demanda de infraestrutura local com antecedência?',
+          'A inscrição do público esperado na formação foi feita?',
+          'A informação sobre o dia e horário chegou com antecedência aos públicos participantes?',
+          'Os materiais institucionais do projeto para entregar aos participantes estão organizados?',
+          'Equipe Pedagógica e Educadores estão com clareza de quem fará o que durante os encontros?',
+          'Planejei os momentos de registros audiovisual de cada ação?',
+          'Sei como nomear os arquivos e o local onde compartilhar os registros processuais?',
+          'Estou de posse de todos os contatos estratégicos em caso de necessidade?'
+      ];
+      const ITENS_ENCERRAMENTO = [
+          'Verifiquei se os municípios estão corretos?',
+          'Confirmei a carga horária e os horários de início e término?',
+          'O público esperado e os dados do momento estão preenchidos corretamente?'
+      ];
+
+      let atividadeIdAtual = null;
+
+      document.querySelectorAll('.btn-checklist-reabrir').forEach(btn => {
+          btn.addEventListener('click', function () {
+              atividadeIdAtual = this.dataset.atividadeId;
+              const marcadosPl = JSON.parse(this.dataset.checklistPl || '[]');
+              const marcadosEn = JSON.parse(this.dataset.checklistEn || '[]');
+
+              const body = document.getElementById('reopen-checklist-body');
+              body.innerHTML = renderChecklist('planejamento', ITENS_PLANEJAMENTO, marcadosPl)
+                             + renderChecklist('encerramento', ITENS_ENCERRAMENTO, marcadosEn);
+
+              new bootstrap.Modal(document.getElementById('modalReopenChecklist')).show();
+          });
+      });
+
+      function renderChecklist(tipo, itens, marcados) {
+          let html = `<h6 class="fw-bold mt-2" style="color: #421944;">${tipo === 'planejamento' ? '📋 Planejamento' : '✅ Encerramento'}</h6><div class="vstack gap-2 mb-4">`;
+          itens.forEach((item, i) => {
+              const checked = marcados.includes(i) ? 'checked' : '';
+              html += `<label class="checklist-card d-flex align-items-center gap-3 ${checked ? 'checked' : ''}" style="cursor:pointer;border:2px solid #dee2e6;border-radius:10px;padding:12px 16px; ${checked ? 'background-color: #421944; color: #fff; border-color: #421944;' : ''}">
+                  <input type="checkbox" class="js-reopen-item" data-tipo="${tipo}" data-index="${i}" ${checked} style="display:none">
+                  <span class="checklist-check-icon" style="width:22px;height:22px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#421944;font-weight:900;opacity:${checked ? 1 : 0}">✓</span>
+                  <span>${item}</span>
+              </label>`;
+          });
+          html += '</div>';
+          return html;
+      }
+
+      // Toggle visual dos cards no modal de reabertura
+      document.getElementById('reopen-checklist-body')?.addEventListener('change', function(e) {
+          if (e.target.classList.contains('js-reopen-item')) {
+              const label = e.target.closest('label');
+              label.classList.toggle('checked', e.target.checked);
+              label.style.backgroundColor = e.target.checked ? '#421944' : '';
+              label.style.color = e.target.checked ? '#fff' : '';
+              label.style.borderColor = e.target.checked ? '#421944' : '#dee2e6';
+              label.querySelector('.checklist-check-icon').style.opacity = e.target.checked ? 1 : 0;
+          }
+      });
+
+      document.getElementById('btn-salvar-checklist-reopen')?.addEventListener('click', function () {
+          if (!atividadeIdAtual) return;
+
+          // Salva planejamento
+          const pl = [...document.querySelectorAll('.js-reopen-item[data-tipo="planejamento"]:checked')].map(c => parseInt(c.dataset.index));
+          const en = [...document.querySelectorAll('.js-reopen-item[data-tipo="encerramento"]:checked')].map(c => parseInt(c.dataset.index));
+
+          const salvar = (tipo, itens) => fetch(`/atividades/${atividadeIdAtual}/checklist`, {
+              method: 'POST',
+              headers: { 
+                  'Content-Type': 'application/json', 
+                  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content 
+              },
+              body: JSON.stringify({ tipo, itens })
+          });
+
+          Promise.all([salvar('planejamento', pl), salvar('encerramento', en)])
+              .then(() => { window.location.reload(); })
+              .catch(() => alert('Erro ao salvar. Tente novamente.'));
+      });
+  });
 </script>
 @endpush
