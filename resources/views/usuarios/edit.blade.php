@@ -3,8 +3,8 @@
 @section('content')
 <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
   <div>
-    <p class="text-uppercase text-muted small mb-1">Administracao</p>
-    <h1 class="h4 fw-bold text-engaja mb-0">Editar usuario</h1>
+    <p class="text-uppercase text-muted small mb-1">Administração</p>
+    <h1 class="h4 fw-bold text-engaja mb-0">Editar Usuário</h1>
     <div class="text-muted small">Atualize dados cadastrais e do participante.</div>
   </div>
   <a href="{{ route('usuarios.index') }}" class="btn btn-outline-secondary btn-sm">Voltar</a>
@@ -18,7 +18,7 @@
     <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
-          <strong>Dados do usuario</strong>
+          <strong>Dados do usuário</strong>
         </div>
         <div class="card-body">
           <div class="row g-3">
@@ -102,7 +102,7 @@
             </div>
 
             <div class="col-md-6">
-              <label for="tag" class="form-label">Vinculo no projeto</label>
+              <label for="tag" class="form-label">Vínculo no projeto</label>
               <select id="tag" name="tag" class="form-select @error('tag') is-invalid @enderror">
                 <option value="">Selecione...</option>
                 @foreach($participanteTags as $tagOption)
@@ -115,7 +115,7 @@
             </div>
 
             <div class="col-md-6">
-              <label for="municipio_id" class="form-label">Municipio</label>
+              <label for="municipio_id" class="form-label">Município</label>
               <select id="municipio_id" name="municipio_id"
                 class="form-select @error('municipio_id') is-invalid @enderror">
                 <option value="">-- Nenhum --</option>
@@ -144,10 +144,185 @@
         </div>
       </div>
     </div>
+
+      <div class="col-12">
+          <div class="card shadow-sm">
+              <div class="card-header bg-white">
+                  <strong>Dados demográficos</strong>
+              </div>
+              <div class="card-body">
+                  <div class="row g-3">
+
+                      {{-- 1. Identidade de Gênero --}}
+                      <div class="col-md-6">
+                          <label for="identidade_genero" class="form-label">Identidade de Gênero</label>
+                          <select name="identidade_genero" id="identidade_genero"
+                                  class="form-select @error('identidade_genero') is-invalid @enderror"
+                                  onchange="toggleOutroDemografico(this, 'ig_outro_wrap')">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach([
+                                  'Mulher Cisgênero', 'Mulher Transsexual',
+                                  'Homem Cisgênero',  'Homem Transsexual',
+                                  'Travesti', 'Não binárie',
+                                  'Prefiro não responder', 'Outro'
+                              ] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('identidade_genero', $user->identidade_genero ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('identidade_genero')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+
+                          <div id="ig_outro_wrap" class="mt-2"
+                               style="display:{{ old('identidade_genero', $user->identidade_genero ?? '') == 'Outro' ? 'block' : 'none' }}">
+                              <input type="text" name="identidade_genero_outro"
+                                     class="form-control @error('identidade_genero_outro') is-invalid @enderror"
+                                     placeholder="Especifique"
+                                     value="{{ old('identidade_genero_outro', $user->identidade_genero_outro ?? '') }}">
+                              @error('identidade_genero_outro')
+                              <div class="invalid-feedback">{{ $message }}</div>
+                              @enderror
+                          </div>
+                      </div>
+
+                      {{-- 2. Raça / Cor --}}
+                      <div class="col-md-6">
+                          <label for="raca_cor" class="form-label">Raça / Cor</label>
+                          <select name="raca_cor" id="raca_cor"
+                                  class="form-select @error('raca_cor') is-invalid @enderror">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach(['Preta','Parda','Branca','Amarela','Indígena','Prefere não declarar'] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('raca_cor', $user->raca_cor ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('raca_cor')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+                      </div>
+
+                      {{-- 3. Comunidade Tradicional --}}
+                      <div class="col-md-6">
+                          <label for="comunidade_tradicional" class="form-label">Pertencimento a Comunidades Tradicionais</label>
+                          <select name="comunidade_tradicional" id="comunidade_tradicional"
+                                  class="form-select @error('comunidade_tradicional') is-invalid @enderror"
+                                  onchange="toggleOutroDemografico(this, 'ct_outro_wrap')">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach([
+                                  'Não','Povos indígenas','Comunidades Quilombolas',
+                                  'Povos Ciganos','Ribeirinhos','Extrativistas','Outro'
+                              ] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('comunidade_tradicional', $user->comunidade_tradicional ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('comunidade_tradicional')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+
+                          <div id="ct_outro_wrap" class="mt-2"
+                               style="display:{{ old('comunidade_tradicional', $user->comunidade_tradicional ?? '') == 'Outro' ? 'block' : 'none' }}">
+                              <input type="text" name="comunidade_tradicional_outro"
+                                     class="form-control @error('comunidade_tradicional_outro') is-invalid @enderror"
+                                     placeholder="Especifique"
+                                     value="{{ old('comunidade_tradicional_outro', $user->comunidade_tradicional_outro ?? '') }}">
+                              @error('comunidade_tradicional_outro')
+                              <div class="invalid-feedback">{{ $message }}</div>
+                              @enderror
+                          </div>
+                      </div>
+
+                      {{-- 4. Faixa Etária --}}
+                      <div class="col-md-6">
+                          <label for="faixa_etaria" class="form-label">Faixa Etária</label>
+                          <select name="faixa_etaria" id="faixa_etaria"
+                                  class="form-select @error('faixa_etaria') is-invalid @enderror">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach([
+                                  'Primeira infância (0 a 6 anos)',
+                                  'Criança (7 a 11 anos)',
+                                  'Adolescente (12 a 17 anos)',
+                                  'Adulto (18 a 59 anos)',
+                                  'Idoso (a partir dos 60 anos)',
+                              ] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('faixa_etaria', $user->faixa_etaria ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('faixa_etaria')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+                      </div>
+
+                      {{-- 5. PcD --}}
+                      <div class="col-md-6">
+                          <label for="pcd" class="form-label">Pessoa com Deficiência (PcD)</label>
+                          <select name="pcd" id="pcd"
+                                  class="form-select @error('pcd') is-invalid @enderror">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach(['Não','Física','Auditiva','Visual','Intelectual','Múltipla'] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('pcd', $user->pcd ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('pcd')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+                      </div>
+
+                      {{-- 6. Orientação Sexual --}}
+                      <div class="col-md-6">
+                          <label for="orientacao_sexual" class="form-label">Orientação Sexual</label>
+                          <select name="orientacao_sexual" id="orientacao_sexual"
+                                  class="form-select @error('orientacao_sexual') is-invalid @enderror"
+                                  onchange="toggleOutroDemografico(this, 'os_outra_wrap')">
+                              <option value="" disabled selected>Selecione...</option>
+                              @foreach([
+                                  'Lésbica','Gay','Bissexual',
+                                  'Heterossexual','Prefere não declarar','Outra'
+                              ] as $op)
+                                  <option value="{{ $op }}"
+                                      {{ old('orientacao_sexual', $user->orientacao_sexual ?? '') == $op ? 'selected' : '' }}>
+                                      {{ $op }}
+                                  </option>
+                              @endforeach
+                          </select>
+                          @error('orientacao_sexual')
+                          <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+
+                          <div id="os_outra_wrap" class="mt-2"
+                               style="display:{{ old('orientacao_sexual', $user->orientacao_sexual ?? '') == 'Outra' ? 'block' : 'none' }}">
+                              <input type="text" name="orientacao_sexual_outra"
+                                     class="form-control @error('orientacao_sexual_outra') is-invalid @enderror"
+                                     placeholder="Especifique"
+                                     value="{{ old('orientacao_sexual_outra', $user->orientacao_sexual_outra ?? '') }}">
+                              @error('orientacao_sexual_outra')
+                              <div class="invalid-feedback">{{ $message }}</div>
+                              @enderror
+                          </div>
+                      </div>
+
+                  </div>
+              </div>
+          </div>
+      </div>
+
   </div>
 
   <div class="d-flex justify-content-end mt-4">
-    <button type="submit" class="btn btn-engaja">Salvar usuario</button>
+    <button type="submit" class="btn btn-engaja">Salvar usuário</button>
   </div>
 </form>
 
@@ -195,6 +370,13 @@
       e.target.value = maskPhone(e.target.value);
       e.target.setSelectionRange(e.target.value.length, e.target.value.length);
     });
+  }
+
+  function toggleOutroDemografico(select, wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const mostrar = select.value === 'Outro' || select.value === 'Outra';
+      wrap.style.display = mostrar ? 'block' : 'none';
   }
 </script>
 @endsection

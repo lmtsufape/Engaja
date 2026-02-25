@@ -123,9 +123,13 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
     });
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
         Route::get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
         ->name('eventos.relatorios');
+    });
+
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::controller(AvaliacaoAtividadeController::class)
         ->prefix('atividades/{atividade}/relatorio')
         ->name('avaliacao-atividade.')

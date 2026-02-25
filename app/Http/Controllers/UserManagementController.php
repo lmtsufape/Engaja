@@ -18,6 +18,8 @@ class UserManagementController extends Controller
 {
     private const PROTECTED_ROLES = ['administrador'];
 
+    private const LEGACY_ROLES = ['gestor', 'formador'];
+
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
@@ -83,6 +85,17 @@ class UserManagementController extends Controller
         $managedUser->fill([
             'name'  => $data['name'],
             'email' => $data['email'],
+
+            //campos demograficos
+            'identidade_genero'            => $data['identidade_genero'] ?? null,
+            'identidade_genero_outro'      => $data['identidade_genero_outro'] ?? null,
+            'raca_cor'                     => $data['raca_cor'] ?? null,
+            'comunidade_tradicional'       => $data['comunidade_tradicional'] ?? null,
+            'comunidade_tradicional_outro' => $data['comunidade_tradicional_outro'] ?? null,
+            'faixa_etaria'                 => $data['faixa_etaria'] ?? null,
+            'pcd'                          => $data['pcd'] ?? null,
+            'orientacao_sexual'            => $data['orientacao_sexual'] ?? null,
+            'orientacao_sexual_outra'      => $data['orientacao_sexual_outra'] ?? null,
         ]);
 
         if ($oldEmail !== $data['email']) {
@@ -121,7 +134,9 @@ class UserManagementController extends Controller
 
     private function assignableRoles()
     {
-        return Role::whereNotIn('name', self::PROTECTED_ROLES)
+        $rolesToExclude = array_merge(self::PROTECTED_ROLES, self::LEGACY_ROLES);
+
+        return Role::whereNotIn('name', $rolesToExclude)
             ->orderBy('name')
             ->get(['name']);
     }
