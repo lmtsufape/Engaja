@@ -54,6 +54,17 @@ class UserManagementRequest extends FormRequest
             'escola_unidade'   => ['nullable','string','max:255'],
             'tipo_organizacao' => ['nullable','string','max:255', Rule::in(config('engaja.organizacoes', []))],
             'tag'              => ['nullable', Rule::in(Participante::TAGS)],
+
+            //campos demograficos
+            'identidade_genero'            => ['nullable', 'string', Rule::in(['Mulher Cisgênero', 'Mulher Transsexual', 'Homem Cisgênero', 'Homem Transsexual', 'Travesti', 'Não binárie', 'Prefiro não responder', 'Outro'])],
+            'identidade_genero_outro'      => ['nullable', 'string', 'max:255'],
+            'raca_cor'                     => ['nullable', 'string', Rule::in(['Preta','Parda','Branca','Amarela','Indígena','Prefere não declarar'])],
+            'comunidade_tradicional'       => ['nullable', 'string', Rule::in(['Não','Povos indígenas','Comunidades Quilombolas','Povos Ciganos','Ribeirinhos','Extrativistas','Outro'])],
+            'comunidade_tradicional_outro' => ['nullable', 'string', 'max:255'],
+            'faixa_etaria'                 => ['nullable', 'string', Rule::in(['Primeira infância (0 a 6 anos)', 'Criança (7 a 11 anos)', 'Adolescente (12 a 17 anos)', 'Adulto (18 a 59 anos)', 'Idoso (a partir dos 60 anos)'])],
+            'pcd'                          => ['nullable', 'string', Rule::in(['Não','Física','Auditiva','Visual','Intelectual','Múltipla'])],
+            'orientacao_sexual'            => ['nullable', 'string', Rule::in(['Lésbica','Gay','Bissexual','Heterossexual','Prefere não declarar','Outra'])],
+            'orientacao_sexual_outra'      => ['nullable', 'string', 'max:255'],
         ];
     }
 

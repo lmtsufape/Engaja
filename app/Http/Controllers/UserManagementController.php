@@ -85,6 +85,17 @@ class UserManagementController extends Controller
         $managedUser->fill([
             'name'  => $data['name'],
             'email' => $data['email'],
+
+            //campos demograficos
+            'identidade_genero'            => $data['identidade_genero'] ?? null,
+            'identidade_genero_outro'      => $data['identidade_genero_outro'] ?? null,
+            'raca_cor'                     => $data['raca_cor'] ?? null,
+            'comunidade_tradicional'       => $data['comunidade_tradicional'] ?? null,
+            'comunidade_tradicional_outro' => $data['comunidade_tradicional_outro'] ?? null,
+            'faixa_etaria'                 => $data['faixa_etaria'] ?? null,
+            'pcd'                          => $data['pcd'] ?? null,
+            'orientacao_sexual'            => $data['orientacao_sexual'] ?? null,
+            'orientacao_sexual_outra'      => $data['orientacao_sexual_outra'] ?? null,
         ]);
 
         if ($oldEmail !== $data['email']) {
