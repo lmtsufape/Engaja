@@ -9,6 +9,7 @@ use Spatie\Permission\Models\Role;
 
 class UserManagementRequest extends FormRequest
 {
+    private const LEGACY_ROLES = ['gestor', 'formador'];
     public function authorize(): bool
     {
         return (bool) $this->user()?->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica', 'articulador']);
@@ -142,7 +143,10 @@ class UserManagementRequest extends FormRequest
 
     private function assignableRoleNames(): array
     {
-        return Role::whereNotIn('name', ['administrador'])
+
+        $rolesToExclude = array_merge(['administrador'], self::LEGACY_ROLES);
+
+        return Role::whereNotIn('name', $rolesToExclude)
             ->pluck('name')
             ->toArray();
     }

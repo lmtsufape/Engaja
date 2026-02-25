@@ -210,7 +210,7 @@
         </a>
         @endcan
 
-        @role('administrador|gerente')
+        @role('administrador|gerente|eq_pedagogica|articulador')
         <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
           data-bs-target="#modalRelatoriosEvento">
           Relatórios
@@ -396,11 +396,12 @@
                       </div>
                       @endif
                     </div>
-                    @can('atividade.ver')
+
+                    @hasanyrole('administrador|gerente')
                     <div class="d-flex align-items-center gap-4 flex-shrink-0">
-                      <a href="{{ $at->avaliacaoAtividade 
-                            ? route('avaliacao-atividade.edit',   $at) 
-                            : route('avaliacao-atividade.create', $at) }}" 
+                      <a href="{{ $at->avaliacaoAtividade
+                            ? route('avaliacao-atividade.edit',   $at)
+                            : route('avaliacao-atividade.create', $at) }}"
                         class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
                         {{ $at->avaliacaoAtividade ? '📋 Avaliação ' : '📋 Avaliar' }}
                       </a>
@@ -408,7 +409,7 @@
                       <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
                           Ver
                       </a>
-                    @endcan
+                    @endhasanyrole
 
                     @hasanyrole('administrador|gerente|eq_pedagogica')
                       <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
@@ -440,7 +441,7 @@
   </div>
 
 </div>
-@hasanyrole('administrador|gerente')
+@hasanyrole('administrador|gerente|eq_pedagogica|articulador')
 <div class="modal fade" id="modalRelatoriosEvento" tabindex="-1" aria-labelledby="modalRelatoriosEventoLabel"
   aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -513,13 +514,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const btnConfirmarPreAcao = document.querySelector('.js-checklist-confirm[data-modal="modalChecklistPreAcao"]');
-    
+
     if (btnConfirmarPreAcao) {
         btnConfirmarPreAcao.addEventListener('click', function () {
             const modalEl = document.getElementById('modalChecklistPreAcao');
             const modal = bootstrap.Modal.getInstance(modalEl);
             modal?.hide();
-            
+
             window.location.href = "{{ route('eventos.atividades.create', $evento) }}";
         });
     }

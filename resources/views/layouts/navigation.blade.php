@@ -13,13 +13,13 @@
     <div id="mainNav" class="collapse navbar-collapse">
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
         @auth
-        @can('evento.ver')
+        @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
         <li class="nav-item">
           <a class="nav-link text-white" href="{{ route('eventos.index') }}">
             Ações Pedagógicas
           </a>
         </li>
-        @endcan
+        @endhasanyrole
 
         @hasanyrole('administrador|gerente')
         <li class="nav-item">

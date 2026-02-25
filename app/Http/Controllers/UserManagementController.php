@@ -18,6 +18,8 @@ class UserManagementController extends Controller
 {
     private const PROTECTED_ROLES = ['administrador'];
 
+    private const LEGACY_ROLES = ['gestor', 'formador'];
+
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
@@ -121,7 +123,9 @@ class UserManagementController extends Controller
 
     private function assignableRoles()
     {
-        return Role::whereNotIn('name', self::PROTECTED_ROLES)
+        $rolesToExclude = array_merge(self::PROTECTED_ROLES, self::LEGACY_ROLES);
+
+        return Role::whereNotIn('name', $rolesToExclude)
             ->orderBy('name')
             ->get(['name']);
     }

@@ -127,20 +127,21 @@ class EventoController extends Controller
             'eixo',
             'user',
             'atividades' => fn($q) => $q
-                ->with(['municipios.estado', 'avaliacaoAtividade']) 
+                ->with(['municipios.estado', 'avaliacaoAtividade'])
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);
-        
-        $atividades = $evento->atividades; 
+
+        $atividades = $evento->atividades;
         return view('eventos.show', compact('evento', 'atividades'));
     }
 
     public function relatorios(Request $request, Evento $evento)
     {
         $user = $request->user();
-        if (!$user || (!$user->hasRole('administrador') && !$user->hasRole('gerente'))) {
-            abort(403);
+
+        if (!$user || !$user->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica', 'articulador'])) {
+            abort(403, 'Ação não autorizada.');
         }
 
         $tipo = $request->get('tipo', 'geral');
