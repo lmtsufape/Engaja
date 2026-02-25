@@ -1,8 +1,10 @@
 @props([
-    'id'       => 'checklistModal',
-    'title'    => 'Checklist',
-    'items'    => [],
-    'btnLabel' => 'Prosseguir',
+    'id'          => 'checklistModal',
+    'title'       => 'Checklist',
+    'items'       => [],
+    'btnLabel'    => 'Prosseguir',
+    'tipo'        => 'planejamento',   {{-- 'planejamento' ou 'encerramento' --}}
+    'marcados'    => [],               {{-- índices já salvos --}}
 ])
 
 <style>
@@ -44,7 +46,6 @@
     font-size: 13px;
     font-weight: 900;
 }
-/* input escondido */
 .checklist-card input[type="checkbox"] {
     display: none;
 }
@@ -70,20 +71,19 @@
             <div class="modal-body pt-2">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <p class="text-muted small mb-0">
-                        Selecione todos os itens para prosseguir.
+                        Marque os itens concluídos. Você pode salvar mesmo que não esteja 100%.
                     </p>
                     <span class="fw-semibold small js-counter text-engaja" data-modal="{{ $id }}">
-                        0 / {{ count($items) }}
+                        {{ count($marcados) }} / {{ count($items) }}
                     </span>
                 </div>
 
-                {{-- Barra de progresso --}}
                 <div class="progress mb-4" style="height: 5px; border-radius:99px;">
                     <div class="progress-bar js-progress"
                          data-modal="{{ $id }}"
                          role="progressbar"
-                         style="width:0%; background-color:#421944;"
-                         aria-valuenow="0"
+                         style="width:{{ count($items) > 0 ? round(count($marcados)/count($items)*100) : 0 }}%; background-color:#421944;"
+                         aria-valuenow="{{ count($items) > 0 ? round(count($marcados)/count($items)*100) : 0 }}"
                          aria-valuemin="0"
                          aria-valuemax="100">
                     </div>
@@ -91,13 +91,15 @@
 
                 <div class="vstack gap-2">
                     @foreach($items as $index => $item)
-                    <label class="checklist-card d-flex align-items-center gap-3"
+                    <label class="checklist-card d-flex align-items-center gap-3 {{ in_array($index, $marcados) ? 'checked' : '' }}"
                            data-modal="{{ $id }}">
                         <input class="js-checklist-item"
                                type="checkbox"
                                id="{{ $id }}_item_{{ $index }}"
                                data-modal="{{ $id }}"
-                               data-total="{{ count($items) }}">
+                               data-total="{{ count($items) }}"
+                               data-index="{{ $index }}"
+                               {{ in_array($index, $marcados) ? 'checked' : '' }}>
                         <span class="checklist-check-icon">✓</span>
                         <span class="checklist-card-text">{{ $item }}</span>
                     </label>
@@ -111,10 +113,11 @@
                         data-bs-dismiss="modal">
                     Cancelar
                 </button>
+                {{-- Botão sempre habilitado --}}
                 <button type="button"
                         class="btn btn-engaja js-checklist-confirm"
                         data-modal="{{ $id }}"
-                        disabled>
+                        data-tipo="{{ $tipo }}">
                     {{ $btnLabel }}
                 </button>
             </div>
