@@ -3,8 +3,8 @@
 @section('content')
 <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
   <div>
-    <p class="text-uppercase text-muted small mb-1">Administracao</p>
-    <h1 class="h4 fw-bold text-engaja mb-0">Editar usuario</h1>
+    <p class="text-uppercase text-muted small mb-1">Administração</p>
+    <h1 class="h4 fw-bold text-engaja mb-0">Editar Usuário</h1>
     <div class="text-muted small">Atualize dados cadastrais e do participante.</div>
   </div>
   <a href="{{ route('usuarios.index') }}" class="btn btn-outline-secondary btn-sm">Voltar</a>
@@ -18,7 +18,7 @@
     <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
-          <strong>Dados do usuario</strong>
+          <strong>Dados do usuário</strong>
         </div>
         <div class="card-body">
           <div class="row g-3">
@@ -102,7 +102,7 @@
             </div>
 
             <div class="col-md-6">
-              <label for="tag" class="form-label">Vinculo no projeto</label>
+              <label for="tag" class="form-label">Vínculo no projeto</label>
               <select id="tag" name="tag" class="form-select @error('tag') is-invalid @enderror">
                 <option value="">Selecione...</option>
                 @foreach($participanteTags as $tagOption)
@@ -115,7 +115,7 @@
             </div>
 
             <div class="col-md-6">
-              <label for="municipio_id" class="form-label">Municipio</label>
+              <label for="municipio_id" class="form-label">Município</label>
               <select id="municipio_id" name="municipio_id"
                 class="form-select @error('municipio_id') is-invalid @enderror">
                 <option value="">-- Nenhum --</option>
@@ -322,7 +322,7 @@
   </div>
 
   <div class="d-flex justify-content-end mt-4">
-    <button type="submit" class="btn btn-engaja">Salvar usuario</button>
+    <button type="submit" class="btn btn-engaja">Salvar usuário</button>
   </div>
 </form>
 

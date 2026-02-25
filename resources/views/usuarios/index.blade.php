@@ -3,8 +3,8 @@
 @section('content')
 <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
   <div>
-    <p class="text-uppercase text-muted small mb-1">Administracao</p>
-    <h1 class="h4 fw-bold text-engaja mb-0">Gerenciar usuarios</h1>
+    <p class="text-uppercase text-muted small mb-1">Administração</p>
+    <h1 class="h4 fw-bold text-engaja mb-0">Gerenciar Usuários</h1>
     {{-- <div class="text-muted small">Disponivel apenas para administradores e gestores.</div> --}}
   </div>
   <form method="GET" action="{{ route('usuarios.index') }}" class="d-flex gap-2">
@@ -38,7 +38,7 @@
                 <th>E-mail</th>
                 <th>CPF</th>
                 <th>Telefone</th>
-                <th class="text-end pe-4">Acao</th>
+                <th class="text-end pe-4">Ação</th>
               </tr>
             </thead>
             <tbody>
