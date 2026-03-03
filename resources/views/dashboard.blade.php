@@ -10,7 +10,6 @@
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Hub de dashboards</a>
-            <a href="{{ route('dashboards.bi') }}" class="btn btn-outline-secondary btn-sm">Dashboard BI</a>
             <a href="{{ route('dashboards.avaliacoes') }}" class="btn btn-outline-primary btn-sm">Dashboard de respostas</a>
         </div>
     </div>
