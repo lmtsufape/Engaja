@@ -15,6 +15,7 @@
     "vite": "^7.0.4"
   },
   "dependencies": {
+    "apexcharts": "^5.3.6",
     "fabric": "^6.9.0"
   }
 }

@@ -30,6 +30,11 @@ class DashboardController extends Controller
         return view('dashboards.home', compact('resumo', 'templatesDisponiveis', 'eventosRecentes'));
     }
 
+    public function bi()
+    {
+        return view('dashboards.bi');
+    }
+
     public function index(Request $request)
     {
         $eventoId   = $request->integer('evento_id');
