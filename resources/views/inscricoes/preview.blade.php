@@ -14,6 +14,13 @@
     @endif
   </div>
 
+  <div class="text-muted mb-3">
+    Na importação:
+    <strong>{{ $usuariosNovosCount }}</strong> novo(s) cadastro(s)
+    |
+    <strong>{{ $usuariosExistentesCount }}</strong> usuário(s) já existente(s) (dados serão atualizados).
+  </div>
+
   @if ($errors->any())
   <div class="alert alert-danger">
     <strong>Corrija os erros antes de confirmar:</strong>
@@ -36,11 +43,10 @@
       <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-outline-secondary">Voltar</a>
 
       {{-- Confirmar TUDO (todas as páginas/sessão) --}}
-      <form method="POST" action="{{ route('inscricoes.confirmar', $evento) }}">
-        @csrf
+      <form method="GET" action="{{ route('inscricoes.confirmacao', $evento) }}">
         <input type="hidden" name="session_key" value="{{ $sessionKey }}">
         <input type="hidden" name="atividade_id" value="{{ $atividade->id }}">
-        <button class="btn btn-primary">Confirmar e salvar (todas as páginas)</button>
+        <button class="btn btn-primary">Confirmar e continuar</button>
       </form>
     </div>
   </div>

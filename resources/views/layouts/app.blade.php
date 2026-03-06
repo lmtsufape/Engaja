@@ -61,6 +61,7 @@
       background: linear-gradient(180deg, #421944 0%, #2c1230 100%);
       color: #f5f3ff;
       min-height: 100vh;
+      height: 100vh;
       position: sticky;
       top: 0;
       padding: 1.5rem 1.25rem;
