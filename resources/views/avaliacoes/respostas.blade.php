@@ -19,24 +19,23 @@
         @if($submissoes->isEmpty())
           <div class="alert alert-info mb-0">Nenhuma resposta enviada ainda.</div>
         @else
+          <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+            <span>🔒</span>
+            <div>As respostas são <strong>anónimas</strong>. Nenhum dado identificador do participante é exibido.</div>
+          </div>
           <div class="table-responsive">
             <table class="table align-middle">
               <thead>
                 <tr>
-                  <th>Participante</th>
-                  <th>Email</th>
+                  <th>#</th>
                   <th>Enviado em</th>
                   <th class="text-end">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                @foreach($submissoes as $submissao)
-                  @php
-                    $user = $submissao->presenca->inscricao->participante->user ?? null;
-                  @endphp
+                @foreach($submissoes as $idx => $submissao)
                   <tr>
-                    <td>{{ $user?->name ?? 'N/A' }}</td>
-                    <td>{{ $user?->email ?? 'N/A' }}</td>
+                    <td class="text-muted">{{ $idx + 1 }}</td>
                     <td>{{ $submissao->created_at->format('d/m/Y H:i') }}</td>
                     <td class="text-end">
                       <a class="btn btn-sm btn-outline-primary"

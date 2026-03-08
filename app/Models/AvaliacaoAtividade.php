@@ -19,6 +19,11 @@ class AvaliacaoAtividade extends Model
         'avaliacao_links_presenca',
         'avaliacao_destaques',
         'avaliacao_atuacao_equipe',
+        'checklist_pos_acao',
+    ];
+
+    protected $casts = [
+        'checklist_pos_acao' => 'array',
     ];
 
     public function atividade(): BelongsTo

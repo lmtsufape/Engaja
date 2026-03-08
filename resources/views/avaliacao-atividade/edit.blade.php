@@ -5,9 +5,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h4 fw-bold text-engaja mb-0">
-                Editar Relatório — {{ $atividade->evento->nome ?? '' }}
+                Relatório de Avaliação da Ação
             </h1>
-            <small class="text-muted">Atualize o relatório de avaliação deste momento</small>
+            <small class="text-muted">{{ $atividade->evento->nome ?? '' }} — {{ $atividade->descricao }}</small>
         </div>
         <a href="{{ route('eventos.show', $atividade->evento_id) }}"
            class="btn btn-outline-secondary">Voltar à ação pedagógica</a>

@@ -88,6 +88,7 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         ->parameters(['avaliacoes' => 'avaliacao']);
     Route::get('avaliacoes/{avaliacao}/respostas', [AvaliacaoController::class, 'respostas'])->name('avaliacoes.respostas');
     Route::get('avaliacoes/{avaliacao}/respostas/{submissao}', [AvaliacaoController::class, 'respostasMostrar'])->name('avaliacoes.respostas.mostrar');
+    Route::get('atividades/{atividade}/avaliacoes', [AvaliacaoController::class, 'resultadosAtividade'])->name('atividades.avaliacoes');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente'])
@@ -134,12 +135,15 @@ Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('/edit', 'edit')->name('edit');
             Route::put('/', 'update')->name('update');
-    });
+        });
+    Route::get('/relatorios-avaliacao', [AvaliacaoAtividadeController::class, 'index'])
+        ->name('avaliacao-atividade.index');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::resource('eventos', EventoController::class);
     Route::get('eventos/{evento}', [EventoController::class, 'show'])->name('eventos.show');
+    Route::get('eventos/{evento}/planejamento/pdf', [EventoController::class, 'gerarPdfPlanejamento'])->name('eventos.planejamento.pdf');
 });
 
 Route::resource('eventos.atividades', AtividadeController::class)

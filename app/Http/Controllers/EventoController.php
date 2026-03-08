@@ -35,36 +35,34 @@ class EventoController extends Controller
 
     public function index(Request $r)
     {
-        $q = Evento::with(['eixo', 'user'])
-            ->when($r->q, function ($qq) use ($r) {
+        $eventos = Evento::with(['user'])
+            ->when($r->q, function ($q) use ($r) {
                 $search = mb_strtolower($r->q);
-                $qq->where(function ($w) use ($search) {
+                $q->where(function ($w) use ($search) {
                     $w->whereRaw('LOWER(nome) LIKE ?', ['%' . $search . '%'])
-                        ->orWhereRaw('LOWER(tipo) LIKE ?', ['%' . $search . '%'])
-                        ->orWhereRaw('LOWER(objetivo) LIKE ?', ['%' . $search . '%']);
+                    ->orWhereRaw('LOWER(tipo) LIKE ?', ['%' . $search . '%'])
+                    ->orWhereRaw('LOWER(objetivos_gerais) LIKE ?', ['%' . $search . '%']);
                 });
             })
-            ->when($r->eixo, fn($qq) => $qq->where('eixo_id', $r->eixo))
-            ->when($r->de, fn($qq) => $qq->whereDate('data_inicio', '>=', $r->de))
-            ->orderByDesc('id');
+            ->when($r->acao_geral, fn($q) => $q->where('acao_geral', $r->acao_geral))
+            ->when($r->de, fn($q) => $q->whereDate('data_inicio', '>=', $r->de))
+            ->orderByDesc('id')
+            ->paginate(10);
 
-        $eventos = $q->paginate(10);
-        $eixos   = Eixo::orderBy('nome')->get();
         $modelosCertificados = ModeloCertificado::orderBy('nome')->get();
 
-        return view('eventos.index', compact('eventos', 'eixos', 'modelosCertificados'));
+        return view('eventos.index', compact('eventos', 'modelosCertificados'));
     }
 
     public function create()
     {
         $this->authorize('create', Evento::class);
 
-        $eixos     = Eixo::orderBy('nome')->get();
         $matrizes  = MatrizAprendizagem::orderBy('nome')->get();
         $situacoes = SituacaoDesafiadora::orderBy('categoria')->orderBy('nome')->get()
                         ->groupBy('categoria');
 
-        return view('eventos.create', compact('eixos', 'matrizes', 'situacoes'));
+        return view('eventos.create', compact('matrizes', 'situacoes'));
     }
 
     public function store(Request $request)
@@ -72,40 +70,37 @@ class EventoController extends Controller
         $this->authorize('create', Evento::class);
 
         $request->validate([
-            'nome'                     => 'required|string|max:255',
-            'eixo_id'                  => 'required|exists:eixos,id',
-            'link'                     => 'nullable|url',
-            'data_inicio'              => 'nullable|date',
-            'data_fim'                 => 'nullable|date|after_or_equal:data_inicio',
-            'local'                    => 'nullable|string|max:255',
-            'imagem'                   => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
-            'matrizes'                 => 'nullable|array',
-            'matrizes.*'               => 'exists:matrizes_aprendizagem,id',
-            'situacoes_desafiadoras'   => 'nullable|array',
-            'situacoes_desafiadoras.*' => 'exists:situacoes_desafiadoras,id',
-            'sequencias'               => 'nullable|array',
-            'sequencias.*.periodo'     => 'nullable|string|max:255',
-            'sequencias.*.descricao'   => 'nullable|string',
+            'nome'                        => 'required|string|max:255',
+            'acao_geral'                  => 'required|string|in:1,2,3',
+            'subacao'                     => 'required|string|max:200',
+            'eixo_id'                     => 'nullable|exists:eixos,id',
+            'link'                        => 'nullable|url',
+            'data_inicio'                 => 'nullable|date',
+            'data_fim'                    => 'nullable|date|after_or_equal:data_inicio',
+            'local'                       => 'nullable|string|max:255',
+            'imagem'                      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'matrizes'                    => 'nullable|array',
+            'matrizes.*'                  => 'exists:matrizes_aprendizagem,id',
+            'situacoes_desafiadoras'      => 'nullable|array',
+            'situacoes_desafiadoras.*'    => 'exists:situacoes_desafiadoras,id',
+            'sequencias'                  => 'nullable|array',
+            'sequencias.*.periodo'        => 'nullable|string|max:255',
+            'sequencias.*.descricao'      => 'nullable|string',
+            'ods_selecionados'            => 'nullable|array',
+            'ods_selecionados.*'          => 'string|max:500',
+            'checklist_planejamento'      => 'nullable|array',
+            'checklist_planejamento.*'    => 'string',
         ]);
 
         $dados = $request->only([
-            'eixo_id',
-            'nome',
-            'tipo',
-            'data_inicio',
-            'data_fim',
-            'modalidade',
-            'link',
-            'objetivo',
-            'resumo',
-            'local',
-            'objetivos_gerais',
-            'objetivos_especificos',
-            'recursos_materiais_necessarios',
-            'providencias_sme_parceria',
-            'observacoes_complementares',
+            'eixo_id', 'acao_geral', 'subacao',
+            'nome', 'tipo', 'data_inicio', 'data_fim', 'modalidade', 'link', 'local',
+            'objetivos_gerais', 'objetivos_especificos',
+            'recursos_materiais_necessarios', 'providencias_sme_parceria', 'observacoes_complementares',
         ]);
-        $dados['user_id'] = Auth::id();
+        $dados['user_id']                = Auth::id();
+        $dados['ods_selecionados']       = $request->input('ods_selecionados', []);
+        $dados['checklist_planejamento'] = $request->input('checklist_planejamento', []);
 
         if ($request->hasFile('imagem')) {
             $dados['imagem'] = $request->file('imagem')->store('eventos', 'public');
@@ -121,19 +116,38 @@ class EventoController extends Controller
             ->with('success', 'Ação pedagógica criada com sucesso!');
     }
 
+
     public function show(Evento $evento)
     {
         $evento->load([
             'eixo',
             'user',
             'atividades' => fn($q) => $q
-                ->with(['municipios.estado', 'avaliacaoAtividade']) 
+                ->with(['municipios.estado', 'avaliacaoAtividade', 'avaliacoes'])
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);
-        
-        $atividades = $evento->atividades; 
-        return view('eventos.show', compact('evento', 'atividades'));
+
+        $atividades = $evento->atividades;
+
+        // Para utilizadores participantes: carrega as presenças por atividade
+        $presencasPorAtividade = collect();
+        $participante = auth()->user()?->participante;
+        if ($participante) {
+            $inscricaoIds = Inscricao::where('participante_id', $participante->id)
+                ->where('evento_id', $evento->id)
+                ->whereNull('deleted_at')
+                ->pluck('id');
+
+            if ($inscricaoIds->isNotEmpty()) {
+                $presencasPorAtividade = Presenca::whereIn('inscricao_id', $inscricaoIds)
+                    ->whereIn('atividade_id', $atividades->pluck('id'))
+                    ->get()
+                    ->keyBy('atividade_id');
+            }
+        }
+
+        return view('eventos.show', compact('evento', 'atividades', 'presencasPorAtividade'));
     }
 
     public function relatorios(Request $request, Evento $evento)
@@ -161,12 +175,11 @@ class EventoController extends Controller
 
         $evento->load(['matrizes', 'situacoesDesafiadoras', 'sequenciasDidaticas']);
 
-        $eixos     = Eixo::orderBy('nome')->get();
         $matrizes  = MatrizAprendizagem::orderBy('nome')->get();
         $situacoes = SituacaoDesafiadora::orderBy('categoria')->orderBy('nome')->get()
                         ->groupBy('categoria');
 
-        return view('eventos.edit', compact('evento', 'eixos', 'matrizes', 'situacoes'));
+        return view('eventos.edit', compact('evento', 'matrizes', 'situacoes'));
     }
 
     public function update(Request $request, Evento $evento)
@@ -174,39 +187,37 @@ class EventoController extends Controller
         $this->authorize('update', $evento);
 
         $request->validate([
-            'nome'                     => 'required|string|max:255',
-            'eixo_id'                  => 'required|exists:eixos,id',
-            'link'                     => 'nullable|url',
-            'data_inicio'              => 'nullable|date',
-            'data_fim'                 => 'nullable|date|after_or_equal:data_inicio',
-            'local'                    => 'nullable|string|max:255',
-            'imagem'                   => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
-            'matrizes'                 => 'nullable|array',
-            'matrizes.*'               => 'exists:matrizes_aprendizagem,id',
-            'situacoes_desafiadoras'   => 'nullable|array',
-            'situacoes_desafiadoras.*' => 'exists:situacoes_desafiadoras,id',
-            'sequencias'               => 'nullable|array',
-            'sequencias.*.periodo'     => 'nullable|string|max:255',
-            'sequencias.*.descricao'   => 'nullable|string',
+            'nome'                        => 'required|string|max:255',
+            'acao_geral'                  => 'required|string|in:1,2,3',
+            'subacao'                     => 'required|string|max:200',
+            'eixo_id'                     => 'nullable|exists:eixos,id',
+            'link'                        => 'nullable|url',
+            'data_inicio'                 => 'nullable|date',
+            'data_fim'                    => 'nullable|date|after_or_equal:data_inicio',
+            'local'                       => 'nullable|string|max:255',
+            'imagem'                      => 'nullable|mimes:jpg,jpeg,png,webp,avif,svg|max:2048',
+            'matrizes'                    => 'nullable|array',
+            'matrizes.*'                  => 'exists:matrizes_aprendizagem,id',
+            'situacoes_desafiadoras'      => 'nullable|array',
+            'situacoes_desafiadoras.*'    => 'exists:situacoes_desafiadoras,id',
+            'sequencias'                  => 'nullable|array',
+            'sequencias.*.periodo'        => 'nullable|string|max:255',
+            'sequencias.*.descricao'      => 'nullable|string',
+            'ods_selecionados'            => 'nullable|array',
+            'ods_selecionados.*'          => 'string|max:500',
+            'checklist_planejamento'      => 'nullable|array',
+            'checklist_planejamento.*'    => 'string',
         ]);
 
         $evento->fill($request->only([
-            'eixo_id',
-            'nome',
-            'tipo',
-            'data_inicio',
-            'data_fim',
-            'modalidade',
-            'link',
-            'objetivo',
-            'resumo',
-            'local',
-            'objetivos_gerais',
-            'objetivos_especificos',
-            'recursos_materiais_necessarios',
-            'providencias_sme_parceria',
-            'observacoes_complementares',
+            'eixo_id', 'acao_geral', 'subacao',
+            'nome', 'tipo', 'data_inicio', 'data_fim', 'modalidade', 'link', 'local',
+            'objetivos_gerais', 'objetivos_especificos',
+            'recursos_materiais_necessarios', 'providencias_sme_parceria', 'observacoes_complementares',
         ]));
+
+        $evento->ods_selecionados       = $request->input('ods_selecionados', []);
+        $evento->checklist_planejamento = $request->input('checklist_planejamento', []);
 
         if ($request->hasFile('imagem')) {
             if ($evento->imagem) {
@@ -235,6 +246,22 @@ class EventoController extends Controller
 
         $evento->delete();
         return redirect()->route('eventos.index')->with('success', 'Evento excluído.');
+    }
+
+    public function gerarPdfPlanejamento(Evento $evento): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->authorize('update', $evento);
+
+        $evento->load(['situacoesDesafiadoras', 'matrizes', 'sequenciasDidaticas']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('eventos.planejamento_pdf', [
+                'evento'         => $evento,
+                'acoesGerais'    => Evento::ACOES_GERAIS,
+                'checklistItems' => array_values(Evento::CHECKLIST_PLANEJAMENTO_ITEMS),
+            ])
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('planejamento-' . Str::slug($evento->nome) . '.pdf');
     }
 
     public function relatorioParticipantesUnicos(Request $request, Evento $evento)

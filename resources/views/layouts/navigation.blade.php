@@ -42,7 +42,10 @@
             <li><a class="dropdown-item" href="{{ route('escalas.index') }}">Escalas</a></li>
             <li><a class="dropdown-item" href="{{ route('templates-avaliacao.index') }}">Modelos de avaliação</a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="{{ route('avaliacoes.index') }}">Avaliações</a></li>
+            <li><a class="dropdown-item" href="{{ route('avaliacoes.index') }}">Avaliações dos Participantes</a></li>
+            @hasanyrole('administrador|gerente')
+            <li><a class="dropdown-item" href="{{ route('avaliacao-atividade.index') }}">Relatórios de Avaliação da Ação</a></li>
+            @endhasanyrole
           </ul>
         </li>
         @endhasanyrole
