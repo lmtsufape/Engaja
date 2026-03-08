@@ -11,6 +11,7 @@
       </div>
       <div class="d-flex gap-2">
         <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">Hub de dashboards</a>
+        <a href="{{ route('dashboards.bi') }}" class="btn btn-outline-secondary">Ir para BI</a>
         <a href="{{ route('dashboards.presencas') }}" class="btn btn-outline-primary">Ir para presencas</a>
       </div>
     </div>
