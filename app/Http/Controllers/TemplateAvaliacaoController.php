@@ -155,7 +155,8 @@ class TemplateAvaliacaoController extends Controller
                             : $evidencia->descricao
                     ),
                 ];
-            });
+            })
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE);
 
         $escalas = Escala::orderBy('descricao')->pluck('descricao', 'id');
 

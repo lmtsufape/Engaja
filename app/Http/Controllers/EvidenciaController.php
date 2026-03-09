@@ -56,7 +56,9 @@ class EvidenciaController extends Controller
 
         $evidencias = $query->paginate(15)->appends($request->query());
 
-        $dimensoes = Dimensao::orderBy('descricao')->pluck('descricao', 'id');
+        $dimensoes = Dimensao::orderBy('descricao')
+            ->pluck('descricao', 'id')
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE);
         $indicadores = Indicador::with('dimensao')
             ->orderBy('descricao')
             ->get()
@@ -64,7 +66,8 @@ class EvidenciaController extends Controller
                 $prefixo = $indicador->dimensao?->descricao;
                 $label = $prefixo ? $prefixo . ' - ' . $indicador->descricao : $indicador->descricao;
                 return [$indicador->id => $label];
-            });
+            })
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE);
 
         return view('evidencias.index', compact('evidencias', 'dimensoes', 'indicadores'));
     }
