@@ -17,7 +17,8 @@
           $prefix = $e->indicador->descricao ?? '';
         }
         return [$e->id => trim($prefix ? ($prefix . ' | ' . $e->descricao) : $e->descricao)];
-      });
+      })
+      ->sort(SORT_NATURAL | SORT_FLAG_CASE);
   }
 
   $emptyQuestao = [
