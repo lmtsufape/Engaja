@@ -65,6 +65,7 @@ class PresencaController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => $inscricao->atividade_id === $atividade->id ? $inscricao->ouvinte : true,
             ]);
             $inscricao->deleted_at = null;
             $inscricao->save();
@@ -73,6 +74,7 @@ class PresencaController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => true,
             ]);
         }
 
@@ -96,6 +98,8 @@ class PresencaController extends Controller
                 'atividade_nome' => $atividade->descricao,
                 'dia' => $dia,
                 'success-presenca' => 'Presença confirmada com sucesso!',
+                'status_presenca_label' => $inscricao->ouvinte ? 'Ouvinte' : 'Presença',
+                'artigo_status_presenca' => $inscricao->ouvinte ? 'sua participação como ouvinte' : 'sua presença',
                 'avaliacao_token' => $presenca->avaliacao_respondida ? null : encrypt($presenca->id),
                 'avaliacao_disponivel' => ! $presenca->avaliacao_respondida,
             ]);

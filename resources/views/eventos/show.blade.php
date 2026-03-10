@@ -512,24 +512,36 @@
         </p>
         <div class="row g-3">
           <div class="col-md-6">
-            <div class="h-100 border rounded p-3">
+            <div class="h-100 border rounded p-3 d-flex flex-column">
               <h6 class="fw-bold mb-1">Participantes únicos</h6>
               <p class="text-muted small mb-3">Consolida todos os participantes que tiveram presença confirmada em
                 qualquer momento desta ação.</p>
-              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral']) }}"
-                class="btn btn-engaja w-100">
-                Baixar XLSX
-              </a>
+              <div class="d-grid gap-2 mt-auto">
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral']) }}"
+                  class="btn btn-engaja w-100">
+                  Baixar XLSX
+                </a>
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral', 'sem_ouvintes' => 1]) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX sem ouvintes
+                </a>
+              </div>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="h-100 border rounded p-3">
+            <div class="h-100 border rounded p-3 d-flex flex-column">
               <h6 class="fw-bold mb-1">Participantes por momento</h6>
               <p class="text-muted small mb-3">Lista os presentes por momento, com data e horários.</p>
-              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos']) }}"
-                class="btn btn-outline-secondary w-100">
-                Baixar XLSX
-              </a>
+              <div class="d-grid gap-2 mt-auto">
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos']) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX
+                </a>
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos', 'sem_ouvintes' => 1]) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX sem ouvintes
+                </a>
+              </div>
             </div>
           </div>
         </div>

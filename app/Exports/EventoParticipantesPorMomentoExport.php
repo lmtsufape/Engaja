@@ -16,10 +16,12 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
     use Exportable;
 
     private Evento $evento;
+    private bool $semOuvintes;
 
-    public function __construct(Evento $evento)
+    public function __construct(Evento $evento, bool $semOuvintes = false)
     {
         $this->evento = $evento;
+        $this->semOuvintes = $semOuvintes;
     }
 
     public function collection(): Collection
@@ -43,6 +45,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             'Organização',
             'Tipo de organização',
             'Tag',
+            'Status',
         ];
     }
 
@@ -59,6 +62,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             $row->escola_unidade,
             $row->tipo_organizacao,
             $row->tag,
+            $row->ouvinte ? 'Ouvinte' : 'Presente',
         ];
     }
 
@@ -75,6 +79,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             ->where('presencas.status', 'presente')
             ->whereNull('presencas.deleted_at')
             ->whereNull('inscricaos.deleted_at')
+            ->when($this->semOuvintes, fn ($q) => $q->where('inscricaos.ouvinte', false))
             ->select([
                 'atividades.id as atividade_id',
                 'atividades.descricao as momento',
@@ -87,6 +92,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
                 'participantes.escola_unidade',
                 'participantes.tipo_organizacao',
                 'participantes.tag',
+                'inscricaos.ouvinte',
             ]);
     }
 

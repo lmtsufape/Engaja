@@ -45,9 +45,9 @@
     @endphp
 
     <div class="modal-dialog modal modal-dialog-centered mt-1">
-      <div class="modal-content">
+        <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold" id="confirmacaoPresencaModalLabel">Presença confirmada!</h5>
+          <h5 class="modal-title fw-bold" id="confirmacaoPresencaModalLabel">{{ session('status_presenca_label', 'Presença') }} confirmada!</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
 
@@ -55,7 +55,7 @@
           <div class="text-center pt-2 pb-3">
             <p class="mb-0 mt-2">
               Parabéns, <strong>{{ session('usuario_nome') }}</strong>!<br>
-              Você confirmou sua presença no momento
+              Você confirmou {{ session('artigo_status_presenca', 'sua presença') }} no momento
               <strong>{{ session('atividade_nome') }}</strong>, ação pedagógica
               <strong>{{ session('evento_nome') }}</strong>,
               realizada na <strong>{{ session('dia') }}</strong>.

@@ -237,6 +237,7 @@ class AtividadeController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => $inscricao->atividade_id === $atividade->id ? $inscricao->ouvinte : true,
             ]);
             $inscricao->deleted_at = null;
             $inscricao->save();
@@ -245,6 +246,7 @@ class AtividadeController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => true,
             ]);
         }
 
@@ -292,6 +294,7 @@ class AtividadeController extends Controller
 
             if ($existente) {
                 $existente->evento_id = $destino->evento_id;
+                $existente->ouvinte = false;
                 if ($existente->trashed()) {
                     $existente->restore();
                     $copiados++;
@@ -304,6 +307,7 @@ class AtividadeController extends Controller
                 'evento_id'       => $destino->evento_id,
                 'atividade_id'    => $destino->id,
                 'participante_id' => $inscricao->participante_id,
+                'ouvinte'         => false,
             ]);
             $copiados++;
         }
