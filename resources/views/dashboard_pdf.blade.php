@@ -127,9 +127,10 @@
                     <thead>
                         <tr>
                             <th style="width: 35%;">Nome</th>
-                            <th style="width: 30%;">E-mail</th>
-                            <th style="width: 18%;">CPF</th>
-                            <th style="width: 17%;">Tag</th>
+                            <th style="width: 25%;">E-mail</th>
+                            <th style="width: 15%;">CPF</th>
+                            <th style="width: 13%;">Tag</th>
+                            <th style="width: 12%;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -138,12 +139,14 @@
                             $insc = optional($p->inscricao);
                             $part = optional($insc->participante);
                             $user = optional($part->user);
+                            $statusLabel = ($insc->ouvinte ?? false) ? 'Ouvinte' : 'Presente';
                         @endphp
                         <tr>
                             <td>{{ $user->name ?? ('Participante #'.$part->id) }}</td>
                             <td>{{ $user->email ?? '-' }}</td>
                             <td>{{ $part->cpf ?: '-' }}</td>
                             <td>{{ $part->tag ?: '-' }}</td>
+                            <td>{{ $statusLabel }}</td>
                         </tr>
                     @endforeach
                     </tbody>

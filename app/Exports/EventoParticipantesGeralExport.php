@@ -40,6 +40,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             'Organização',
             'Tipo de organização',
             'Tag',
+            'Status',
         ];
     }
 
@@ -54,6 +55,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             $row->escola_unidade,
             $row->tipo_organizacao,
             $row->tag,
+            $row->ouvinte ? 'Ouvinte' : 'Presente',
         ];
     }
 
@@ -82,6 +84,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
                 'participantes.tipo_organizacao',
                 'participantes.tag',
                 'participantes.data_entrada',
+                'inscricaos.ouvinte',
             ]);
     }
 

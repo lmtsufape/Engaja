@@ -515,6 +515,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participanteId,
+                        'ouvinte'         => false,
                     ]);
                     $inscricao->deleted_at = null;
                     $inscricao->save();
@@ -523,6 +524,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participanteId,
+                        'ouvinte'         => false,
                     ]);
                 }
             }
@@ -768,6 +770,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participante->id,
+                        'ouvinte'         => false,
                     ]);
                     $inscricao->deleted_at = null;
                     $inscricao->save();
@@ -776,6 +779,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participante->id,
+                        'ouvinte'         => false,
                     ]);
                 }
 

@@ -133,13 +133,18 @@ class ProfileController extends Controller
             $presente  = $atividade->presencas
                 ->where('inscricao_id', optional($inscricao)->id)
                 ->isNotEmpty();
+            $status = 'Ausente';
+
+            if ($presente) {
+                $status = ($inscricao?->ouvinte ?? false) ? 'Ouvinte' : 'Presente';
+            }
 
             return [
                 'data'    => $atividade->dia,
                 'hora'    => $atividade->hora_inicio,
                 'momento' => $atividade->descricao,
                 'evento'  => $atividade->evento->nome ?? '',
-                'status'  => $presente ? 'Presente' : 'Ausente',
+                'status'  => $status,
             ];
         });
 

@@ -260,6 +260,7 @@ class EventoController extends Controller
                 'Município'           => $municipioFmt ?? '-',
                 'Região'              => $estado->regiao ?? '-',
                 'Tag'                 => $p->tag ?? '-',
+                'Status'              => ($lista->contains(fn ($item) => $item->inscricao?->ouvinte)) ? 'Ouvinte' : 'Presente',
                 'Ação pedagógica'     => $evento->nome,
                 'Carga horária total' => $carga,
             ];
@@ -273,7 +274,7 @@ class EventoController extends Controller
             {
                 return [
                     'Nome', 'Email', 'CPF', 'Telefone', 'Escola/Unidade',
-                    'Tipo organização', 'Município', 'Região', 'Tag',
+                    'Tipo organização', 'Município', 'Região', 'Tag', 'Status',
                     'Ação pedagógica', 'Carga horária total',
                 ];
             }
@@ -310,6 +311,7 @@ class EventoController extends Controller
                 'Município'                => $municipioFmt ?? '-',
                 'Região'                   => $estado->regiao ?? '-',
                 'Tag'                      => $participante->tag ?? '-',
+                'Status'                   => ($p->inscricao?->ouvinte ?? false) ? 'Ouvinte' : 'Presente',
                 'Ação pedagógica'          => $evento->nome,
                 'Momento'                  => $titulo,
                 'Dia'                      => $dia,
@@ -326,7 +328,7 @@ class EventoController extends Controller
             {
                 return [
                     'Nome', 'Email', 'CPF', 'Telefone', 'Escola/Unidade',
-                    'Tipo organização', 'Município', 'Região', 'Tag',
+                    'Tipo organização', 'Município', 'Região', 'Tag', 'Status',
                     'Ação pedagógica', 'Momento', 'Dia', 'Hora início',
                     'Carga horária do momento',
                 ];
@@ -423,6 +425,7 @@ class EventoController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => $inscricao->atividade_id === $atividade->id ? $inscricao->ouvinte : true,
             ]);
             $inscricao->deleted_at = null;
             $inscricao->save();
@@ -431,6 +434,7 @@ class EventoController extends Controller
                 'evento_id'       => $evento->id,
                 'atividade_id'    => $atividade->id,
                 'participante_id' => $participante->id,
+                'ouvinte'         => true,
             ]);
         }
 

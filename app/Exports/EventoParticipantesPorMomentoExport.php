@@ -43,6 +43,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             'Organização',
             'Tipo de organização',
             'Tag',
+            'Status',
         ];
     }
 
@@ -59,6 +60,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             $row->escola_unidade,
             $row->tipo_organizacao,
             $row->tag,
+            $row->ouvinte ? 'Ouvinte' : 'Presente',
         ];
     }
 
@@ -87,6 +89,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
                 'participantes.escola_unidade',
                 'participantes.tipo_organizacao',
                 'participantes.tag',
+                'inscricaos.ouvinte',
             ]);
     }
 
