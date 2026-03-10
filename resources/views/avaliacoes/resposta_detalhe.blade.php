@@ -4,12 +4,16 @@
 <div class="row justify-content-center">
   <div class="col-xl-9">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h1 class="h4 fw-bold text-engaja mb-0">Respostas de {{ optional($submissao->presenca->inscricao->participante->user)->name ?? 'N/A' }}</h1>
+      <h1 class="h4 fw-bold text-engaja mb-0">Respostas anónimas — {{ $submissao->created_at->format('d/m/Y H:i') }}</h1>
       <a href="{{ route('avaliacoes.respostas', $avaliacao) }}" class="btn btn-outline-secondary">Voltar</a>
     </div>
 
     <div class="card shadow-sm">
       <div class="card-body">
+        <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+          <span>🔒</span>
+          <div>Resposta <strong>anónima</strong>. Nenhum dado identificador do participante é armazenado.</div>
+        </div>
         <p class="mb-3">
           <strong>Enviado em:</strong> {{ $submissao->created_at->format('d/m/Y H:i') }}<br>
           <strong>Atividade:</strong> {{ $avaliacao->atividade->descricao ?? 'N/A' }} — {{ $avaliacao->atividade->evento->nome ?? 'N/A' }}

@@ -21,10 +21,12 @@
                     placeholder="Buscar por nome, tipo, objetivo">
             </div>
             <div class="col-md-3">
-                <select name="eixo" class="form-select">
-                    <option value="">Todos os eixos</option>
-                    @foreach($eixos as $eixo)
-                        <option value="{{ $eixo->id }}" @selected(request('eixo') == $eixo->id)>{{ $eixo->nome }}</option>
+                <select name="acao_geral" class="form-select">
+                    <option value="">Todas as Ações Gerais</option>
+                    @foreach(\App\Models\Evento::ACOES_GERAIS as $key => $label)
+                    <option value="{{ $key }}" @selected(request('acao_geral') == $key)>
+                        Ação Geral {{ $key }}
+                    </option>
                     @endforeach
                 </select>
             </div>
@@ -42,7 +44,7 @@
                     <tr>
                         <th style="width: 36px;"><input type="checkbox" id="check-all"></th>
                         <th>Nome</th>
-                        <th>Eixo</th>
+                        <th>Sub-Ação</th>
                         <th>Tipo</th>
                         <th>Período</th>
                         <th>Criado por</th>
@@ -53,8 +55,36 @@
                     @forelse($eventos as $ev)
                         <tr>
                             <td><input type="checkbox" class="form-check-input evento-check" value="{{ $ev->id }}"></td>
-                            <td class="fw-semibold">{{ $ev->nome }}</td>
-                            <td>{{ $ev->eixo->nome ?? '-' }}</td>
+                            <td class="fw-semibold">
+                                <div class="d-flex flex-column align-items-start gap-1">
+                                    <span>{{ $ev->nome }}</span>
+                                    @php
+                                        // Só exibe para registros criados com o novo formulário (não-null)
+                                        $checklistSalvo   = $ev->checklist_planejamento;
+                                        $checklistsMarcados = is_array($checklistSalvo) ? count($checklistSalvo) : null;
+                                        $isPlanejamentoIncompleto = $checklistsMarcados !== null && $checklistsMarcados < 13;
+                                    @endphp
+                                    @if($isPlanejamentoIncompleto)
+                                        <a href="{{ route('eventos.edit', $ev) }}#checklist"
+                                           class="badge bg-warning text-dark border-0 fw-normal text-decoration-none"
+                                           style="font-size: 0.75rem;"
+                                           title="Clique para retomar e concluir o checklist de planejamento ({{ $checklistsMarcados }}/13 itens marcados).">
+                                            ⚠️ Planejamento incompleto
+                                        </a>
+                                    @endif
+                                </div>
+                            </td>
+                            <td>
+                                @if ($ev->subacao)
+                                    <span class="badge bg-secondary-subtle text-secondary border fw-normal text-wrap text-start" style="max-width: 250px;" title="{{ $ev->subacao }}">
+                                        {{ \Illuminate\Support\Str::limit($ev->subacao, 45) }}
+                                    </span>
+                                @elseif ($ev->acao_geral)
+                                    <small class="text-muted">Ação Geral {{ $ev->acao_geral }}</small>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>{{ $ev->tipo ?? '-' }}</td>
                             <td>
                                 @php
@@ -73,6 +103,11 @@
                                 <div class="d-inline-flex gap-2 align-items-center">
                                     <a href="{{ route('eventos.show', $ev) }}" class="btn btn-sm btn-outline-primary">
                                         Ver
+                                    </a>
+                                    
+                                    {{-- Atalho para o PDF --}}
+                                    <a href="{{ route('eventos.planejamento.pdf', $ev) }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Baixar PDF do Planejamento">
+                                        PDF
                                     </a>
 
                                     @can('update', $ev)
@@ -161,7 +196,6 @@
       selectModelo.addEventListener('change', toggleButtons);
     }
 
-    // Se o JS que popula eventosSelecionados já existir, este listener garante atualização
     if (hiddenEventos) {
       hiddenEventos.addEventListener('change', toggleButtons);
     }
@@ -177,14 +211,9 @@
       });
     }
 
-    // Chamada inicial
     toggleButtons();
   })();
 </script>
-@endpush
-@endsection
-
-@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const checkAll = document.getElementById('check-all');
@@ -223,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 return;
             }
-            // abre manualmente caso Bootstrap JS não esteja presente
             if (modalInstance && modalInstance.show) {
                 modalInstance.show();
             } else {
@@ -238,3 +266,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
+@endsection

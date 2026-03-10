@@ -10,7 +10,7 @@
   <div class="card-body">
     <div class="row g-1 align-items-end">
       <div class="col-lg-3 col-md-6">
-        <label for="search" class="form-label">Buscar (momento, evento, participante ou modelo)</label>
+        <label for="search" class="form-label">Buscar (momento, evento ou modelo)</label>
         <input type="text" class="form-control" id="search" name="search"
           value="{{ request('search') }}" placeholder="Digite para filtrar...">
       </div>
@@ -76,10 +76,6 @@
       </thead>
       <tbody>
         @forelse ($avaliacoes as $avaliacao)
-        @php
-          $inscricaoExibida = $avaliacao->inscricao ?? $avaliacao->respostas->first()?->inscricao;
-          $participanteNome = $inscricaoExibida?->participante?->user?->name;
-        @endphp
         <tr>
           <td>
             <span>{{ $avaliacao->atividade->descricao ?? '—' }}</span>
@@ -87,9 +83,6 @@
               {{ $avaliacao->atividade && $avaliacao->atividade->dia ? \Illuminate\Support\Carbon::parse($avaliacao->atividade->dia)->format('d/m/Y') : '' }}
               {{ $avaliacao->atividade->hora_inicio ?? '' }}
             </small>
-            @if($participanteNome)
-            <small class="d-block text-muted">Participante: {{ $participanteNome }}</small>
-            @endif
           </td>
           <td>{{ $avaliacao->templateAvaliacao->nome ?? '—' }}</td>
           <td>{{ $avaliacao->created_at ? $avaliacao->created_at->format('d/m/Y H:i') : '—' }}</td>
