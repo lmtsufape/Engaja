@@ -12,6 +12,7 @@ class Municipio extends Model
     protected $fillable = [
         'estado_id',
         'nome',
+        'interlocutor_email',
     ];
     public function estado()
     {
