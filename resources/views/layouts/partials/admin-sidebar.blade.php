@@ -21,7 +21,7 @@
 
   <div class="admin-sidebar__section">
     <p class="admin-sidebar__label">Principal</p>
-    @hasanyrole('administrador|gerente')
+    @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
       <a class="admin-nav-link {{ request()->routeIs('eventos.*') ? 'active' : '' }}" href="{{ route('eventos.index') }}">
         <span class="admin-nav-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -31,7 +31,7 @@
         <span class="admin-nav-text">Acoes pedagogicas</span>
       </a>
     @endhasanyrole
-    @role('administrador')
+    @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
       <a class="admin-nav-link {{ request()->routeIs('dashboard') || request()->routeIs('dashboards.*') ? 'active' : '' }}" href="{{ route('dashboard') }}">
         <span class="admin-nav-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -40,10 +40,10 @@
         </span>
         <span class="admin-nav-text">Dashboards</span>
       </a>
-    @endrole
+    @endhasanyrole
   </div>
 
-  @role('administrador')
+  @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
     <div class="admin-sidebar__section">
       <p class="admin-sidebar__label">Avaliacoes</p>
       <a class="admin-nav-link {{ request()->routeIs('dimensaos.*') ? 'active' : '' }}" href="{{ route('dimensaos.index') }}">
@@ -95,7 +95,7 @@
         <span class="admin-nav-text">Avaliacoes</span>
       </a>
     </div>
-  @endrole
+  @endhasanyrole
 
   @role('administrador')
     <div class="admin-sidebar__section">
@@ -127,7 +127,7 @@
     </div>
   @endrole
 
-  @hasanyrole('administrador|gerente')
+  @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
     <div class="admin-sidebar__section">
       <p class="admin-sidebar__label">Pessoas</p>
       <a class="admin-nav-link {{ request()->routeIs('usuarios.*') ? 'active' : '' }}" href="{{ route('usuarios.index') }}">
@@ -141,7 +141,7 @@
     </div>
   @endhasanyrole
 
-  @hasanyrole('administrador|gerente|participante')
+  @hasanyrole('administrador|gerente|eq_pedagogica|articulador|participante')
     <div class="admin-sidebar__section">
       <p class="admin-sidebar__label">Certificados</p>
       <a class="admin-nav-link {{ request()->routeIs('profile.certificados') ? 'active' : '' }}" href="{{ route('profile.certificados') }}">

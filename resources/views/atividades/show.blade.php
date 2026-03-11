@@ -65,6 +65,9 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
           {{ $atividade->presenca_ativa ? 'Fechar presença' : 'Abrir presença' }}
         </button>
       </form>
+      <a href="{{ route('atividades.lista-presenca.pdf', $atividade) }}" class="btn btn-engaja btn-sm">
+          Baixar Lista de Presença
+      </a>
       @endcan
 
       @auth

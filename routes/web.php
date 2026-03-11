@@ -24,7 +24,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'home'])->middleware(['auth', 'verified'])->name('dashboard');
     Route::get('/dashboards/presencas', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboards.presencas');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->middleware(['auth', 'verified'])->name('dashboard.export');
@@ -61,6 +61,9 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     Route::post('/atividades/{atividade}/checklist', [AtividadeController::class, 'saveChecklist'])->name('atividades.checklist.save');
 
     Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
+
+    Route::get('/atividades/{atividade}/lista-presenca-pdf', [AtividadeController::class, 'downloadListaPresencaPdf'])
+        ->name('atividades.lista-presenca.pdf');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica'])->group(function () {
