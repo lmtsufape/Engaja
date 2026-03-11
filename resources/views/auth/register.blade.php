@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $munLabel = function ($m) {
+        $uf = $m->estado->sigla ?? null;
+        return $uf ? "{$m->nome} — {$uf}" : $m->nome;
+    };
+@endphp
 <div class="container py-5">
     <div class="row">
         <div class="col-md-8 offset-md-2">
@@ -59,6 +65,91 @@
 
                         {{-- Inicializa $u como nulo para a view de registro não quebrar --}}
                         @php $u = null; @endphp
+
+                        <div class="card shadow-sm mb-4 border-light">
+                            <div class="card-header bg-light">
+                                <strong>Dados do participante</strong>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="cpf" class="form-label">CPF <span class="text-danger">*</span></label>
+                                        <input id="cpf" type="text" name="cpf" inputmode="numeric" autocomplete="off"
+                                               maxlength="14" value="{{ old('cpf') }}"
+                                               class="form-control @error('cpf') is-invalid @enderror"
+                                               placeholder="000.000.000-00" required>
+                                        @error('cpf')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="telefone" class="form-label">Telefone</label>
+                                        <input id="telefone" type="text" name="telefone" inputmode="numeric"
+                                               autocomplete="tel" maxlength="15" value="{{ old('telefone') }}"
+                                               class="form-control @error('telefone') is-invalid @enderror"
+                                               placeholder="(99) 99999-9999">
+                                        @error('telefone')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="tipo_organizacao" class="form-label">Tipo de Instituição</label>
+                                        <select id="tipo_organizacao" name="tipo_organizacao"
+                                                class="form-select @error('tipo_organizacao') is-invalid @enderror">
+                                            <option value="">Selecione...</option>
+                                            @foreach(config('engaja.organizacoes', []) as $org)
+                                                <option value="{{ $org }}" @selected(old('tipo_organizacao') === $org)>{{ $org }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('tipo_organizacao')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="escola_unidade" class="form-label">Nome da instituição</label>
+                                        <input id="escola_unidade" type="text" name="escola_unidade"
+                                               value="{{ old('escola_unidade') }}"
+                                               class="form-control @error('escola_unidade') is-invalid @enderror">
+                                        @error('escola_unidade')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="tag" class="form-label">Vínculo no projeto</label>
+                                        <select id="tag" name="tag"
+                                                class="form-select @error('tag') is-invalid @enderror">
+                                            <option value="">Selecione...</option>
+                                            @foreach(($participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS)) as $tagOption)
+                                                <option value="{{ $tagOption }}" @selected(old('tag') === $tagOption)>{{ $tagOption }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('tag')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="municipio_id" class="form-label">Município</label>
+                                        <select id="municipio_id" name="municipio_id"
+                                                class="form-select @error('municipio_id') is-invalid @enderror">
+                                            <option value="">— Nenhum —</option>
+                                            @foreach($municipios as $m)
+                                                <option value="{{ $m->id }}" @selected((string) old('municipio_id') === (string) $m->id)>
+                                                    {{ $munLabel($m) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('municipio_id')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {{-- DADOS DEMOGRÁFICOS --}}
                         <div class="card shadow-sm mb-4 border-light">
@@ -266,6 +357,35 @@
 </div>
 
 <script>
+    const onlyDigits = s => (s || '').replace(/\D+/g, '');
+
+    function maskCPF(v) {
+        const d = onlyDigits(v).slice(0, 11);
+        const p1 = d.slice(0, 3);
+        const p2 = d.slice(3, 6);
+        const p3 = d.slice(6, 9);
+        const p4 = d.slice(9, 11);
+        let out = p1;
+        if (p2) out += '.' + p2;
+        if (p3) out += '.' + p3;
+        if (p4) out += '-' + p4;
+        return out;
+    }
+
+    function maskPhone(v) {
+        const d = onlyDigits(v).slice(0, 11);
+        const is11 = d.length > 10;
+        const dd = d.slice(0, 2);
+        const p1 = is11 ? d.slice(2, 7) : d.slice(2, 6);
+        const p2 = is11 ? d.slice(7, 11) : d.slice(6, 10);
+        let out = '';
+        if (dd) out = `(${dd}`;
+        if (dd && (p1 || p2)) out += ') ';
+        if (p1) out += p1;
+        if (p2) out += '-' + p2;
+        return out;
+    }
+
     function toggleOutroDemografico(select, wrapId) {
         const wrap = document.getElementById(wrapId);
         if (!wrap) return;
@@ -273,6 +393,23 @@
         wrap.style.display = mostrar ? 'block' : 'none';
         const input = wrap.querySelector('input');
         if (input) input.required = mostrar;
+    }
+
+    const cpfEl = document.getElementById('cpf');
+    const telEl = document.getElementById('telefone');
+
+    if (cpfEl) {
+        cpfEl.addEventListener('input', e => {
+            e.target.value = maskCPF(e.target.value);
+            e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        });
+    }
+
+    if (telEl) {
+        telEl.addEventListener('input', e => {
+            e.target.value = maskPhone(e.target.value);
+            e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        });
     }
 </script>
 @endsection
