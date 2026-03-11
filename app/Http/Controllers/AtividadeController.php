@@ -11,6 +11,8 @@ use App\Models\Municipio;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Pdf\ListaPresencaPdf;
+use Illuminate\Support\Str;
 
 class AtividadeController extends Controller
 {
@@ -323,5 +325,77 @@ class AtividadeController extends Controller
 
         $sufixo = $copiados === 1 ? ' 1 inscrito copiado.' : " {$copiados} inscritos copiados.";
         return $mensagem . $sufixo;
+    }
+
+    public function downloadListaPresencaPdf(Atividade $atividade)
+    {
+        $this->authorize('presenca.abrir');
+
+        //aqui os nomes dos inscritos ficam em ordem alfabetica legal
+        $inscricoes = $atividade->inscricoes()->with([
+            'participante.user',
+            'participante.municipio.estado'
+        ])->get()->sortBy(function ($inscricao) {
+            //previne nomes nulos e joga para minusculo
+            $nome = mb_strtolower($inscricao->participante->user->name ?? '');
+
+            return Str::ascii($nome);
+        })->values();
+
+        $templatePath = storage_path('app/templates/base_lista_presenca.pdf');
+
+        if (!file_exists($templatePath)) {
+            return back()->with('error', 'O template base em PDF não foi encontrado.');
+        }
+
+        $pdf = new ListaPresencaPdf();
+        $pdf->setBaseTemplate($templatePath);
+
+        //formatacao dos campos do cabecalho
+        $municipioAtividade = $atividade->municipio;
+        $pdf->municipioLabel = $municipioAtividade ? ($municipioAtividade->nome . ' / ' . ($municipioAtividade->estado->sigla ?? '')) : '—';
+
+        $ini = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
+        $fim = \Carbon\Carbon::parse($atividade->hora_fim)->format('H:i');
+        $pdf->periodoLabel = "{$ini} às {$fim}";
+
+        $pdf->dataLabel = \Carbon\Carbon::parse($atividade->dia)->format('d/m/Y');
+
+        $pdf->temaLabel = $atividade->descricao;
+
+        //configuracao das margens
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(true, 30);
+
+        $pdf->AddPage();
+
+        $pdf->SetFont('Helvetica', 'B', 9);
+
+        $contador = 1;
+
+        if ($inscricoes->isEmpty()) {
+            $pdf->Cell(190, 8, utf8_decode('Nenhum participante inscrito neste momento.'), 1, 1, 'C');
+        } else {
+            foreach ($inscricoes as $inscricao) {
+                $user = $inscricao->participante->user;
+
+                //pega o nome do inscrito para preencher na tabela
+                $nome = utf8_decode(substr($user->name ?? '—', 0, 35));
+
+                //os campos vazios para prenchimento manual
+                $pdf->Cell(8, 8, $contador++, 1, 0, 'C'); //nº
+                $pdf->Cell(80, 8, $nome, 1, 0, 'L');      //nome do Participante
+                $pdf->Cell(65, 8, '', 1, 0, 'C');     //instituição (em branco)
+                $pdf->Cell(45, 8, '', 1, 0, 'C');     //CPF (em branco)
+                $pdf->Cell(45, 8, '', 1, 0, 'C');     //e-mail ou telefone (em branco)
+                $pdf->Cell(35, 8, '', 1, 1, 'C');     //assinatura (em branco)
+            }
+        }
+
+        $fileName = 'Lista_Presenca_' . Str::slug($atividade->descricao) . '.pdf';
+
+        return response($pdf->Output('S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
     }
 }
