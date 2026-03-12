@@ -423,66 +423,69 @@
                       @endif
                     </div>
 
-                    @hasanyrole('administrador|gerente')
-                    <div class="d-flex align-items-center gap-4 flex-shrink-0">
-
-                      {{-- Avaliação para o participante (se tem presença neste momento) --}}
-                      {{-- @if($minhaPresenca && $primeiraAvaliacao)
-                        @if($minhaPresenca->avaliacao_respondida)
-                          <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
-                        @else
-                          <a href="{{ route('avaliacao.formulario', ['avaliacao' => $primeiraAvaliacao->id, 'token' => encrypt($minhaPresenca->id)]) }}"
-                             class="btn btn-sm btn-outline-success">
-                            ✏️ Avaliar
-                          </a>
-                        @endif
-                      @endif --}}
-
-                      {{-- Admin / Equipa: Ver avaliações anónimas dos participantes --}}
-                      {{--@hasanyrole('administrador|gerente|eq_pedagogica|articulador')
-                        @if($primeiraAvaliacao)
-                          <a href="{{ route('atividades.avaliacoes', $at) }}"
-                             class="btn btn-sm btn-outline-info">
-                            📊 Ver Avaliações
-                          </a>
-                        @endif
-                      @endhasanyrole --}}
-
-                      {{-- Admin / Gestor: Relatório Pós-Ação --}}
+                    <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
                       @hasanyrole('administrador|gerente')
+                      <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                        {{--
+                        Avaliação para o participante (se tem presença neste momento)
+                        @if($minhaPresenca && $primeiraAvaliacao)
+                          @if($minhaPresenca->avaliacao_respondida)
+                            <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
+                          @else
+                            <a href="{{ route('avaliacao.formulario', ['avaliacao' => $primeiraAvaliacao->id, 'token' => encrypt($minhaPresenca->id)]) }}"
+                               class="btn btn-sm btn-outline-success">
+                              ✏️ Avaliar
+                            </a>
+                          @endif
+                        @endif
+                        --}}
+
+                        {{-- Admin / Gestor: Relatório Pós-Ação --}}
                         <a href="{{ $at->avaliacaoAtividade
                               ? route('avaliacao-atividade.edit',   $at)
                               : route('avaliacao-atividade.create', $at) }}"
                            class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
                            {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
                         </a>
+                      </div>
                       @endhasanyrole
 
-                    <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
-                    @endhasanyrole
+                      {{--
+                      @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
+                        @if($primeiraAvaliacao)
+                        <div class="d-flex justify-content-end w-100">
+                          <a href="{{ route('atividades.avaliacoes', $at) }}"
+                             class="btn btn-sm btn-outline-info">
+                            📊 Ver Avaliações
+                          </a>
+                        </div>
+                        @endif
+                      @endhasanyrole
+                      --}}
 
-                    @can('atividade.ver')
-                      <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
-                          Ver
-                      </a>
-                    @endcan
+                      <div class="actions d-flex gap-2 flex-wrap justify-content-end">
+                        @can('atividade.ver')
+                          <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
+                            Ver
+                          </a>
+                        @endcan
 
-                    @hasanyrole('administrador|gerente|eq_pedagogica')
-                      <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
-                          Editar
-                      </a>
-                    @endhasanyrole
+                        @hasanyrole('administrador|gerente|eq_pedagogica')
+                          <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
+                            Editar
+                          </a>
+                        @endhasanyrole
 
-                    @hasanyrole('administrador|gerente')
-                      <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                            class="d-inline m-0 p-0"
-                            data-confirm="Tem certeza que deseja excluir este momento?">
-                          @csrf @method('DELETE')
-                          <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                      </form>
-                    @endhasanyrole
-
-                  </div>
+                        @hasanyrole('administrador|gerente')
+                          <form action="{{ route('atividades.destroy', $at) }}" method="POST"
+                                class="d-inline m-0 p-0"
+                                data-confirm="Tem certeza que deseja excluir este momento?">
+                            @csrf @method('DELETE')
+                            <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                          </form>
+                        @endhasanyrole
+                      </div>
+                    </div>
 
                   </div>
                 </div>
