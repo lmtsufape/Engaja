@@ -427,7 +427,7 @@
                     <div class="d-flex align-items-center gap-4 flex-shrink-0">
 
                       {{-- Avaliação para o participante (se tem presença neste momento) --}}
-                      @if($minhaPresenca && $primeiraAvaliacao)
+                      {{-- @if($minhaPresenca && $primeiraAvaliacao)
                         @if($minhaPresenca->avaliacao_respondida)
                           <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
                         @else
@@ -436,17 +436,17 @@
                             ✏️ Avaliar
                           </a>
                         @endif
-                      @endif
+                      @endif --}}
 
                       {{-- Admin / Equipa: Ver avaliações anónimas dos participantes --}}
-                      @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
+                      {{--@hasanyrole('administrador|gerente|eq_pedagogica|articulador')
                         @if($primeiraAvaliacao)
                           <a href="{{ route('atividades.avaliacoes', $at) }}"
                              class="btn btn-sm btn-outline-info">
                             📊 Ver Avaliações
                           </a>
                         @endif
-                      @endhasanyrole
+                      @endhasanyrole --}}
 
                       {{-- Admin / Gestor: Relatório Pós-Ação --}}
                       @hasanyrole('administrador|gerente')
@@ -454,7 +454,7 @@
                               ? route('avaliacao-atividade.edit',   $at)
                               : route('avaliacao-atividade.create', $at) }}"
                            class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
-                          📋 {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
+                           {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
                         </a>
                       @endhasanyrole
 
