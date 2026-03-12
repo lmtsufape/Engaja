@@ -394,8 +394,8 @@
               <div class="t-item">
                 <span class="t-dot"></span>
                 <div class="program-card">
-                  <div class="d-flex justify-content-between align-items-start gap-3">
-                    <div>
+                  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div class="flex-grow-1">
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
 
                       <div class="program-title d-flex align-items-center flex-wrap gap-2">
@@ -423,70 +423,62 @@
                       @endif
                     </div>
 
-                    <div class="d-flex flex-column align-items-end gap-2 flex-shrink-0">
-                      @hasanyrole('administrador|gerente')
-                      <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                        {{--
-                        Avaliação para o participante (se tem presença neste momento)
-                        @if($minhaPresenca && $primeiraAvaliacao)
-                          @if($minhaPresenca->avaliacao_respondida)
-                            <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
-                          @else
-                            <a href="{{ route('avaliacao.formulario', ['avaliacao' => $primeiraAvaliacao->id, 'token' => encrypt($minhaPresenca->id)]) }}"
-                               class="btn btn-sm btn-outline-success">
-                              ✏️ Avaliar
-                            </a>
-                          @endif
+                    <div class="actions d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0">
+                      {{--
+                      Avaliação para o participante (se tem presença neste momento)
+                      @if($minhaPresenca && $primeiraAvaliacao)
+                        @if($minhaPresenca->avaliacao_respondida)
+                          <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
+                        @else
+                          <a href="{{ route('avaliacao.formulario', ['avaliacao' => $primeiraAvaliacao->id, 'token' => encrypt($minhaPresenca->id)]) }}"
+                             class="btn btn-sm btn-outline-success">
+                            ✏️ Avaliar
+                          </a>
                         @endif
-                        --}}
-
-                        {{-- Admin / Gestor: Relatório Pós-Ação --}}
-                        <a href="{{ $at->avaliacaoAtividade
-                              ? route('avaliacao-atividade.edit',   $at)
-                              : route('avaliacao-atividade.create', $at) }}"
-                           class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
-                           {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
-                        </a>
-                      </div>
-                      @endhasanyrole
+                      @endif
+                      --}}
 
                       {{--
                       @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
                         @if($primeiraAvaliacao)
-                        <div class="d-flex justify-content-end w-100">
                           <a href="{{ route('atividades.avaliacoes', $at) }}"
                              class="btn btn-sm btn-outline-info">
                             📊 Ver Avaliações
                           </a>
-                        </div>
                         @endif
                       @endhasanyrole
                       --}}
 
-                      <div class="actions d-flex gap-2 flex-wrap justify-content-end">
-                        @can('atividade.ver')
-                          <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
-                            Ver
-                          </a>
-                        @endcan
+                      @hasanyrole('administrador|gerente')
+                        <a href="{{ $at->avaliacaoAtividade
+                              ? route('avaliacao-atividade.edit',   $at)
+                              : route('avaliacao-atividade.create', $at) }}"
+                           class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
+                          📝 {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
+                        </a>
+                      @endhasanyrole
 
-                        @hasanyrole('administrador|gerente|eq_pedagogica')
-                          <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
-                            Editar
-                          </a>
-                        @endhasanyrole
+                      @can('atividade.ver')
+                        <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
+                          👁️ Ver
+                        </a>
+                      @endcan
 
-                        @hasanyrole('administrador|gerente')
-                          <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                                class="d-inline m-0 p-0"
-                                data-confirm="Tem certeza que deseja excluir este momento?">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                          </form>
-                        @endhasanyrole
-                      </div>
+                      @hasanyrole('administrador|gerente|eq_pedagogica')
+                        <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
+                          ✏️ Editar
+                        </a>
+                      @endhasanyrole
+
+                      @hasanyrole('administrador|gerente')
+                        <form action="{{ route('atividades.destroy', $at) }}" method="POST"
+                              class="d-inline m-0 p-0"
+                              data-confirm="Tem certeza que deseja excluir este momento?">
+                          @csrf @method('DELETE')
+                          <button class="btn btn-sm btn-outline-danger">🗑️ Excluir</button>
+                        </form>
+                      @endhasanyrole
                     </div>
-
                   </div>
                 </div>
               </div>
