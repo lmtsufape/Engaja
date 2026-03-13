@@ -92,8 +92,18 @@
             <path d="M3 3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6.414a1 1 0 0 0-.293-.707l-3.414-3.414A1 1 0 0 0 9.586 2H3zm6-1.5v3a.5.5 0 0 0 .5.5h3z"/>
           </svg>
         </span>
-        <span class="admin-nav-text">Avaliacoes</span>
+        <span class="admin-nav-text">Avaliações</span>
       </a>
+      @hasanyrole('administrador|gerente')
+        <a class="admin-nav-link {{ request()->routeIs('avaliacao-atividade.*') ? 'active' : '' }}" href="{{ route('avaliacao-atividade.index') }}">
+          <span class="admin-nav-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M3 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.5L8.5 2zM8 3.5V7a1 1 0 0 0 1 1h3.5"/>
+            </svg>
+          </span>
+          <span class="admin-nav-text">Relatórios da ação</span>
+        </a>
+      @endhasanyrole
     </div>
   @endhasanyrole
 
@@ -106,7 +116,7 @@
             <path d="M2 3a1 1 0 0 1 1-1h4v4H2zm0 5h5v6H3a1 1 0 0 1-1-1zm6 6V8h6v5a1 1 0 0 1-1 1zm6-7H8V2h5a1 1 0 0 1 1 1z"/>
           </svg>
         </span>
-        <span class="admin-nav-text">Regioes</span>
+        <span class="admin-nav-text">Regiões</span>
       </a>
       <a class="admin-nav-link {{ request()->routeIs('estados.*') ? 'active' : '' }}" href="{{ route('estados.index') }}">
         <span class="admin-nav-icon" aria-hidden="true">
@@ -122,7 +132,7 @@
             <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1m0 1a6 6 0 1 1 0 12A6 6 0 0 1 8 2m-2 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2m4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-4 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2m4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2"/>
           </svg>
         </span>
-        <span class="admin-nav-text">Municipios</span>
+        <span class="admin-nav-text">Municípios</span>
       </a>
     </div>
   @endrole

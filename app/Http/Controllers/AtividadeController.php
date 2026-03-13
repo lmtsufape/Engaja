@@ -19,8 +19,13 @@ class AtividadeController extends Controller
     use AuthorizesRequests;
     public function index(Evento $evento)
     {
+        $userId = auth()->id();
+
         $atividades = $evento->atividades()
-            ->with('municipios.estado')
+            ->with([
+                'municipios.estado',
+                'avaliacaoAtividades' => fn($rel) => $rel->when($userId, fn($query) => $query->where('user_id', $userId)),
+            ])
             ->orderBy('dia')
             ->orderBy('hora_inicio')
             ->paginate(12);
@@ -30,6 +35,17 @@ class AtividadeController extends Controller
     public function create(Evento $evento)
     {
         $this->authorize('atividade.criar');
+
+        $marcadosRaw = request()->query('marcados', []);
+        if (is_string($marcadosRaw)) {
+            $marcadosRaw = $marcadosRaw === '' ? [] : explode(',', $marcadosRaw);
+        }
+        if (!is_array($marcadosRaw)) {
+            $marcadosRaw = [];
+        }
+
+        $marcadosPlanejamento = $this->normalizarChecklistIndices($marcadosRaw);
+
         $municipios = Municipio::with(['estado.regiao'])
             ->get(['id', 'nome', 'estado_id'])
             ->sortBy(function ($m) {
@@ -47,7 +63,7 @@ class AtividadeController extends Controller
 
         $atividadesCopiaveis = $this->listarAtividadesCopiaveis();
 
-        return view('atividades.create', compact('evento', 'municipios', 'atividadesCopiaveis'));
+        return view('atividades.create', compact('evento', 'municipios', 'atividadesCopiaveis', 'marcadosPlanejamento'));
     }
 
     public function saveChecklist(Request $request, Atividade $atividade)
@@ -59,7 +75,7 @@ class AtividadeController extends Controller
         ]);
 
         $campo = 'checklist_' . $request->tipo;
-        $atividade->$campo = $request->input('itens', []);
+        $atividade->$campo = $this->normalizarChecklistIndices($request->input('itens', []));
         $atividade->save();
 
         return response()->json(['status' => 'ok', 'saved' => $atividade->$campo]);
@@ -87,6 +103,9 @@ class AtividadeController extends Controller
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
+
+        $dados['checklist_planejamento'] = $this->normalizarChecklistIndices($dados['checklist_planejamento'] ?? []);
+        $dados['checklist_encerramento'] = $this->normalizarChecklistIndices($dados['checklist_encerramento'] ?? []);
 
         $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
@@ -154,6 +173,9 @@ class AtividadeController extends Controller
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
 
+        $dados['checklist_planejamento'] = $this->normalizarChecklistIndices($dados['checklist_planejamento'] ?? []);
+        $dados['checklist_encerramento'] = $this->normalizarChecklistIndices($dados['checklist_encerramento'] ?? []);
+
         $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
 
@@ -175,6 +197,11 @@ class AtividadeController extends Controller
         $atividade->delete();
 
         return back()->with('success', 'Momento removida.');
+    }
+
+    private function normalizarChecklistIndices(array $itens): array
+    {
+        return array_values(array_unique(array_map('intval', $itens)));
     }
 
     public function show(\App\Models\Atividade $atividade)

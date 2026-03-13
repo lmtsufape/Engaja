@@ -44,7 +44,7 @@
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{{ route('avaliacoes.index') }}">Avaliações dos Participantes</a></li>
             @hasanyrole('administrador|gerente')
-            <li><a class="dropdown-item" href="{{ route('avaliacao-atividade.index') }}">Relatórios de Avaliação da Ação</a></li>
+            <li><a class="dropdown-item" href="{{ route('avaliacao-atividade.index') }}">Relatórios da Ação</a></li>
             @endhasanyrole
           </ul>
         </li>

@@ -137,7 +137,7 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     });
 
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::controller(AvaliacaoAtividadeController::class)
         ->prefix('atividades/{atividade}/relatorio')
         ->name('avaliacao-atividade.')
@@ -146,9 +146,19 @@ Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('/edit', 'edit')->name('edit');
             Route::put('/', 'update')->name('update');
+            Route::get('/pdf', 'downloadOwn')->name('download-own');
         });
+
+    Route::get('/relatorios-avaliacao/{relatorio}/pdf', [AvaliacaoAtividadeController::class, 'download'])
+        ->name('avaliacao-atividade.download');
+});
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::get('/relatorios-avaliacao', [AvaliacaoAtividadeController::class, 'index'])
         ->name('avaliacao-atividade.index');
+
+    Route::get('/relatorios-avaliacao/{relatorio}', [AvaliacaoAtividadeController::class, 'show'])
+        ->name('avaliacao-atividade.show');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {

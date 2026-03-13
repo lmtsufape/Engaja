@@ -222,6 +222,10 @@
     <div class="col-12 d-flex justify-content-end gap-2 mt-2">
         <a href="{{ route('eventos.show', $atividade->evento_id) }}"
            class="btn btn-outline-secondary">Cancelar</a>
+        @if(($avaliacao->id ?? null))
+        <a href="{{ route('avaliacao-atividade.download', $avaliacao) }}"
+           class="btn btn-outline-dark" target="_blank">Baixar PDF</a>
+        @endif
         <button type="submit" class="btn btn-engaja">
             {{ $submitLabel ?? 'Salvar relatório' }}
         </button>
