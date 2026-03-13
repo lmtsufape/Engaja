@@ -137,7 +137,7 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     });
 
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::controller(AvaliacaoAtividadeController::class)
         ->prefix('atividades/{atividade}/relatorio')
         ->name('avaliacao-atividade.')
@@ -147,6 +147,9 @@ Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
             Route::get('/edit', 'edit')->name('edit');
             Route::put('/', 'update')->name('update');
         });
+});
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::get('/relatorios-avaliacao', [AvaliacaoAtividadeController::class, 'index'])
         ->name('avaliacao-atividade.index');
 });

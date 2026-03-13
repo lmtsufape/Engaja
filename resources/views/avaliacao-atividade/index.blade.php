@@ -6,7 +6,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 fw-bold text-engaja mb-0">Relatórios de Avaliação da Ação</h1>
-            <small class="text-muted">Relatórios pós-ação preenchidos pelos educadores</small>
+            <small class="text-muted">
+                {{ auth()->user()?->hasAnyRole(['administrador', 'gerente'])
+                    ? 'Relatórios pós-ação preenchidos por utilizadores do sistema'
+                    : 'As suas avaliações individuais pós-ação' }}
+            </small>
         </div>
     </div>
 
@@ -38,8 +42,11 @@
                         <th>Momento</th>
                         <th>Ação Pedagógica</th>
                         <th>Município(s)</th>
+                        @if(auth()->user()?->hasAnyRole(['administrador', 'gerente']))
+                        @endif
                         <th>Data do Momento</th>
                         <th>Última atualização</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,6 +85,9 @@
                         </td>
                         <td class="text-muted small">
                             {{ $relatorio->updated_at ? $relatorio->updated_at->format('d/m/Y H:i') : '—' }}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ route('avaliacao-atividade.edit', $at) }}" class="btn btn-sm btn-outline-primary">Ver / Editar</a>
                         </td>
 
                     </tr>

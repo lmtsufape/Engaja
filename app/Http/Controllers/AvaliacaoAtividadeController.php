@@ -11,10 +11,18 @@ class AvaliacaoAtividadeController extends Controller
 {
     use AuthorizesRequests;
 
+    private const REPORT_EDIT_ROLES = ['administrador', 'gerente'];
+
     public function index(Request $request)
     {
-        $query = AvaliacaoAtividade::with(['atividade.evento', 'atividade.municipios'])
+        $query = AvaliacaoAtividade::with(['atividade.evento', 'atividade.municipios', 'user'])
             ->whereHas('atividade');
+
+        $user = $request->user();
+
+        if (! $user->hasAnyRole(self::REPORT_EDIT_ROLES)) {
+            $query->where('user_id', $user->id);
+        }
 
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
@@ -61,24 +69,31 @@ class AvaliacaoAtividadeController extends Controller
 
     private function authorizeReport(Atividade $atividade): void
     {
-        $user = auth()->user();
-        abort_unless(
-            $user->hasAnyRole(['administrador', 'gerente']) || $user->can('evento.editar'),
-            403,
-            'Sem permissão para aceder a este relatório.'
-        );
+        abort_unless(auth()->check(), 403, 'Sem permissão para aceder a este relatório.');
+    }
+
+    private function getUserReport(Atividade $atividade): ?AvaliacaoAtividade
+    {
+        $userId = auth()->id();
+
+        return $atividade->avaliacaoAtividades()
+            ->where('user_id', $userId)
+            ->first();
     }
 
     public function create(Atividade $atividade)
     {
         $this->authorizeReport($atividade);
 
-        if ($atividade->avaliacaoAtividade) {
+        if ($this->getUserReport($atividade)) {
             return redirect()->route('avaliacao-atividade.edit', $atividade);
         }
 
         $atividade->load(['evento', 'municipios', 'avaliacoes']);
-        $avaliacao = new AvaliacaoAtividade();
+        $avaliacao = new AvaliacaoAtividade([
+            'user_id' => auth()->id(),
+            'nome_educador' => auth()->user()?->name,
+        ]);
         $resumoPublico = $this->calcularResumoPublico($atividade, $avaliacao);
 
         return view('avaliacao-atividade.create', compact('atividade', 'avaliacao', 'resumoPublico'));
@@ -89,7 +104,14 @@ class AvaliacaoAtividadeController extends Controller
         $this->authorizeReport($atividade);
 
         $dados = $request->validate($this->rules());
-        $atividade->avaliacaoAtividade()->create($dados);
+
+        $atividade->avaliacaoAtividades()->updateOrCreate(
+            [
+                'atividade_id' => $atividade->id,
+                'user_id' => auth()->id(),
+            ],
+            $dados + ['user_id' => auth()->id()]
+        );
 
         return redirect()
             ->route('eventos.show', $atividade->evento_id)
@@ -100,8 +122,12 @@ class AvaliacaoAtividadeController extends Controller
     {
         $this->authorizeReport($atividade);
 
-        $avaliacao = $atividade->avaliacaoAtividade
-            ?? new AvaliacaoAtividade(['atividade_id' => $atividade->id]);
+        $avaliacao = $this->getUserReport($atividade)
+            ?? new AvaliacaoAtividade([
+                'atividade_id' => $atividade->id,
+                'user_id' => auth()->id(),
+                'nome_educador' => auth()->user()?->name,
+            ]);
 
         $atividade->load(['evento', 'municipios', 'avaliacoes']);
         $resumoPublico = $this->calcularResumoPublico($atividade, $avaliacao);
@@ -115,9 +141,12 @@ class AvaliacaoAtividadeController extends Controller
 
         $dados = $request->validate($this->rules());
 
-        $atividade->avaliacaoAtividade()->updateOrCreate(
-            ['atividade_id' => $atividade->id],
-            $dados
+        $atividade->avaliacaoAtividades()->updateOrCreate(
+            [
+                'atividade_id' => $atividade->id,
+                'user_id' => auth()->id(),
+            ],
+            $dados + ['user_id' => auth()->id()]
         );
 
         return redirect()
