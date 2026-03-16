@@ -25,6 +25,7 @@ class ProfileUpdateRequest extends FormRequest
             'cpf'          => $toNull($cpfDigits ?: null),
             'telefone'     => $toNull($telDigits ?: null),
             'municipio_id' => $toNull($this->municipio_id ?? null),
+            'remove_profile_photo' => $this->boolean('remove_profile_photo'),
         ]);
     }
 
@@ -39,6 +40,7 @@ class ProfileUpdateRequest extends FormRequest
             'telefone'     => ['nullable', 'regex:/^\d{10,11}$/'],
             'municipio_id' => ['nullable', 'exists:municipios,id'],
             'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+            'remove_profile_photo' => ['nullable', 'boolean'],
             'escola_unidade'   => ['nullable','string','max:255'],
             'tipo_organizacao' => ['nullable','string','max:255', Rule::in(config('engaja.organizacoes', []))],
             'tag'              => ['nullable', Rule::in(Participante::TAGS)],

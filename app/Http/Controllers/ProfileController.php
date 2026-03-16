@@ -179,7 +179,10 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
-        if ($request->hasFile('profile_photo')) {
+        if (! empty($data['remove_profile_photo'])) {
+            $this->deleteProfilePhoto($user);
+            $user->profile_photo_path = null;
+        } elseif ($request->hasFile('profile_photo')) {
             $user->profile_photo_path = $this->storeProfilePhoto($request, $user);
         }
 
@@ -210,9 +213,18 @@ class ProfileController extends Controller
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
         $filename = "perfil.{$extension}";
 
-        Storage::disk('public')->deleteDirectory($directory);
+        $this->deleteProfilePhoto($user);
 
         return $file->storeAs($directory, $filename, 'public');
+    }
+
+    private function deleteProfilePhoto(\App\Models\User $user): void
+    {
+        if (! $user->profile_photo_path) {
+            return;
+        }
+
+        Storage::disk('public')->delete($user->profile_photo_path);
     }
 
     /**

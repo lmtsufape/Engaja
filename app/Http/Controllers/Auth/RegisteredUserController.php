@@ -157,7 +157,9 @@ class RegisteredUserController extends Controller
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
         $filename = "perfil.{$extension}";
 
-        Storage::disk('public')->deleteDirectory($directory);
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+        }
 
         return $file->storeAs($directory, $filename, 'public');
     }

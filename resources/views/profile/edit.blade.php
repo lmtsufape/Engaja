@@ -75,6 +75,16 @@
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                     <div class="form-text">Formatos aceitos: JPG, JPEG, PNG, GIF e WEBP. Tamanho máximo: 5 MB.</div>
+
+                                    @if ($u->profile_photo_url)
+                                        <button type="submit"
+                                                name="remove_profile_photo"
+                                                value="1"
+                                                class="btn btn-outline-danger btn-sm mt-3"
+                                                onclick="return confirm('Deseja remover a foto de perfil?')">
+                                            Remover foto
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         </div>
