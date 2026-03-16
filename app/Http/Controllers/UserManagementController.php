@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UserManagementRequest;
+use App\Models\Regiao;
+use App\Models\Estado;
 use App\Models\Municipio;
 use App\Models\Participante;
 use App\Models\User;
@@ -23,8 +25,11 @@ class UserManagementController extends Controller
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
+        $regiaoId = $request->query('regiao');
+        $estadoId = $request->query('estado');
+        $municipioId = $request->query('municipio');
 
-        $users = User::with(['roles', 'participante'])
+        $users = User::with(['roles', 'participante.municipio.estado.regiao'])
             ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', self::PROTECTED_ROLES))
             ->when($search !== '', function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
@@ -32,13 +37,37 @@ class UserManagementController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
+            ->when($municipioId, function ($q) use ($municipioId) {
+                $q->whereHas('participante', fn($sub) => $sub->where('municipio_id', $municipioId));
+            })
+            ->when($estadoId && !$municipioId, function ($q) use ($estadoId) {
+                $q->whereHas('participante.municipio', fn($sub) => $sub->where('estado_id', $estadoId));
+            })
+            ->when($regiaoId && !$estadoId && !$municipioId, function ($q) use ($regiaoId) {
+                $q->whereHas('participante.municipio.estado', fn($sub) => $sub->where('regiao_id', $regiaoId));
+            })
             ->orderBy('name')
             ->paginate(12)
-            ->appends(['q' => $search]);
+            ->appends([
+                'q' => $search,
+                'regiao'    => $regiaoId,
+                'estado'    => $estadoId,
+                'municipio' => $municipioId
+            ]);
+
+        $regioes = Regiao::orderBy('nome')->get(['id', 'nome']);
+        $estados = Estado::orderBy('nome')->get(['id', 'nome', 'regiao_id']);
+        $municipios = Municipio::orderBy('nome')->get(['id', 'nome', 'estado_id']);
 
         return view('usuarios.index', [
             'users' => $users,
             'search' => $search,
+            'regiao_id'          => $regiaoId,
+            'estado_id'          => $estadoId,
+            'municipio_id'       => $municipioId,
+            'regioes'            => $regioes,
+            'estados'            => $estados,
+            'municipios'         => $municipios,
             'modelosCertificado' => ModeloCertificado::orderBy('nome')->get(['id', 'nome']),
         ]);
     }
