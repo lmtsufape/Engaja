@@ -123,7 +123,7 @@ class EventoController extends Controller
             'eixo',
             'user',
             'atividades' => fn($q) => $q
-                ->with(['municipios.estado', 'avaliacaoAtividade', 'avaliacoes'])
+                ->with(['municipios.estado', 'avaliacaoAtividades', 'avaliacoes'])
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);

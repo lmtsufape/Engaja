@@ -5,8 +5,8 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
         <div>
             <p class="text-uppercase small text-muted mb-1">Dashboards</p>
-            <h1 class="h4 mb-0">Presencas e inscricoes</h1>
-            <p class="text-muted small mb-0">Visual completo das acoes pedagogicas com expansao de presencas e exportacao.</p>
+            <h1 class="h4 mb-0">Presenças e inscrições</h1>
+            <p class="text-muted small mb-0">Visual completo das ações pedagógicas com expansão de presenças e exportação.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Hub de dashboards</a>
