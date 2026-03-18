@@ -113,6 +113,7 @@ class LimeSurveyDashboardService
                 continue;
             }
             $orderBase = ((int) ($root['question_number'] ?? 999999) * 1000) + (int) ($root['question_order'] ?? 0);
+            $rootType = strtoupper((string) ($root['type'] ?? ''));
 
             if ($matrixByCode->has($code)) {
                 $matrix = $matrixByCode->get($code);
@@ -125,6 +126,38 @@ class LimeSurveyDashboardService
                         'matrix' => $matrix,
                     ];
                     $usedMatrix[$code] = true;
+                    continue;
+                }
+            }
+
+            if ($rootType === 'L') {
+                $listRadio = $this->buildMunicipioLevelQuestion($root, $responses, $request, $tokenMunicipioMap, $questionList);
+                if (is_array($listRadio)) {
+                    $blocks[] = [
+                        'id' => $code,
+                        'order' => $orderBase,
+                        'kind' => 'simple',
+                        'title' => $root['text'] ?? $code,
+                        'question' => $listRadio,
+                    ];
+                    $usedSimple[$code] = true;
+                    continue;
+                }
+            }
+
+            if ($rootType === 'P') {
+                $multiChoice = $this->buildMunicipioMultipleChoiceQuestion($root, $responses, $request, $tokenMunicipioMap, $questionList);
+                if (is_array($multiChoice)) {
+                    $blocks[] = [
+                        'id' => $code,
+                        'order' => $orderBase,
+                        'kind' => 'simple',
+                        'title' => $root['text'] ?? $code,
+                        'question' => $multiChoice,
+                    ];
+                    foreach (($multiChoice['source_ids'] ?? []) as $sourceId) {
+                        $usedSimple[(string) $sourceId] = true;
+                    }
                     continue;
                 }
             }
@@ -199,6 +232,199 @@ class LimeSurveyDashboardService
         });
 
         return array_values($blocks);
+    }
+
+    /**
+     * @param array<string, mixed> $root
+     * @return array<string, mixed>|null
+     */
+    private function buildMunicipioLevelQuestion(
+        array $root,
+        Collection $responses,
+        Request $request,
+        array $tokenMunicipioMap,
+        Collection $questionList
+    ): ?array
+    {
+        $rootCode = (string) ($root['code'] ?? '');
+        if ($rootCode === '') {
+            return null;
+        }
+
+        $firstRow = $responses->first();
+        $firstRow = is_array($firstRow) ? $firstRow : [];
+        if (!array_key_exists($rootCode, $firstRow)) {
+            return null;
+        }
+
+        $municipioField = $this->resolveMunicipioField($request, $questionList, $firstRow);
+        $sumByMunicipio = [];
+        $countByMunicipio = [];
+
+        foreach ($responses as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $level = $this->toLikertLevel($row[$rootCode] ?? null);
+            if ($level === null) {
+                continue;
+            }
+
+            $municipio = $this->resolveMunicipioFromResponse($row, $municipioField, $tokenMunicipioMap);
+            $sumByMunicipio[$municipio] = ($sumByMunicipio[$municipio] ?? 0.0) + $level;
+            $countByMunicipio[$municipio] = ($countByMunicipio[$municipio] ?? 0) + 1;
+        }
+
+        if (empty($sumByMunicipio)) {
+            return null;
+        }
+
+        $municipios = array_keys($sumByMunicipio);
+        sort($municipios, SORT_NATURAL | SORT_FLAG_CASE);
+        $levels = array_map(function (string $municipio) use ($sumByMunicipio, $countByMunicipio) {
+            $count = max((int) ($countByMunicipio[$municipio] ?? 0), 1);
+            return round(((float) ($sumByMunicipio[$municipio] ?? 0)) / $count, 2);
+        }, $municipios);
+
+        return [
+            'id' => $rootCode,
+            'texto' => $root['text'] ?? $rootCode,
+            'tipo' => 'municipio_level',
+            'total' => array_sum($countByMunicipio),
+            'labels' => [],
+            'values' => [],
+            'media' => null,
+            'resumo' => 'Nivel medio por municipio',
+            'exemplos' => [],
+            'respostas' => [],
+            'municipio_labels' => $municipios,
+            'municipio_levels' => $levels,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $root
+     * @return array<string, mixed>|null
+     */
+    private function buildMunicipioMultipleChoiceQuestion(
+        array $root,
+        Collection $responses,
+        Request $request,
+        array $tokenMunicipioMap,
+        Collection $questionList
+    ): ?array
+    {
+        $rootCode = (string) ($root['code'] ?? '');
+        if ($rootCode === '') {
+            return null;
+        }
+
+        $firstRow = $responses->first();
+        $firstRow = is_array($firstRow) ? $firstRow : [];
+        if (empty($firstRow)) {
+            return null;
+        }
+
+        $optionColumns = collect(array_keys($firstRow))
+            ->filter(fn (string $col) => preg_match('/^'.preg_quote($rootCode, '/').'\[([A-Za-z0-9]+)\]$/', $col) === 1)
+            ->reject(fn (string $col) => str_ends_with(mb_strtolower($col), 'comment]') || str_ends_with(mb_strtolower($col), '[other]'))
+            ->values();
+
+        if ($optionColumns->isEmpty()) {
+            return null;
+        }
+
+        $municipioField = $this->resolveMunicipioField($request, $questionList, $firstRow);
+        $optionByMunicipio = [];
+        $allMunicipios = [];
+        $sourceIds = [];
+
+        foreach ($responses as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $municipio = $this->resolveMunicipioFromResponse($row, $municipioField, $tokenMunicipioMap);
+            $allMunicipios[$municipio] = true;
+
+            foreach ($optionColumns as $columnName) {
+                if (!preg_match('/^'.preg_quote($rootCode, '/').'\[([A-Za-z0-9]+)\]$/', $columnName, $match)) {
+                    continue;
+                }
+                $subCode = $match[1];
+                $sourceIds[] = $columnName;
+
+                if (!$this->toBoolSelection($row[$columnName] ?? null)) {
+                    continue;
+                }
+
+                if (!isset($optionByMunicipio[$municipio])) {
+                    $optionByMunicipio[$municipio] = [];
+                }
+                $optionByMunicipio[$municipio][$subCode] = true;
+            }
+        }
+
+        $municipios = array_keys($allMunicipios);
+        sort($municipios, SORT_NATURAL | SORT_FLAG_CASE);
+
+        $subCodes = $optionColumns
+            ->map(function (string $columnName) use ($rootCode) {
+                preg_match('/^'.preg_quote($rootCode, '/').'\[([A-Za-z0-9]+)\]$/', $columnName, $match);
+                return $match[1] ?? null;
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        $series = [];
+        $totals = [];
+        foreach ($subCodes as $subCode) {
+            $subQuestion = $this->findSubQuestionByCode($questionList, $rootCode, (string) $subCode);
+            $label = (string) ($subQuestion['text'] ?? $subCode);
+            $data = [];
+            $countMunicipios = 0;
+
+            foreach ($municipios as $municipio) {
+                $selected = !empty($optionByMunicipio[$municipio][(string) $subCode]);
+                $value = $selected ? 1 : 0;
+                $data[] = $value;
+                if ($value === 1) {
+                    $countMunicipios++;
+                }
+            }
+
+            $series[] = [
+                'code' => (string) $subCode,
+                'label' => $label,
+                'data' => $data,
+            ];
+            $totals[] = [
+                'label' => $label,
+                'value' => $countMunicipios,
+            ];
+        }
+
+        usort($totals, fn (array $a, array $b) => ($b['value'] <=> $a['value']));
+
+        return [
+            'id' => $rootCode,
+            'texto' => $root['text'] ?? $rootCode,
+            'tipo' => 'municipio_multiselect',
+            'total' => $responses->count(),
+            'labels' => [],
+            'values' => [],
+            'media' => null,
+            'resumo' => 'Articulacao por secretaria e municipio',
+            'exemplos' => [],
+            'respostas' => [],
+            'source_ids' => array_values(array_unique($sourceIds)),
+            'municipio_labels' => $municipios,
+            'municipio_series' => $series,
+            'totais_labels' => array_map(fn (array $item) => $item['label'], $totals),
+            'totais_values' => array_map(fn (array $item) => $item['value'], $totals),
+        ];
     }
 
     private function resolveSurveyId(Request $request): int
@@ -655,13 +881,14 @@ class LimeSurveyDashboardService
 
             $rootCode = $match[1];
             $subCode = $match[2];
+            $rootMeta = $this->findRootQuestionByCode($questionList, $rootCode);
             $subQuestion = $this->findSubQuestionByCode($questionList, $rootCode, $subCode);
             $subLabel = $subQuestion['text'] ?? ($pergunta['texto'] ?? $subCode);
 
             if (!isset($grouped[$rootCode])) {
                 $grouped[$rootCode] = [
                     'id' => $rootCode,
-                    'texto' => $this->findRootQuestionByCode($questionList, $rootCode)['text'] ?? $rootCode,
+                    'texto' => $rootMeta['text'] ?? $rootCode,
                     'tipo' => 'escala',
                     'total' => 0,
                     'labels' => [],
@@ -672,6 +899,7 @@ class LimeSurveyDashboardService
                     'respostas' => [],
                     'source_ids' => [],
                     '__items' => [],
+                    '__root_type' => strtoupper((string) ($rootMeta['type'] ?? '')),
                 ];
             }
 
@@ -699,8 +927,13 @@ class LimeSurveyDashboardService
             $item['values'] = array_values(array_map(fn (array $i) => (int) $i['total'], $item['__items']));
             $item['resumo'] = 'Campos preenchidos por subquestao';
 
+            $rootType = (string) ($item['__root_type'] ?? '');
+            $isArrayColumnLikert = $rootType === 'H';
             $item['tipo'] = 'municipio_series';
-            $item['chart_mode'] = 'stacked';
+            $item['chart_mode'] = $isArrayColumnLikert ? 'grouped' : 'stacked';
+            if ($isArrayColumnLikert) {
+                $item['resumo'] = 'Nivel medio por subquestao em cada municipio';
+            }
             $item['municipio_labels'] = [];
             $item['municipio_series'] = [];
 
@@ -709,6 +942,7 @@ class LimeSurveyDashboardService
             $municipioField = $this->resolveMunicipioField($request, $questionList, $firstResponse);
 
             $seriesData = [];
+            $seriesCount = [];
             $municipiosSet = [];
             $subCols = $subColumnsByRoot[$rootCode] ?? [];
             foreach ($responses as $row) {
@@ -720,7 +954,10 @@ class LimeSurveyDashboardService
                 $municipiosSet[$municipio] = true;
 
                 foreach ($subCols as $subCode => $columnName) {
-                    $value = $this->toNumeric($row[$columnName] ?? null);
+                    $rawValue = $row[$columnName] ?? null;
+                    $value = $isArrayColumnLikert
+                        ? $this->toLikertLevel($rawValue)
+                        : ($this->toNumeric($rawValue) ?? $this->toLikertLevel($rawValue));
                     if ($value === null) {
                         continue;
                     }
@@ -731,7 +968,15 @@ class LimeSurveyDashboardService
                     if (!isset($seriesData[$subCode][$municipio])) {
                         $seriesData[$subCode][$municipio] = 0.0;
                     }
+                    if (!isset($seriesCount[$subCode])) {
+                        $seriesCount[$subCode] = [];
+                    }
+                    if (!isset($seriesCount[$subCode][$municipio])) {
+                        $seriesCount[$subCode][$municipio] = 0;
+                    }
+
                     $seriesData[$subCode][$municipio] += $value;
+                    $seriesCount[$subCode][$municipio]++;
                 }
             }
 
@@ -745,12 +990,25 @@ class LimeSurveyDashboardService
                 $series[] = [
                     'code' => $subCode,
                     'label' => (string) $subItem['sub_label'],
-                    'data' => array_map(fn (string $m) => (float) ($seriesData[$subCode][$m] ?? 0), $municipios),
+                    'data' => array_map(function (string $m) use ($isArrayColumnLikert, $seriesData, $seriesCount, $subCode) {
+                        $sum = (float) ($seriesData[$subCode][$m] ?? 0);
+                        if (!$isArrayColumnLikert) {
+                            return $sum;
+                        }
+
+                        $count = (int) ($seriesCount[$subCode][$m] ?? 0);
+                        if ($count <= 0) {
+                            return 0.0;
+                        }
+
+                        return round($sum / $count, 2);
+                    }, $municipios),
                 ];
             }
             $item['municipio_series'] = $series;
 
             unset($item['__items']);
+            unset($item['__root_type']);
 
             $grouped[$rootCode] = $item;
         }
@@ -985,6 +1243,56 @@ class LimeSurveyDashboardService
         }
 
         return (float) $normalized;
+    }
+
+    private function toLikertLevel(mixed $value): ?float
+    {
+        $text = trim((string) $value);
+        if ($text === '') {
+            return null;
+        }
+
+        $numeric = $this->toNumeric($text);
+        if ($numeric !== null) {
+            return $numeric;
+        }
+
+        if (preg_match('/^AO\s*0*([1-9]\d*)$/i', $text, $match)) {
+            return (float) $match[1];
+        }
+
+        if (preg_match('/^A\s*0*([1-9]\d*)$/i', $text, $match)) {
+            return (float) $match[1];
+        }
+
+        return null;
+    }
+
+    private function toBoolSelection(mixed $value): bool
+    {
+        $text = mb_strtolower(trim((string) $value));
+        if ($text === '') {
+            return false;
+        }
+
+        if (in_array($text, ['n', 'no', 'nao', 'false', '0'], true)) {
+            return false;
+        }
+
+        if (in_array($text, ['y', 'yes', 'sim', 'true', '1', 'on', 'x', 'checked'], true)) {
+            return true;
+        }
+
+        if (preg_match('/^ao\s*0*([1-9]\d*)$/i', $text) === 1) {
+            return true;
+        }
+
+        $numeric = $this->toNumeric($text);
+        if ($numeric !== null) {
+            return $numeric > 0;
+        }
+
+        return true;
     }
 
     /**

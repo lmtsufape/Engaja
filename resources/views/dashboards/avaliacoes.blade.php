@@ -362,18 +362,246 @@
     const body = card.querySelector('.question-body');
     const controlsSlot = card.querySelector('.controls-slot');
 
+    const isMunicipioLevel = pergunta.tipo === 'municipio_level' && Array.isArray(pergunta.municipio_labels) && Array.isArray(pergunta.municipio_levels);
+    const isMunicipioMultiselect = pergunta.tipo === 'municipio_multiselect' && Array.isArray(pergunta.municipio_series);
     const isMunicipioSeries = pergunta.tipo === 'municipio_series' && Array.isArray(pergunta.municipio_series);
     const isText = pergunta.tipo === 'texto';
     const respostas = Array.isArray(pergunta.respostas) ? pergunta.respostas : [];
     const exemplos = Array.isArray(pergunta.exemplos) ? pergunta.exemplos : [];
 
-    if (isMunicipioSeries) {
+    if (isMunicipioLevel) {
+      const chartKey = `${pergunta.id}::level`;
+      const prefKey = `${pergunta.id}::level_type`;
+
+      const labels = (pergunta.municipio_labels || []).map((label) => cleanText(label));
+      const values = (pergunta.municipio_levels || []).map((value) => Number(value || 0));
+      if (!labels.length) {
+        body.innerHTML = '<div class="text-muted">Sem dados para esta questao.</div>';
+        wrapper.appendChild(card);
+        cardsQuestoes.appendChild(wrapper);
+        return;
+      }
+
+      if (controlsSlot) {
+        const select = document.createElement('select');
+        select.className = 'form-select form-select-sm';
+        select.style.minWidth = '170px';
+        [
+          ['bar-horizontal', 'Barras (horizontal)'],
+          ['bar', 'Barras (vertical)'],
+          ['line', 'Linha'],
+        ].forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+        select.value = chartPreferences.get(prefKey) || 'bar-horizontal';
+        select.addEventListener('change', (event) => {
+          chartPreferences.set(prefKey, event.target.value);
+          renderQuestionBlocks(cachedQuestionBlocks);
+        });
+        controlsSlot.appendChild(select);
+      }
+
       const canvas = document.createElement('canvas');
       canvas.height = 120;
       body.appendChild(canvas);
 
-      if (chartInstances.has(pergunta.id)) {
-        chartInstances.get(pergunta.id).destroy();
+      if (chartInstances.has(chartKey)) {
+        chartInstances.get(chartKey).destroy();
+      }
+
+      const selectedType = chartPreferences.get(prefKey) || 'bar-horizontal';
+      const baseType = selectedType === 'bar-horizontal' ? 'bar' : selectedType;
+      const chart = new Chart(canvas, {
+        type: baseType,
+        data: {
+          labels,
+          datasets: [{
+            label: 'Nivel',
+            data: values,
+            backgroundColor: palette[1],
+            borderColor: palette[1],
+            tension: 0.25,
+            fill: baseType === 'line',
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Nivel de acompanhamento por municipio' },
+          },
+          scales: {
+            x: { ticks: { color: '#64748b', maxRotation: 50, minRotation: 25 } },
+            y: { ticks: { color: '#64748b', precision: 0 } },
+          },
+          indexAxis: selectedType === 'bar-horizontal' ? 'y' : 'x',
+        },
+      });
+      chartInstances.set(chartKey, chart);
+    } else if (isMunicipioMultiselect) {
+      const totalsChartKey = `${pergunta.id}::totais`;
+      const municipioChartKey = `${pergunta.id}::municipios`;
+      const prefKey = `${pergunta.id}::multiselect_mode`;
+      const stackMode = chartPreferences.get(prefKey) || 'stacked';
+
+      if (controlsSlot) {
+        const select = document.createElement('select');
+        select.className = 'form-select form-select-sm';
+        select.style.minWidth = '170px';
+        [
+          ['stacked', 'Composicao empilhada'],
+          ['grouped', 'Composicao agrupada'],
+        ].forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+        select.value = stackMode;
+        select.addEventListener('change', (event) => {
+          chartPreferences.set(prefKey, event.target.value);
+          renderQuestionBlocks(cachedQuestionBlocks);
+        });
+        controlsSlot.appendChild(select);
+      }
+
+      const totaisLabels = (pergunta.totais_labels || []).map((label) => cleanText(label));
+      const totaisValues = (pergunta.totais_values || []).map((value) => Number(value || 0));
+      const municipioLabels = (pergunta.municipio_labels || []).map((label) => cleanText(label));
+      const rawSeries = Array.isArray(pergunta.municipio_series) ? pergunta.municipio_series : [];
+
+      const sequence = totaisLabels.length ? totaisLabels : rawSeries.map((serie) => cleanText(serie.label || serie.code || ''));
+      const seriesMap = new Map(rawSeries.map((serie) => [cleanText(serie.label || serie.code || ''), serie]));
+      const orderedSeries = sequence
+        .map((label) => seriesMap.get(label))
+        .filter(Boolean);
+      rawSeries.forEach((serie) => {
+        if (!orderedSeries.includes(serie)) {
+          orderedSeries.push(serie);
+        }
+      });
+
+      if (!municipioLabels.length || !orderedSeries.length) {
+        body.innerHTML = '<div class="text-muted">Sem dados para esta questao.</div>';
+        wrapper.appendChild(card);
+        cardsQuestoes.appendChild(wrapper);
+        return;
+      }
+
+      const totalsTitle = document.createElement('div');
+      totalsTitle.className = 'small fw-semibold text-muted mb-2';
+      totalsTitle.textContent = 'Numero de municipios por opcao';
+      body.appendChild(totalsTitle);
+
+      const totalsCanvas = document.createElement('canvas');
+      totalsCanvas.height = 110;
+      body.appendChild(totalsCanvas);
+
+      const separator = document.createElement('div');
+      separator.className = 'my-3';
+      body.appendChild(separator);
+
+      const municipioTitle = document.createElement('div');
+      municipioTitle.className = 'small fw-semibold text-muted mb-2';
+      municipioTitle.textContent = 'Composicao por municipio';
+      body.appendChild(municipioTitle);
+
+      const municipioCanvas = document.createElement('canvas');
+      municipioCanvas.height = 130;
+      body.appendChild(municipioCanvas);
+
+      if (chartInstances.has(totalsChartKey)) {
+        chartInstances.get(totalsChartKey).destroy();
+      }
+      if (chartInstances.has(municipioChartKey)) {
+        chartInstances.get(municipioChartKey).destroy();
+      }
+
+      const totalsChart = new Chart(totalsCanvas, {
+        type: 'bar',
+        data: {
+          labels: totaisLabels.length ? totaisLabels : orderedSeries.map((serie) => cleanText(serie.label || serie.code || '')),
+          datasets: [{
+            label: 'Municipios',
+            data: totaisValues.length ? totaisValues : orderedSeries.map((serie) => (Array.isArray(serie.data) ? serie.data.reduce((acc, cur) => acc + Number(cur || 0), 0) : 0)),
+            backgroundColor: (totaisLabels.length ? totaisLabels : orderedSeries).map((_, idx) => palette[idx % palette.length]),
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#64748b', maxRotation: 50, minRotation: 25 } },
+            y: { ticks: { color: '#64748b', precision: 0 } },
+          },
+        },
+      });
+      chartInstances.set(totalsChartKey, totalsChart);
+
+      const municipioDatasets = orderedSeries.map((serie, idx) => ({
+        label: cleanText(serie.label || serie.code || `Serie ${idx + 1}`),
+        data: Array.isArray(serie.data) ? serie.data.map((value) => Number(value || 0)) : [],
+        backgroundColor: palette[idx % palette.length],
+        borderColor: palette[idx % palette.length],
+      }));
+
+      const municipioChart = new Chart(municipioCanvas, {
+        type: 'bar',
+        data: {
+          labels: municipioLabels,
+          datasets: municipioDatasets,
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true } },
+          scales: {
+            x: {
+              stacked: stackMode === 'stacked',
+              ticks: { color: '#64748b', maxRotation: 50, minRotation: 25 },
+            },
+            y: {
+              stacked: stackMode === 'stacked',
+              ticks: { color: '#64748b', precision: 0 },
+            },
+          },
+        },
+      });
+      chartInstances.set(municipioChartKey, municipioChart);
+    } else if (isMunicipioSeries) {
+      const chartKey = `${pergunta.id}::municipio-series`;
+      const prefKey = `${pergunta.id}::municipio-series-mode`;
+      const mode = chartPreferences.get(prefKey) || (pergunta.chart_mode === 'grouped' ? 'grouped' : 'stacked');
+
+      if (controlsSlot) {
+        const select = document.createElement('select');
+        select.className = 'form-select form-select-sm';
+        select.style.minWidth = '170px';
+        [
+          ['stacked', 'Composicao empilhada'],
+          ['grouped', 'Composicao agrupada'],
+        ].forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          select.appendChild(option);
+        });
+        select.value = mode;
+        select.addEventListener('change', (event) => {
+          chartPreferences.set(prefKey, event.target.value);
+          renderQuestionBlocks(cachedQuestionBlocks);
+        });
+        controlsSlot.appendChild(select);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.height = 120;
+      body.appendChild(canvas);
+
+      if (chartInstances.has(chartKey)) {
+        chartInstances.get(chartKey).destroy();
       }
 
       const labels = (pergunta.municipio_labels || []).map((label) => cleanText(label));
@@ -391,12 +619,12 @@
           responsive: true,
           plugins: { legend: { display: true } },
           scales: {
-            x: { stacked: true, ticks: { color: '#64748b', maxRotation: 50, minRotation: 25 } },
-            y: { stacked: true, ticks: { color: '#64748b', precision: 0 } },
+            x: { stacked: mode === 'stacked', ticks: { color: '#64748b', maxRotation: 50, minRotation: 25 } },
+            y: { stacked: mode === 'stacked', ticks: { color: '#64748b', precision: 0 } },
           },
         },
       });
-      chartInstances.set(pergunta.id, chart);
+      chartInstances.set(chartKey, chart);
     } else if (isText) {
       const listaFonte = respostas.length ? respostas : exemplos;
       const limitePreview = 5;
