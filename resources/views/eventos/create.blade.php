@@ -2,6 +2,13 @@
 
 @section('content')
 <style>
+    .form-label[data-required="true"]::after,
+    .required-group-label[data-required="true"]::after {
+        content: ' *';
+        color: #dc3545;
+        font-weight: 700;
+    }
+
     /* Estilos para os Cards Selecionáveis da Ação Geral */
     .card-radio-input {
         display: none;
@@ -78,7 +85,7 @@
 
                 {{-- ══ AÇÃO GERAL (Selectable Cards) ══ --}}
                 <div class="col-12 mb-3">
-                    <label class="form-label fw-bold">Ação Geral <span class="text-danger">*</span></label>
+                    <label class="form-label fw-bold required-group-label">Ação Geral</label>
                     <div class="form-text mb-3">Selecione uma das ações gerais abaixo para carregar as sub-ações correspondentes. O card selecionado ficará destacado.</div>
 
                     <div class="d-flex flex-column gap-3">
@@ -106,7 +113,7 @@
 
                 {{-- ══ SUB-AÇÃO (dependente via JS) ══ --}}
                 <div class="col-12">
-                    <label for="subacao" class="form-label">Sub-Ação <span class="text-danger">*</span></label>
+                    <label for="subacao" class="form-label">Sub-Ação</label>
                     <select id="subacao" name="subacao"
                         class="form-select @error('subacao') is-invalid @enderror" required disabled>
                         <option value="">Selecione primeiro a Ação Geral…</option>
@@ -116,7 +123,7 @@
 
                 {{-- ══ NOME ══ --}}
                 <div class="col-12">
-                    <label for="nome" class="form-label">Nome da ação pedagógica <span class="text-danger">*</span></label>
+                    <label for="nome" class="form-label">Nome da ação pedagógica</label>
                     <input id="nome" name="nome" type="text" value="{{ old('nome') }}"
                         class="form-control @error('nome') is-invalid @enderror" required>
                     @error('nome')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -551,6 +558,33 @@
         });
     }
 
+    function marcarLabelsObrigatorios(form) {
+        if (!form) return;
+
+        // Limpa marcadores anteriores antes de recalcular os campos obrigatórios.
+        form.querySelectorAll('label[data-required="true"]').forEach(function (label) {
+            label.removeAttribute('data-required');
+        });
+
+        // Procura qualquer campo HTML com `required` e marca o label associado.
+        form.querySelectorAll('input[required], select[required], textarea[required]').forEach(function (field) {
+            if (field.type === 'radio') {
+                // Para radio buttons, o asterisco fica no rótulo do grupo, não em cada opção.
+                const groupLabel = field.closest('.col-12, .col-md-12, .col-md-6, .col-md-4')?.querySelector('.required-group-label');
+                if (groupLabel) {
+                    groupLabel.dataset.required = 'true';
+                }
+                return;
+            }
+
+            if (!field.id) return;
+            const label = form.querySelector(`label[for="${field.id}"]`);
+            if (label) {
+                label.dataset.required = 'true';
+            }
+        });
+    }
+
     // ── Image preview ─────────────────────────────────────────────────────
     document.getElementById('imagem')?.addEventListener('change', function (e) {
         const preview = document.getElementById('preview-imagem');
@@ -612,6 +646,8 @@
 
     // ── Bootstrap ────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {
+        marcarLabelsObrigatorios(document.getElementById('form-planejamento'));
+
         const radiosAcaoGeral = document.querySelectorAll('.acao-geral-radio');
 
         if (oldAcaoGeral) {
@@ -648,6 +684,12 @@
 
         if (formPlanejamento) {
             formPlanejamento.addEventListener('submit', function (e) {
+                // Só abre o checklist se o navegador já considerar o formulário válido.
+                if (!formPlanejamento.checkValidity()) {
+                    formPlanejamento.reportValidity();
+                    return;
+                }
+
                 if (!formPlanejamento.dataset.readyToSubmit) {
                     e.preventDefault();
                     if (modalChecklistObj) modalChecklistObj.show();
@@ -658,6 +700,8 @@
         function submeterFormulario() {
             const container = document.getElementById('hidden-checklist-inputs');
             container.innerHTML = '';
+
+            // Converte os itens marcados no modal em inputs hidden para enviar junto com o form.
             document.querySelectorAll('.item-checklist-modal:checked').forEach(function (cb) {
                 const input = document.createElement('input');
                 input.type  = 'hidden';
@@ -666,6 +710,12 @@
                 container.appendChild(input);
             });
             formPlanejamento.dataset.readyToSubmit = 'true';
+
+            // Reenvia pelo fluxo nativo do navegador para manter a validação HTML ativa.
+            if (typeof formPlanejamento.requestSubmit === 'function') {
+                formPlanejamento.requestSubmit();
+                return;
+            }
             formPlanejamento.submit();
         }
 
