@@ -4,6 +4,24 @@
     color: #dc3545;
     font-weight: 700;
   }
+
+  .municipios-checkbox-list {
+    max-height: 18rem;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    background: #fff;
+  }
+
+  .municipios-checkbox-item {
+    padding: 0.35rem 0 0.35rem 1.5rem;
+    border-bottom: 1px solid #f1f3f5;
+  }
+
+  .municipios-checkbox-item:last-child {
+    border-bottom: 0;
+  }
 </style>
 
 @csrf
@@ -24,39 +42,35 @@
 @endphp
 <div class="mb-3">
   <label for="municipios" class="form-label">Municípios </label>
-  <select name="municipios[]" id="municipios" multiple
-          class="form-select @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror"
-          size="6">
+  <div id="municipios"
+       class="municipios-checkbox-list @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror">
     @foreach($municipios ?? [] as $m)
       @php
         $uf = $m->estado->sigla ?? '';
         $regiao = $m->estado->regiao->nome ?? '';
         $label = trim(($regiao ? $regiao . ' — ' : '') . $m->nome . ($uf ? ' - ' . $uf : ''));
       @endphp
-      <option value="{{ $m->id }}" @selected(in_array((string) $m->id, $municipiosSelecionados, true))>
-        {{ $label }}
-      </option>
+      <div class="form-check municipios-checkbox-item">
+        <input class="form-check-input"
+               type="checkbox"
+               name="municipios[]"
+               id="municipio_{{ $m->id }}"
+               value="{{ $m->id }}"
+               @checked(in_array((string) $m->id, $municipiosSelecionados, true))>
+        <label class="form-check-label small" for="municipio_{{ $m->id }}">
+          {{ $label }}
+        </label>
+      </div>
     @endforeach
-  </select>
+  </div>
   <div class="form-text">Selecione um ou mais municípios atendidos por este momento.</div>
   @error('municipios') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
   @error('municipios.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
 </div>
 
 <script>
-  // Permite selecionar/deselecionar vários itens sem precisar segurar Ctrl/Cmd.
   document.addEventListener('DOMContentLoaded', function () {
-    const select = document.getElementById('municipios');
-    if (!select) return;
-    select.addEventListener('mousedown', function (e) {
-      if (e.target.tagName === 'OPTION') {
-        e.preventDefault();
-        const opt = e.target;
-        opt.selected = !opt.selected;
-      }
-    });
-
-    const form = select.closest('form');
+    const form = document.getElementById('descricao')?.closest('form');
     if (!form) return;
 
     // Remove a marcação anterior antes de aplicar o asterisco nos campos required.
