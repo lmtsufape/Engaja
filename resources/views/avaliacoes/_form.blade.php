@@ -8,9 +8,8 @@
         Avaliação - {{ $atividade->descricao }}
       </h1>
       <p class="text-muted mb-0" style="text-align: justify">
-        Convidamos você a responder esta avaliação, expressando as suas opiniões, críticas e sugestões.
-        Este formulário é totalmente anônimo e os dados coletados seguem as diretrizes da LGPD.
-        Suas respostas contribuirão para o aprimoramento do nosso trabalho.
+        Convidamos você a responder esta avaliação, expressando as suas opiniões, críticas e sugestões. 
+        Esta coleta de dados segue as diretrizes da LGPD. Suas respostas contribuirão para o aprimoramento do nosso trabalho.
       </p>
     </div>
 

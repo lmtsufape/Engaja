@@ -156,74 +156,6 @@ class InscricaoController extends Controller
         ]);
     }
 
-    /**
-     * Etapa intermediÃ¡ria antes da confirmaÃ§Ã£o final da importaÃ§Ã£o.
-     */
-    public function confirmacao(Request $request, Evento $evento)
-    {
-        $sessionKey = $request->query('session_key');
-        $sessionPayload = session($sessionKey);
-
-        if (!is_array($sessionPayload) || empty($sessionPayload['rows'] ?? [])) {
-            return redirect()->route('inscricoes.import', $evento)
-                ->withErrors(['your_file' => 'SessÃ£o de importaÃ§Ã£o vazia/expirada. Envie o arquivo novamente.']);
-        }
-
-        $atividadeId = $request->query('atividade_id') ?? ($sessionPayload['atividade_id'] ?? null);
-
-        if (!$atividadeId) {
-            return redirect()->route('inscricoes.import', $evento)
-                ->withErrors(['atividade_id' => 'Momento da importaÃ§Ã£o nÃ£o encontrado. Inicie o processo novamente.']);
-        }
-
-        $atividade = $evento->atividades()
-            ->whereKey($atividadeId)
-            ->first();
-
-        if (!$atividade) {
-            return redirect()->route('inscricoes.import', $evento)
-                ->withErrors(['atividade_id' => 'Momento informado nÃ£o pertence a este evento.']);
-        }
-
-        $allRows = collect($sessionPayload['rows']);
-        $resumoImportacao = $this->montarResumoImportacao($allRows);
-
-        $perPage = (int) $request->query('per_page', 50);
-        if ($perPage < 1) {
-            $perPage = 50;
-        }
-
-        $page = (int) max(1, $request->query('page', 1));
-        $totalNovos = $resumoImportacao['rowsNovos']->count();
-        $slice = $resumoImportacao['rowsNovos']->slice(($page - 1) * $perPage, $perPage)->values();
-
-        $rowsPaginator = new LengthAwarePaginator(
-            $slice,
-            $totalNovos,
-            $perPage,
-            $page,
-            [
-                'path' => route('inscricoes.confirmacao', $evento),
-                'query' => [
-                    'session_key'  => $sessionKey,
-                    'per_page'     => $perPage,
-                    'atividade_id' => $atividade->id,
-                ],
-            ]
-        );
-
-        $municipios = \App\Models\Municipio::with('estado')->orderBy('nome')->get(['id', 'nome', 'estado_id']);
-
-        return view('inscricoes.confirmacao', [
-            'evento'                 => $evento,
-            'atividade'              => $atividade,
-            'rows'                   => $rowsPaginator,
-            'sessionKey'             => $sessionKey,
-            'municipios'             => $municipios,
-            'usuariosExistentesCount' => $resumoImportacao['usuariosExistentesCount'],
-            'usuariosNovosCount'      => $resumoImportacao['usuariosNovosCount'],
-        ]);
-    }
 
     private function montarResumoImportacao(Collection $allRows): array
     {
@@ -515,6 +447,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participanteId,
+                        'ouvinte'         => false,
                     ]);
                     $inscricao->deleted_at = null;
                     $inscricao->save();
@@ -523,6 +456,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participanteId,
+                        'ouvinte'         => false,
                     ]);
                 }
             }
@@ -768,6 +702,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participante->id,
+                        'ouvinte'         => false,
                     ]);
                     $inscricao->deleted_at = null;
                     $inscricao->save();
@@ -776,6 +711,7 @@ class InscricaoController extends Controller
                         'evento_id'       => $evento->id,
                         'atividade_id'    => $atividade->id,
                         'participante_id' => $participante->id,
+                        'ouvinte'         => false,
                     ]);
                 }
 

@@ -64,7 +64,7 @@ class ParticipantesPreviewImport implements ToCollection, WithHeadingRow, SkipsE
             $map = collect($raw)->map(fn($v) => is_string($v) ? trim($v) : $v);
 
             // Resolve municipio_id via cache (se existir)
-            $municipioNome = (string) ($map['municipio'] ?? '');
+            $municipioNome = (string) ($map['municipio'] ?? $map['cidade'] ?? '');
             $municipioId = null;
             if ($municipioNome !== '') {
                 $key = mb_strtolower($municipioNome);

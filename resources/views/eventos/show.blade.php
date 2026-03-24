@@ -198,48 +198,60 @@
         <a href="{{ $evento->link }}" target="_blank" class="btn btn-outline-secondary">Acessar link</a>
         @endif
 
+        {{-- BOTÃO GERAR PDF --}}
+        <a href="{{ route('eventos.planejamento.pdf', $evento) }}" target="_blank" class="btn btn-outline-danger">
+          <i class="fas fa-file-pdf"></i> Gerar PDF do Planejamento
+        </a>
+
         @hasanyrole('administrador|gerente|eq_pedagogica')
-        <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
-        <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
-        <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
+          <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
+          <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
         @endhasanyrole
 
         @can('participante.ver')
-        <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">
-          Ver inscritos
-        </a>
+          <a href="{{ route('inscricoes.inscritos', $evento) }}" class="btn btn-outline-primary">Ver inscritos</a>
         @endcan
 
-        @role('administrador|gerente|eq_pedagogica|articulador')
-        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
-          data-bs-target="#modalRelatoriosEvento">
-          Relatórios
-        </button>
+        @role('administrador|gerente')
+          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+            data-bs-target="#modalRelatoriosEvento">
+            Relatórios
+          </button>
         @endrole
 
         @can('update', $evento)
-        <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
-        @role('administrador')
-        <form action="{{ route('eventos.destroy', $evento) }}" method="POST"
-          class="d-flex m-0 p-0" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
-          @csrf @method('DELETE')
-          <button class="btn btn-outline-danger">Excluir</button>
-        </form>
-        @endrole
-        </div>
+          <a href="{{ route('eventos.edit', $evento) }}" class="btn btn-outline-secondary">Editar</a>
+          @role('administrador')
+          <form action="{{ route('eventos.destroy', $evento) }}" method="POST"
+            class="d-flex m-0 p-0" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
+            @csrf @method('DELETE')
+            <button class="btn btn-outline-danger">Excluir</button>
+          </form>
+          @endrole
         @endcan
       </div>
     </div>
   </div>
 
-  {{-- Chips --}}
+  {{-- Chips (Modificado para Ação Geral e Sub-ação) --}}
   @php
   $totalInscritos = $evento->participantes()->wherePivotNull('deleted_at')->count();
   @endphp
   <div class="mb-4">
     <div class="d-flex flex-wrap gap-2">
-      @if($evento->eixo?->nome)
-      <span class="ev-chip">Eixo: <strong class="ms-1">{{ $evento->eixo->nome }}</strong></span>
+      @if($evento->acao_geral)
+      <span class="ev-chip">
+        Ação: <strong class="ms-1" title="{{ \App\Models\Evento::ACOES_GERAIS[$evento->acao_geral] ?? '' }}">
+            Ação Geral {{ $evento->acao_geral }}
+        </strong>
+      </span>
+      @endif
+      @if($evento->subacao)
+      <span class="ev-chip">
+          Sub-Ação: <strong class="ms-1" title="{{ $evento->subacao }}">
+            {{ \Illuminate\Support\Str::limit($evento->subacao, 50) }}
+          </strong>
+      </span>
       @endif
       @if($evento->tipo)
       <span class="ev-chip">Tipo: <strong class="ms-1">{{ $evento->tipo }}</strong></span>
@@ -299,7 +311,6 @@
 
       <div class="d-flex gap-2">
         @hasanyrole('administrador|gerente|eq_pedagogica')
-        {{-- Botão Interceptado --}}
         <button type="button"
                 class="btn btn-engaja btn-sm"
                 data-bs-toggle="modal"
@@ -362,7 +373,7 @@
             $chLabel = null;
             if ($fimObj) {
             $mins = $ini->diffInMinutes($fimObj, false);
-            if ($mins < 0) { $mins +=24*60; } // segurança extra
+            if ($mins < 0) { $mins +=24*60; }
               $h=intdiv($mins, 60);
               $m=$mins % 60;
               $chLabel=$h> 0 ? ($h.'h'.($m ? ' '.$m.'min' : '')) : ($m.'min');
@@ -376,18 +387,19 @@
               $publicoEsperado = $at->publico_esperado;
               $cargaHoraria = $at->carga_horaria;
               $cargaLabel = !is_null($cargaHoraria) ? number_format($cargaHoraria, 0, ',', '.') . 'h' : null;
+              $minhaPresenca = ($presencasPorAtividade ?? collect())[$at->id] ?? null;
+              $primeiraAvaliacao = $at->avaliacoes->first();
               @endphp
 
               <div class="t-item">
                 <span class="t-dot"></span>
                 <div class="program-card">
-                  <div class="d-flex justify-content-between align-items-start gap-3">
-                    <div>
+                  <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                    <div class="flex-grow-1">
                       <div class="program-time">{{ $iniStr }}{{ $fimStr ? ' – ' . $fimStr : '' }}</div>
 
                       <div class="program-title d-flex align-items-center flex-wrap gap-2">
                         <span>{{ $momento }}</span>
-                        {{-- ⚠️ Badge de checklist incompleto --}}
                         @if($at->checklists_incompletos)
                           <button type="button"
                                   class="badge bg-warning text-dark border-0 btn-checklist-reabrir"
@@ -411,40 +423,62 @@
                       @endif
                     </div>
 
-                    @hasanyrole('administrador|gerente')
-                    <div class="d-flex align-items-center gap-4 flex-shrink-0">
-                      <a href="{{ $at->avaliacaoAtividade
-                            ? route('avaliacao-atividade.edit',   $at)
-                            : route('avaliacao-atividade.create', $at) }}"
-                        class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
-                        {{ $at->avaliacaoAtividade ? '📋 Avaliação ' : '📋 Avaliar' }}
-                      </a>
-                    <div class="actions d-flex gap-2 flex-shrink-0 align-items-center">
-                    @endhasanyrole
+                    <div class="actions d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0">
+                      {{--
+                      Avaliação para o participante (se tem presença neste momento)
+                      @if($minhaPresenca && $primeiraAvaliacao)
+                        @if($minhaPresenca->avaliacao_respondida)
+                          <span class="badge bg-success py-2 px-3" style="font-size:.8rem;">✅ Avaliado</span>
+                        @else
+                          <a href="{{ route('avaliacao.formulario', ['avaliacao' => $primeiraAvaliacao->id, 'token' => encrypt($minhaPresenca->id)]) }}"
+                             class="btn btn-sm btn-outline-success">
+                            ✏️ Avaliar
+                          </a>
+                        @endif
+                      @endif
+                      --}}
 
-                    @can('atividade.ver')
-                      <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
-                          Ver
-                      </a>
-                    @endcan
+                      {{--
+                      @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
+                        @if($primeiraAvaliacao)
+                          <a href="{{ route('atividades.avaliacoes', $at) }}"
+                             class="btn btn-sm btn-outline-info">
+                            📊 Ver Avaliações
+                          </a>
+                        @endif
+                      @endhasanyrole
+                      --}}
 
-                    @hasanyrole('administrador|gerente|eq_pedagogica')
-                      <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
-                          Editar
-                      </a>
-                    @endhasanyrole
+                      @hasanyrole('administrador|gerente')
+                        <a href="{{ $at->avaliacaoAtividade
+                              ? route('avaliacao-atividade.edit',   $at)
+                              : route('avaliacao-atividade.create', $at) }}"
+                           class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
+                          📝 {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
+                        </a>
+                      @endhasanyrole
 
-                    @hasanyrole('administrador|gerente')
-                      <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                            class="d-inline m-0 p-0"
-                            data-confirm="Tem certeza que deseja excluir este momento?">
+                      @can('atividade.ver')
+                        <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">
+                          👁️ Ver
+                        </a>
+                      @endcan
+
+                      @hasanyrole('administrador|gerente|eq_pedagogica')
+                        <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">
+                          ✏️ Editar
+                        </a>
+                      @endhasanyrole
+
+                      @hasanyrole('administrador|gerente')
+                        <form action="{{ route('atividades.destroy', $at) }}" method="POST"
+                              class="d-inline m-0 p-0"
+                              data-confirm="Tem certeza que deseja excluir este momento?">
                           @csrf @method('DELETE')
-                          <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                      </form>
-                    @endhasanyrole
-
-                  </div>
-
+                          <button class="btn btn-sm btn-outline-danger">🗑️ Excluir</button>
+                        </form>
+                      @endhasanyrole
+                    </div>
                   </div>
                 </div>
               </div>
@@ -473,24 +507,36 @@
         </p>
         <div class="row g-3">
           <div class="col-md-6">
-            <div class="h-100 border rounded p-3">
+            <div class="h-100 border rounded p-3 d-flex flex-column">
               <h6 class="fw-bold mb-1">Participantes únicos</h6>
               <p class="text-muted small mb-3">Consolida todos os participantes que tiveram presença confirmada em
                 qualquer momento desta ação.</p>
-              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral']) }}"
-                class="btn btn-engaja w-100">
-                Baixar XLSX
-              </a>
+              <div class="d-grid gap-2 mt-auto">
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral']) }}"
+                  class="btn btn-engaja w-100">
+                  Baixar XLSX
+                </a>
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'geral', 'sem_ouvintes' => 1]) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX sem ouvintes
+                </a>
+              </div>
             </div>
           </div>
           <div class="col-md-6">
-            <div class="h-100 border rounded p-3">
+            <div class="h-100 border rounded p-3 d-flex flex-column">
               <h6 class="fw-bold mb-1">Participantes por momento</h6>
               <p class="text-muted small mb-3">Lista os presentes por momento, com data e horários.</p>
-              <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos']) }}"
-                class="btn btn-outline-secondary w-100">
-                Baixar XLSX
-              </a>
+              <div class="d-grid gap-2 mt-auto">
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos']) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX
+                </a>
+                <a href="{{ route('eventos.relatorios', ['evento' => $evento, 'tipo' => 'momentos', 'sem_ouvintes' => 1]) }}"
+                  class="btn btn-outline-secondary w-100">
+                  Baixar XLSX sem ouvintes
+                </a>
+              </div>
             </div>
           </div>
         </div>

@@ -1,16 +1,69 @@
 ﻿@extends('layouts.app')
 
 @section('content')
-<div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
-  <div>
+<div class="mb-4">
     <p class="text-uppercase text-muted small mb-1">Administração</p>
-    <h1 class="h4 fw-bold text-engaja mb-0">Gerenciar Usuários</h1>
-    {{-- <div class="text-muted small">Disponivel apenas para administradores e gestores.</div> --}}
-  </div>
-  <form method="GET" action="{{ route('usuarios.index') }}" class="d-flex gap-2">
-    <input type="text" name="q" value="{{ $search ?? '' }}" class="form-control" placeholder="Buscar por nome ou e-mail" aria-label="Buscar usuarios">
-    <button class="btn btn-engaja" type="submit">Buscar</button>
-  </form>
+    <h1 class="h4 fw-bold text-engaja mb-3">Gerenciar Usuários</h1>
+
+    <div class="filter-bar shadow-sm">
+        <form action="{{ route('usuarios.index') }}" method="GET" class="row g-2 align-items-center">
+
+            {{-- campo de busca --}}
+            <div class="col-12 col-md-3">
+                <div class="input-group">
+              <span class="input-group-text bg-white border-end-0 text-muted">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                  </svg>
+              </span>
+                    <input type="text" name="q" class="form-control border-start-0 ps-0" placeholder="Buscar nome ou e-mail..." value="{{ $search }}">
+                </div>
+            </div>
+
+            {{-- select de região --}}
+            <div class="col-12 col-md-2">
+                <select name="regiao" id="filtro_regiao" class="form-select text-muted">
+                    <option value="">Todas as Regiões</option>
+                    @foreach($regioes as $regiao)
+                        <option value="{{ $regiao->id }}" {{ $regiao_id == $regiao->id ? 'selected' : '' }}>
+                            {{ $regiao->nome }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- select de estado --}}
+            <div class="col-12 col-md-2">
+                <select name="estado" id="filtro_estado" class="form-select text-muted" {{ empty($regiao_id) && empty($estado_id) ? 'disabled' : '' }}>
+                    <option value="">Todos os Estados</option>
+                    @foreach($estados as $estado)
+                        <option value="{{ $estado->id }}" data-regiao="{{ $estado->regiao_id }}" {{ $estado_id == $estado->id ? 'selected' : '' }}>
+                            {{ $estado->nome }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- select de município --}}
+            <div class="col-12 col-md-3">
+                <select name="municipio" id="filtro_municipio" class="form-select text-muted" {{ empty($estado_id) && empty($municipio_id) ? 'disabled' : '' }}>
+                    <option value="">Todos os Municípios</option>
+                    @foreach($municipios as $municipio)
+                        <option value="{{ $municipio->id }}" data-estado="{{ $municipio->estado_id }}" {{ $municipio_id == $municipio->id ? 'selected' : '' }}>
+                            {{ $municipio->nome }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-engaja w-100">Filtrar</button>
+                @if($search || $regiao_id || $estado_id || $municipio_id)
+                    <a href="{{ route('usuarios.index') }}" class="btn btn-light border w-100">Limpar</a>
+                @endif
+            </div>
+        </form>
+    </div>
 </div>
 
 @if ($users->isEmpty())
@@ -190,5 +243,66 @@
       });
     }
   });
+
+
+  //função que uso para gerenciar as seleções e hierarquia do filtro de regiao/estado/municipio
+  const regiaoSelect = document.getElementById('filtro_regiao');
+  const estadoSelect = document.getElementById('filtro_estado');
+  const municipioSelect = document.getElementById('filtro_municipio');
+
+  function filterOptions(parentSelect, childSelect, dataAttribute) {
+      const parentId = parentSelect.value;
+      Array.from(childSelect.options).forEach(option => {
+          if (option.value === "") return;
+
+          if (option.getAttribute(dataAttribute) === parentId) {
+              option.style.display = '';
+          } else {
+              option.style.display = 'none';
+          }
+      });
+  }
+
+  if (regiaoSelect && estadoSelect && municipioSelect) {
+
+      regiaoSelect.addEventListener('change', function() {
+          estadoSelect.value = '';
+          municipioSelect.value = '';
+
+          municipioSelect.disabled = true;
+
+          if (this.value) {
+              estadoSelect.disabled = false;
+              filterOptions(this, estadoSelect, 'data-regiao');
+          } else {
+              estadoSelect.disabled = true;
+          }
+      });
+
+      estadoSelect.addEventListener('change', function() {
+          municipioSelect.value = '';
+
+          if (this.value) {
+              municipioSelect.disabled = false;
+              filterOptions(this, municipioSelect, 'data-estado');
+          } else {
+              municipioSelect.disabled = true;
+          }
+      });
+
+      if (regiaoSelect.value) {
+          estadoSelect.disabled = false;
+          filterOptions(regiaoSelect, estadoSelect, 'data-regiao');
+      } else {
+          estadoSelect.disabled = true;
+      }
+
+      if (estadoSelect.value) {
+          municipioSelect.disabled = false;
+          filterOptions(estadoSelect, municipioSelect, 'data-estado');
+      } else {
+          municipioSelect.disabled = true;
+      }
+  }
 </script>
 @endpush

@@ -10,7 +10,11 @@ class Inscricao extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['evento_id', 'atividade_id', 'participante_id'];
+    protected $fillable = ['evento_id', 'atividade_id', 'participante_id', 'ouvinte'];
+
+    protected $casts = [
+        'ouvinte' => 'boolean',
+    ];
 
     public function evento()
     {

@@ -56,6 +56,8 @@
                             <td>
                                 @if($atividade['status'] === 'Presente')
                                     <span class="badge bg-success">Presente</span>
+                                @elseif($atividade['status'] === 'Ouvinte')
+                                    <span class="badge bg-info">Ouvinte</span>
                                 @else
                                     <span class="badge bg-danger">Ausente</span>
                                 @endif

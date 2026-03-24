@@ -43,10 +43,11 @@
       <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-outline-secondary">Voltar</a>
 
       {{-- Confirmar TUDO (todas as páginas/sessão) --}}
-      <form method="GET" action="{{ route('inscricoes.confirmacao', $evento) }}">
+      <form method="POST" action="{{ route('inscricoes.confirmar', $evento) }}">
+        @csrf
         <input type="hidden" name="session_key" value="{{ $sessionKey }}">
         <input type="hidden" name="atividade_id" value="{{ $atividade->id }}">
-        <button class="btn btn-primary">Confirmar e continuar</button>
+        <button class="btn btn-primary">Confirmar e salvar (todas as páginas)</button>
       </form>
     </div>
   </div>

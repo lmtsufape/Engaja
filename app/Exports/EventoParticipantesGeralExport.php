@@ -16,10 +16,12 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
     use Exportable;
 
     private Evento $evento;
+    private bool $semOuvintes;
 
-    public function __construct(Evento $evento)
+    public function __construct(Evento $evento, bool $semOuvintes = false)
     {
         $this->evento = $evento;
+        $this->semOuvintes = $semOuvintes;
     }
 
     public function collection(): Collection
@@ -40,6 +42,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             'Organização',
             'Tipo de organização',
             'Tag',
+            'Status',
         ];
     }
 
@@ -54,6 +57,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             $row->escola_unidade,
             $row->tipo_organizacao,
             $row->tag,
+            $row->ouvinte ? 'Ouvinte' : 'Presente',
         ];
     }
 
@@ -70,6 +74,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             ->where('presencas.status', 'presente')
             ->whereNull('presencas.deleted_at')
             ->whereNull('inscricaos.deleted_at')
+            ->when($this->semOuvintes, fn ($q) => $q->where('inscricaos.ouvinte', false))
             ->select([
                 'participantes.id as participante_id',
                 'users.name as nome',
@@ -82,6 +87,7 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
                 'participantes.tipo_organizacao',
                 'participantes.tag',
                 'participantes.data_entrada',
+                'inscricaos.ouvinte',
             ]);
     }
 
