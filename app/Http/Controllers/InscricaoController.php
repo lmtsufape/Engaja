@@ -16,6 +16,11 @@ use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\UploadedFile;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Presenca;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class InscricaoController extends Controller
 {
@@ -31,6 +36,722 @@ class InscricaoController extends Controller
             ->get();
 
         return view('inscricoes.import', compact('evento', 'atividades'));
+    }
+
+    public function moodleImport(Evento $evento)
+    {
+        return view('inscricoes.moodle_import', compact('evento'));
+    }
+    public function moodleMomentTemplateDownload(Evento $evento)
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('momentos');
+
+        $sheet->setCellValue('A1', 'momento');
+        $sheet->setCellValue('B1', 'carga_horaria');
+
+        $rows = [
+            ['Abertura', 1],
+            ['Painel 1 - Educacao Integral', 2],
+            ['Oficina Pratica', 3],
+            ['Encerramento', 1],
+        ];
+
+        $line = 2;
+        foreach ($rows as [$momento, $carga]) {
+            $sheet->setCellValue("A{$line}", $momento);
+            $sheet->setCellValue("B{$line}", $carga);
+            $line++;
+        }
+
+        $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+        $sheet->getColumnDimension('A')->setAutoSize(true);
+        $sheet->getColumnDimension('B')->setWidth(18);
+
+        $fileName = 'modelo_momentos_moodle.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function moodleUpload(Request $request, Evento $evento)
+    {
+        $request->validate([
+            'participants_file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+            'workloads_file' => 'required|file|mimes:xlsx,xls,csv|max:20480',
+        ]);
+
+        try {
+            $parsed = $this->parseMoodleFiles(
+                $request->file('participants_file'),
+                $request->file('workloads_file')
+            );
+
+            $sessionKey = "moodle_import_evento_{$evento->id}";
+            session([$sessionKey => $parsed]);
+
+            return redirect()->route('inscricoes.moodle.preview', [
+                'evento' => $evento,
+                'session_key' => $sessionKey,
+            ]);
+        } catch (\Throwable $e) {
+            $message = 'Falha ao processar as planilhas: ' . $e->getMessage();
+            $errorBag = str_contains(Str::lower($e->getMessage()), 'carga')
+                ? ['workloads_file' => $message]
+                : ['participants_file' => $message];
+
+            return back()->withErrors([
+                ...$errorBag,
+                'moodle_files' => $message,
+            ])->withInput();
+        }
+    }
+
+    public function moodlePreview(Request $request, Evento $evento)
+    {
+        $sessionKey = (string) $request->query('session_key');
+        $payload = session($sessionKey, []);
+
+        if (!is_array($payload) || empty($payload['participants'] ?? [])) {
+            return redirect()->route('inscricoes.moodle.import', $evento)
+                ->withErrors(['participants_file' => 'Sessão expirada. Envie as duas planilhas novamente.']);
+        }
+
+        $participants = collect($payload['participants']);
+
+        $perPage = (int) $request->query('per_page', 30);
+        if ($perPage < 1) {
+            $perPage = 30;
+        }
+
+        $page = (int) max(1, $request->query('page', 1));
+        $total = $participants->count();
+        $slice = $participants->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $rowsPaginator = new LengthAwarePaginator(
+            $slice,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => route('inscricoes.moodle.preview', $evento),
+                'query' => [
+                    'session_key' => $sessionKey,
+                    'per_page' => $perPage,
+                ],
+            ]
+        );
+
+        return view('inscricoes.moodle_preview', [
+            'evento' => $evento,
+            'sessionKey' => $sessionKey,
+            'rows' => $rowsPaginator,
+            'momentos' => collect($payload['momentos'] ?? []),
+            'resumo' => $payload['summary'] ?? [],
+            'newUsers' => collect($payload['new_users'] ?? []),
+            'errorsList' => collect($payload['errors'] ?? []),
+            'conflicts' => collect($payload['conflicts'] ?? []),
+        ]);
+    }
+
+    public function moodleConfirm(Request $request, Evento $evento)
+    {
+        $validated = $request->validate([
+            'session_key' => 'required|string',
+        ]);
+
+        $sessionKey = $validated['session_key'];
+        $payload = session($sessionKey, []);
+
+        if (!is_array($payload) || empty($payload['participants'] ?? [])) {
+            return back()->withErrors(['session_key' => 'Sessão expirada. Refaça a pré-visualização.']);
+        }
+
+        $errorsList = collect($payload['errors'] ?? []);
+        if ($errorsList->isNotEmpty()) {
+            return redirect()->route('inscricoes.moodle.preview', [
+                'evento' => $evento,
+                'session_key' => $sessionKey,
+            ])->withErrors(['import' => 'Existem inconsistências. Corrija as planilhas antes de confirmar.']);
+        }
+
+        $momentos = collect($payload['momentos'] ?? []);
+        $participants = collect($payload['participants'] ?? []);
+
+        $momentosSemCarga = $momentos
+            ->filter(fn ($momento) => !is_int($momento['carga_horaria'] ?? null))
+            ->pluck('nome')
+            ->map(fn ($nome) => trim((string) $nome))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($momentosSemCarga->isNotEmpty()) {
+            return redirect()->route('inscricoes.moodle.preview', [
+                'evento' => $evento,
+                'session_key' => $sessionKey,
+            ])->withErrors([
+                'import' => 'Não é permitido criar momento sem carga horária. Corrija a planilha de cargas para: ' . $momentosSemCarga->implode(', '),
+            ]);
+        }
+
+        $stats = DB::transaction(function () use ($evento, $momentos, $participants) {
+            $atividadesByName = $evento->atividades()->get()->keyBy(
+                fn ($a) => $this->normalizeMoodleLabel((string) $a->descricao)
+            );
+
+            $momentoMap = [];
+            $momentoCriado = 0;
+            $momentoAtualizado = 0;
+
+            foreach ($momentos as $momento) {
+                $nome = trim((string) ($momento['nome'] ?? ''));
+                if ($nome === '') {
+                    continue;
+                }
+
+                $carga = $momento['carga_horaria'];
+                if (!is_int($carga)) {
+                    throw new \RuntimeException("Momento '{$nome}' sem carga horária válida.");
+                }
+
+                $key = $this->normalizeMoodleLabel($nome);
+                $atividade = $atividadesByName->get($key);
+
+                if (!$atividade) {
+                    $diaBase = $evento->data_inicio ?: now()->toDateString();
+                    $horaInicio = '08:00';
+                    $horaFim = '09:00';
+
+                    if (is_int($carga) && $carga > 0 && $carga <= 12) {
+                        $horaFim = Carbon::createFromFormat('H:i', $horaInicio)
+                            ->addHours($carga)
+                            ->format('H:i');
+                    }
+
+                    $atividade = $evento->atividades()->create([
+                        'descricao' => $nome,
+                        'dia' => $diaBase,
+                        'hora_inicio' => $horaInicio,
+                        'hora_fim' => $horaFim,
+                        'carga_horaria' => is_int($carga) ? $carga : null,
+                        'presenca_ativa' => false,
+                    ]);
+                    $momentoCriado++;
+                    $atividadesByName->put($key, $atividade);
+                } else {
+                    if (is_int($carga) && $atividade->carga_horaria !== $carga) {
+                        $atividade->update(['carga_horaria' => $carga]);
+                        $momentoAtualizado++;
+                    }
+                }
+
+                $momentoMap[$nome] = $atividade;
+            }
+
+            $emails = $participants
+                ->pluck('email')
+                ->map(fn ($email) => strtolower(trim((string) $email)))
+                ->filter()
+                ->unique()
+                ->values();
+
+            $usersByEmail = $this->fetchUsersByEmailInsensitive($emails);
+
+            $usuariosCriados = 0;
+            foreach ($participants as $row) {
+                $email = strtolower(trim((string) ($row['email'] ?? '')));
+                $nome = trim((string) ($row['nome'] ?? ''));
+                if ($email === '' || $nome === '' || $usersByEmail->has($email)) {
+                    continue;
+                }
+
+                $nomeFormatado = $this->formatMoodleUserName($nome);
+                $senhaPadrao = $this->buildMoodleDefaultPassword($nomeFormatado);
+
+                $user = User::create([
+                    'name' => $nomeFormatado,
+                    'email' => $email,
+                    'password' => Hash::make($senhaPadrao),
+                ]);
+                $usersByEmail->put($email, $user);
+                $usuariosCriados++;
+            }
+
+            $participantesByUser = Participante::whereIn('user_id', $usersByEmail->pluck('id')->values())
+                ->get()
+                ->keyBy('user_id');
+
+            $inscricoesCriadas = 0;
+            $presencasAtualizadas = 0;
+
+            foreach ($participants as $row) {
+                $email = strtolower(trim((string) ($row['email'] ?? '')));
+                if (!$usersByEmail->has($email)) {
+                    continue;
+                }
+
+                $user = $usersByEmail->get($email);
+                $participante = $participantesByUser->get($user->id);
+                if (!$participante) {
+                    $participante = Participante::create(['user_id' => $user->id]);
+                    $participantesByUser->put($user->id, $participante);
+                }
+
+                foreach (($row['status_por_momento'] ?? []) as $nomeMomento => $statusConclusao) {
+                    if (!isset($momentoMap[$nomeMomento])) {
+                        continue;
+                    }
+
+                    $atividade = $momentoMap[$nomeMomento];
+
+                    $inscricao = Inscricao::withTrashed()
+                        ->where('evento_id', $evento->id)
+                        ->where('atividade_id', $atividade->id)
+                        ->where('participante_id', $participante->id)
+                        ->first();
+
+                    if (!$inscricao) {
+                        $inscricao = Inscricao::create([
+                            'evento_id' => $evento->id,
+                            'atividade_id' => $atividade->id,
+                            'participante_id' => $participante->id,
+                            'ouvinte' => false,
+                        ]);
+                        $inscricoesCriadas++;
+                    } else {
+                        $inscricao->fill([
+                            'evento_id' => $evento->id,
+                            'atividade_id' => $atividade->id,
+                            'participante_id' => $participante->id,
+                            'ouvinte' => false,
+                        ]);
+                        $inscricao->deleted_at = null;
+                        $inscricao->save();
+                    }
+
+                    Presenca::updateOrCreate(
+                        [
+                            'inscricao_id' => $inscricao->id,
+                            'atividade_id' => $atividade->id,
+                        ],
+                        [
+                            'status' => $statusConclusao ? 'presente' : 'ausente',
+                            'justificativa' => null,
+                        ]
+                    );
+                    $presencasAtualizadas++;
+                }
+            }
+
+            return [
+                'usuarios_criados' => $usuariosCriados,
+                'momentos_criados' => $momentoCriado,
+                'momentos_atualizados' => $momentoAtualizado,
+                'inscricoes_criadas' => $inscricoesCriadas,
+                'presencas_atualizadas' => $presencasAtualizadas,
+            ];
+        });
+
+        session()->forget($sessionKey);
+
+        return redirect()->route('eventos.show', $evento)
+            ->with('success', sprintf(
+                'Importação Moodle concluída. Usuários criados: %d. Momentos criados: %d. Cargas atualizadas: %d. Inscrições criadas: %d. Status atualizados: %d.',
+                $stats['usuarios_criados'],
+                $stats['momentos_criados'],
+                $stats['momentos_atualizados'],
+                $stats['inscricoes_criadas'],
+                $stats['presencas_atualizadas']
+            ));
+    }
+
+    private function parseMoodleFiles(UploadedFile $participantsFile, UploadedFile $workloadsFile): array
+    {
+        $participantsSheet = Excel::toArray([], $participantsFile)[0] ?? [];
+        $workloadsSheet = Excel::toArray([], $workloadsFile)[0] ?? [];
+
+        if (empty($participantsSheet)) {
+            throw new \RuntimeException('A planilha de participantes está vazia.');
+        }
+
+        if (empty($workloadsSheet)) {
+            throw new \RuntimeException('A planilha de carga horária está vazia.');
+        }
+
+        [$participants, $momentosParticipantes, $errorsParticipants, $conflicts] = $this->parseMoodleParticipantsSheet($participantsSheet);
+        [$workloadsMap, $momentosCargas, $errorsWorkloads] = $this->parseMoodleWorkloadSheet($workloadsSheet);
+
+        $errors = array_merge($errorsParticipants, $errorsWorkloads);
+
+        $participantsByEmail = collect($participants)
+            ->filter(fn ($row) => filter_var($row['email'] ?? null, FILTER_VALIDATE_EMAIL))
+            ->groupBy(fn ($row) => strtolower(trim((string) ($row['email'] ?? ''))))
+            ->map(fn ($group) => $group->first())
+            ->values();
+
+        $participantsEmails = $participantsByEmail
+            ->pluck('email')
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $usersByEmail = $this->fetchUsersByEmailInsensitive($participantsEmails);
+
+        $newUsers = $participantsByEmail
+            ->filter(function ($row) use ($usersByEmail) {
+                $email = strtolower(trim((string) ($row['email'] ?? '')));
+                return $email !== '' && !$usersByEmail->has($email);
+            })
+            ->map(fn ($row) => [
+                'nome' => trim((string) ($row['nome'] ?? '')),
+                'email' => strtolower(trim((string) ($row['email'] ?? ''))),
+            ])
+            ->values()
+            ->all();
+
+        $missingInWorkloads = array_values(array_diff($momentosParticipantes, $momentosCargas));
+        foreach ($missingInWorkloads as $momento) {
+            $errors[] = "Momento '{$momento}' está na planilha de participantes, mas não está na planilha de cargas.";
+        }
+
+        $missingInParticipants = array_values(array_diff($momentosCargas, $momentosParticipantes));
+        foreach ($missingInParticipants as $momento) {
+            $errors[] = "Momento '{$momento}' está na planilha de cargas, mas não aparece na planilha de participantes.";
+        }
+
+        $momentosUnicos = collect(array_merge($momentosParticipantes, $momentosCargas))
+            ->filter(fn ($nome) => trim((string) $nome) !== '')
+            ->unique()
+            ->values();
+
+        $momentos = $momentosUnicos->map(function ($nome) use ($workloadsMap, $momentosParticipantes, $momentosCargas) {
+            return [
+                'nome' => $nome,
+                'carga_horaria' => $workloadsMap[$nome] ?? null,
+                'em_participantes' => in_array($nome, $momentosParticipantes, true),
+                'em_cargas' => in_array($nome, $momentosCargas, true),
+            ];
+        })->values()->all();
+
+        return [
+            'participants' => $participants,
+            'momentos' => $momentos,
+            'new_users' => $newUsers,
+            'errors' => array_values(array_unique($errors)),
+            'conflicts' => $conflicts,
+            'summary' => [
+                'participants_rows' => count($participants),
+                'participants_unique_email' => collect($participants)->pluck('email')->filter()->unique()->count(),
+                'new_users_count' => count($newUsers),
+                'momentos_total' => count($momentos),
+                'momentos_com_carga' => count(array_filter($momentos, fn ($m) => is_int($m['carga_horaria']))),
+                'errors_total' => count(array_unique($errors)),
+            ],
+        ];
+    }
+
+    private function parseMoodleParticipantsSheet(array $sheet): array
+    {
+        $headersRaw = array_map(fn ($v) => trim((string) $v), $sheet[0] ?? []);
+        $headersNorm = array_map(fn ($v) => $this->normalizeMoodleHeader($v), $headersRaw);
+
+        $acceptedNome = ['nome', 'name', 'nome_completo'];
+        $acceptedEmail = [
+            'email',
+            'mail',
+            'e_mail',
+            'endereco_de_e_mail',
+            'endereco_de_email',
+        ];
+
+        $idxNome = $this->findMoodleHeaderIndex($headersNorm, $acceptedNome);
+        $idxEmail = $this->findMoodleHeaderIndex($headersNorm, [
+            ...$acceptedEmail,
+        ]);
+
+        if ($idxNome === null || $idxEmail === null) {
+            throw new \RuntimeException(
+                'A planilha de participantes precisa conter as colunas nome e email. '
+                . 'Aceitos para nome: [' . implode(', ', $acceptedNome) . ']. '
+                . 'Aceitos para email: [' . implode(', ', $acceptedEmail) . ']. '
+                . 'Colunas encontradas: ' . $this->formatMoodleHeadersForError($headersRaw)
+            );
+        }
+
+        $naoMomentos = [
+            'nome', 'name', 'email', 'mail', 'e_mail', 'cpf', 'telefone', 'municipio', 'tag',
+            'tipo_organizacao', 'tipo_de_organizacao', 'organizacao', 'escola_unidade',
+            'nome_completo', 'endereco_de_e_mail', 'endereco_de_email',
+            'concluido', 'concluida', 'nao_concluido', 'nao_concluida', 'status',
+        ];
+
+        $momentColumns = [];
+        foreach ($headersNorm as $i => $hNorm) {
+            $raw = trim((string) ($headersRaw[$i] ?? ''));
+            if ($raw === '' || in_array($hNorm, $naoMomentos, true)) {
+                continue;
+            }
+            $momentColumns[$i] = $raw;
+        }
+
+        $errors = [];
+        $conflicts = [];
+        $participants = [];
+        $emailsSeen = [];
+
+        for ($i = 1; $i < count($sheet); $i++) {
+            $line = $i + 1;
+            $row = $sheet[$i] ?? [];
+
+            $nome = trim((string) ($row[$idxNome] ?? ''));
+            $email = strtolower(trim((string) ($row[$idxEmail] ?? '')));
+
+            if ($nome === '' && $email === '') {
+                continue;
+            }
+
+            if ($nome === '' || $email === '') {
+                $errors[] = "Linha {$line}: nome e email são obrigatórios.";
+            }
+
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Linha {$line}: email inválido ({$email}).";
+            }
+
+            if ($email !== '') {
+                $nameNorm = $this->normalizeMoodleLabel($nome);
+                if (isset($emailsSeen[$email]) && $emailsSeen[$email] !== $nameNorm) {
+                    $errors[] = "Linha {$line}: email {$email} aparece com nomes diferentes na mesma planilha.";
+                }
+                $emailsSeen[$email] = $nameNorm;
+            }
+
+            $statusByMoment = [];
+            foreach ($momentColumns as $idx => $momentName) {
+                $status = $this->parseMoodleStatus($row[$idx] ?? null);
+                if ($status === null) {
+                    continue;
+                }
+                $statusByMoment[$momentName] = $status;
+            }
+
+            $participants[] = [
+                'line' => $line,
+                'nome' => $nome,
+                'email' => $email,
+                'status_por_momento' => $statusByMoment,
+            ];
+        }
+
+        $usersByEmail = $this->fetchUsersByEmailInsensitive(
+            collect($participants)->pluck('email')->filter()->unique()->values()
+        );
+
+        foreach ($participants as $row) {
+            $email = $row['email'];
+            if ($email === '' || !$usersByEmail->has($email)) {
+                continue;
+            }
+
+            $user = $usersByEmail->get($email);
+            if ($this->normalizeMoodleLabel($row['nome']) !== $this->normalizeMoodleLabel((string) $user->name)) {
+                $errors[] = "Linha {$row['line']}: nome/email não bate com cadastro existente. Planilha '{$row['nome']}' x Sistema '{$user->name}' ({$email}).";
+                $conflicts[] = [
+                    'line' => $row['line'],
+                    'email' => $email,
+                    'sheet_name' => $row['nome'],
+                    'system_name' => $user->name,
+                ];
+            }
+        }
+
+        return [
+            $participants,
+            array_values($momentColumns),
+            $errors,
+            $conflicts,
+        ];
+    }
+
+    private function parseMoodleWorkloadSheet(array $sheet): array
+    {
+        $headersRaw = array_map(fn ($v) => trim((string) $v), $sheet[0] ?? []);
+        $headersNorm = array_map(fn ($v) => $this->normalizeMoodleHeader($v), $headersRaw);
+
+        $acceptedMomento = ['momento', 'momentos', 'atividade', 'nome_momento', 'nome_do_momento', 'nome', 'descricao'];
+        $acceptedCarga = ['carga_horaria', 'carga_horaria_do_momento', 'carga', 'horas', 'hora', 'duracao', 'duracao_horas'];
+
+        $idxMomento = $this->findMoodleHeaderIndex($headersNorm, $acceptedMomento);
+        $idxCarga = $this->findMoodleHeaderIndex($headersNorm, $acceptedCarga);
+
+        if ($idxMomento === null || $idxCarga === null) {
+            throw new \RuntimeException(
+                'A planilha de cargas precisa conter colunas de momento e carga horária. '
+                . 'Aceitos para momento: [' . implode(', ', $acceptedMomento) . ']. '
+                . 'Aceitos para carga: [' . implode(', ', $acceptedCarga) . ']. '
+                . 'Colunas encontradas: ' . $this->formatMoodleHeadersForError($headersRaw)
+            );
+        }
+
+        $workloadsMap = [];
+        $errors = [];
+        $moments = [];
+
+        for ($i = 1; $i < count($sheet); $i++) {
+            $line = $i + 1;
+            $row = $sheet[$i] ?? [];
+
+            $momento = trim((string) ($row[$idxMomento] ?? ''));
+            $cargaRaw = trim((string) ($row[$idxCarga] ?? ''));
+
+            if ($momento === '' && $cargaRaw === '') {
+                continue;
+            }
+
+            if ($momento === '') {
+                $errors[] = "Linha {$line}: momento vazio na planilha de carga horária.";
+                continue;
+            }
+
+            if ($cargaRaw === '' || !is_numeric($cargaRaw)) {
+                $errors[] = "Linha {$line}: carga horária inválida para o momento '{$momento}'.";
+                continue;
+            }
+
+            $carga = (int) $cargaRaw;
+            if ($carga < 0) {
+                $errors[] = "Linha {$line}: carga horária negativa para o momento '{$momento}'.";
+                continue;
+            }
+
+            $workloadsMap[$momento] = $carga;
+            $moments[] = $momento;
+        }
+
+        return [$workloadsMap, $moments, $errors];
+    }
+
+    private function normalizeMoodleHeader(string $value): string
+    {
+        $value = Str::lower(Str::ascii(trim($value)));
+        $value = preg_replace('/[^a-z0-9]+/', '_', $value) ?? '';
+        return trim($value, '_');
+    }
+
+    private function normalizeMoodleLabel(string $value): string
+    {
+        $value = Str::lower(Str::ascii(trim($value)));
+        return preg_replace('/\s+/', ' ', $value) ?? $value;
+    }
+
+    private function findMoodleHeaderIndex(array $headersNorm, array $candidates): ?int
+    {
+        foreach ($headersNorm as $index => $header) {
+            if (in_array($header, $candidates, true)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    private function parseMoodleStatus(mixed $value): ?bool
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = Str::lower(Str::ascii(trim((string) $value)));
+        if ($normalized === '') {
+            return null;
+        }
+
+        $trueValues = ['sim', 's', '1', 'true', 'ok', 'x', 'concluiu', 'concluido', 'presente'];
+        $falseValues = [
+            'nao', 'n', '0', 'false', 'ausente', 'pendente',
+            'nao concluiu', 'nao_concluiu',
+            'nao concluido', 'nao_concluido',
+            'nao-concluido', 'nao concluida', 'nao_concluida',
+            'nao finalizou', 'nao_finalizou',
+        ];
+
+        if (in_array($normalized, $trueValues, true)) {
+            return true;
+        }
+
+        if (in_array($normalized, $falseValues, true)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    private function formatMoodleUserName(string $name): string
+    {
+        $normalized = preg_replace('/\s+/', ' ', trim($name)) ?? '';
+        if ($normalized === '') {
+            return 'Participante';
+        }
+
+        return Str::title(Str::lower($normalized));
+    }
+
+    private function buildMoodleDefaultPassword(string $name): string
+    {
+        $firstName = Str::of($name)
+            ->trim()
+            ->explode(' ')
+            ->first();
+
+        $firstName = Str::lower(Str::ascii((string) $firstName));
+        $firstName = preg_replace('/[^a-z0-9]/', '', $firstName) ?? '';
+
+        if ($firstName === '') {
+            $firstName = 'usuario';
+        }
+
+        return $firstName . '1234';
+    }
+
+    private function fetchUsersByEmailInsensitive(Collection $emails): Collection
+    {
+        $normalizedEmails = $emails
+            ->map(fn ($email) => strtolower(trim((string) $email)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($normalizedEmails->isEmpty()) {
+            return collect();
+        }
+
+        return User::query()
+            ->whereIn(DB::raw('LOWER(email)'), $normalizedEmails->all())
+            ->get()
+            ->keyBy(fn ($user) => strtolower(trim((string) $user->email)));
+    }
+
+    private function formatMoodleHeadersForError(array $headersRaw): string
+    {
+        $headers = collect($headersRaw)
+            ->map(fn ($h) => trim((string) $h))
+            ->filter(fn ($h) => $h !== '')
+            ->values()
+            ->all();
+
+        if (empty($headers)) {
+            return '[sem cabeçalhos na primeira linha]';
+        }
+
+        return '[' . implode(', ', $headers) . ']';
     }
 
     /**

@@ -206,6 +206,7 @@
         @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
           <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
           <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
+          <a href="{{ route('inscricoes.moodle.import', $evento)}}" class="btn btn-warning fw-semibold">Importação Moodle</a>
         @endhasanyrole
 
         @can('participante.ver')

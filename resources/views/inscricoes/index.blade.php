@@ -4,7 +4,10 @@
 <div class="container py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0">Inscritos — {{ $evento->nome }}</h1>
-    <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-sm btn-outline-primary">Importar inscrições</a>
+    <div class="d-flex gap-2">
+      <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-sm btn-outline-primary">Importar inscrições</a>
+      <a href="{{ route('inscricoes.moodle.import', $evento) }}" class="btn btn-sm btn-warning fw-semibold">Importação Moodle</a>
+    </div>
   </div>
 
   {{-- Filtros --}}
