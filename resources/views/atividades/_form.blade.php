@@ -1,8 +1,34 @@
+<style>
+  .form-label[data-required="true"]::after {
+    content: ' *';
+    color: #dc3545;
+    font-weight: 700;
+  }
+
+  .municipios-checkbox-list {
+    max-height: 18rem;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    background: #fff;
+  }
+
+  .municipios-checkbox-item {
+    padding: 0.35rem 0 0.35rem 1.5rem;
+    border-bottom: 1px solid #f1f3f5;
+  }
+
+  .municipios-checkbox-item:last-child {
+    border-bottom: 0;
+  }
+</style>
+
 @csrf
 
 {{-- Momento --}}
 <div class="mb-3">
-  <label for="descricao" class="form-label">Descrição <span class="text-danger">*</span></label>
+  <label for="descricao" class="form-label">Descrição</label>
   <textarea name="descricao" id="descricao" rows="3"
             class="form-control @error('descricao') is-invalid @enderror"
             required>{{ old('descricao', $atividade->descricao ?? '') }}</textarea>
@@ -16,35 +42,48 @@
 @endphp
 <div class="mb-3">
   <label for="municipios" class="form-label">Municípios </label>
-  <select name="municipios[]" id="municipios" multiple
-          class="form-select @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror"
-          size="6">
+  <div id="municipios"
+       class="municipios-checkbox-list @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror">
     @foreach($municipios ?? [] as $m)
       @php
         $uf = $m->estado->sigla ?? '';
         $regiao = $m->estado->regiao->nome ?? '';
         $label = trim(($regiao ? $regiao . ' — ' : '') . $m->nome . ($uf ? ' - ' . $uf : ''));
       @endphp
-      <option value="{{ $m->id }}" @selected(in_array((string) $m->id, $municipiosSelecionados, true))>
-        {{ $label }}
-      </option>
+      <div class="form-check municipios-checkbox-item">
+        <input class="form-check-input"
+               type="checkbox"
+               name="municipios[]"
+               id="municipio_{{ $m->id }}"
+               value="{{ $m->id }}"
+               @checked(in_array((string) $m->id, $municipiosSelecionados, true))>
+        <label class="form-check-label small" for="municipio_{{ $m->id }}">
+          {{ $label }}
+        </label>
+      </div>
     @endforeach
-  </select>
+  </div>
   <div class="form-text">Selecione um ou mais municípios atendidos por este momento.</div>
   @error('municipios') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
   @error('municipios.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
 </div>
 
 <script>
-  // Permite selecionar/deselecionar vários itens sem precisar segurar Ctrl/Cmd.
   document.addEventListener('DOMContentLoaded', function () {
-    const select = document.getElementById('municipios');
-    if (!select) return;
-    select.addEventListener('mousedown', function (e) {
-      if (e.target.tagName === 'OPTION') {
-        e.preventDefault();
-        const opt = e.target;
-        opt.selected = !opt.selected;
+    const form = document.getElementById('descricao')?.closest('form');
+    if (!form) return;
+
+    // Remove a marcação anterior antes de aplicar o asterisco nos campos required.
+    form.querySelectorAll('label[data-required="true"]').forEach(function (label) {
+      label.removeAttribute('data-required');
+    });
+
+    // O asterisco visual passa a depender apenas do atributo HTML `required`.
+    form.querySelectorAll('input[required], select[required], textarea[required]').forEach(function (field) {
+      if (!field.id) return;
+      const label = form.querySelector(`label[for="${field.id}"]`);
+      if (label) {
+        label.dataset.required = 'true';
       }
     });
   });
@@ -52,24 +91,24 @@
 
 <div class="row g-3">
   <div class="col-md-4">
-    <label class="form-label">Dia <span class="text-danger">*</span></label>
-    <input type="date" name="dia"
+    <label for="dia" class="form-label">Dia</label>
+    <input type="date" name="dia" id="dia"
            value="{{ old('dia', isset($atividade)? $atividade->dia : '') }}"
            class="form-control @error('dia') is-invalid @enderror" required>
     @error('dia') <div class="invalid-feedback">{{ $message }}</div> @enderror
   </div>
 
   <div class="col-md-4">
-    <label class="form-label">Hora de início <span class="text-danger">*</span></label>
-    <input type="time" name="hora_inicio"
+    <label for="hora_inicio" class="form-label">Hora de início</label>
+    <input type="time" name="hora_inicio" id="hora_inicio"
            value="{{ old('hora_inicio', isset($atividade)? \Illuminate\Support\Str::of($atividade->hora_inicio)->substr(0,5) : '') }}"
            class="form-control @error('hora_inicio') is-invalid @enderror" required>
     @error('hora_inicio') <div class="invalid-feedback">{{ $message }}</div> @enderror
   </div>
   
   <div class="col-md-4">
-    <label class="form-label">Hora de término <span class="text-danger">*</span></label>
-    <input type="time" name="hora_fim"
+    <label for="hora_fim" class="form-label">Hora de término</label>
+    <input type="time" name="hora_fim" id="hora_fim"
            value="{{ old('hora_fim', isset($atividade)? \Illuminate\Support\Str::of($atividade->hora_fim)->substr(0,5) : '') }}"
            class="form-control @error('hora_fim') is-invalid @enderror" required>
     @error('hora_fim') <div class="invalid-feedback">{{ $message }}</div> @enderror

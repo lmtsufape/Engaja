@@ -611,7 +611,6 @@ class InscricaoController extends Controller
         if ($atividadeId && $apenasDisponiveis) {
             $participantesQuery->whereDoesntHave('inscricoes', function ($q) use ($evento, $atividadeId) {
                 $q->where('evento_id', $evento->id)
-                    ->where('atividade_id', $atividadeId)
                     ->whereNull('deleted_at');
             });
         }

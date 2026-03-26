@@ -69,7 +69,7 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         ->name('atividades.lista-autorizacao.pdf');
 });
 
-Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica'])->group(function () {
+Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::get('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'import'])->name('inscricoes.import');
     Route::post('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'cadastro'])->name('inscricoes.cadastro');
     Route::get('/eventos/{evento}/inscricoes/preview', [InscricaoController::class, 'preview'])->name('inscricoes.preview');
@@ -125,6 +125,8 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     ->name('usuarios.')
     ->group(function () {
         Route::get('/', [UserManagementController::class, 'index'])->name('index');
+        Route::get('cadastrar', [UserManagementController::class, 'create'])->name('create');
+        Route::post('/', [UserManagementController::class, 'store'])->name('store');
         Route::get('verificar', [UserManagementController::class, 'verificarIndex'])->name('verificar.index');
         Route::post('verificar', [UserManagementController::class, 'verificarProcessar'])->name('verificar.processar');
         Route::get('verificar/exportar/{format}', [UserManagementController::class, 'verificarExportar'])->name('verificar.exportar');

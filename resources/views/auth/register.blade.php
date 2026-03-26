@@ -16,7 +16,7 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="POST" action="{{ route('register') }}">
+                    <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data">
                         @csrf
 
                         {{-- Name --}}
@@ -72,6 +72,17 @@
                             </div>
                             <div class="card-body">
                                 <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="profile_photo" class="form-label">Foto de perfil</label>
+                                        <input id="profile_photo" type="file" name="profile_photo"
+                                               class="form-control @error('profile_photo') is-invalid @enderror"
+                                               accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp">
+                                        @error('profile_photo')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                        <div class="form-text">Formatos aceitos: JPG, JPEG, PNG, GIF e WEBP. Tamanho máximo: 5 MB.</div>
+                                    </div>
+
                                     <div class="col-md-6">
                                         <label for="cpf" class="form-label">CPF <span class="text-danger">*</span></label>
                                         <input id="cpf" type="text" name="cpf" inputmode="numeric" autocomplete="off"

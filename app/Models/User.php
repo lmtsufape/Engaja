@@ -25,6 +25,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'profile_photo_path',
         'identidade_genero',
         'identidade_genero_outro',
         'raca_cor',
@@ -69,6 +70,26 @@ class User extends Authenticatable
         return $this->hasMany(Evento::class);
     }
 
+    public function getProfilePhotoUrlAttribute(): ?string
+    {
+        if (! $this->profile_photo_path) {
+            return null;
+        }
+
+        return '/storage/' . ltrim($this->profile_photo_path, '/');
+    }
+
+    public function getProfileInitialAttribute(): string
+    {
+        $name = trim((string) ($this->name ?? ''));
+
+        if ($name === '') {
+            return 'U';
+        }
+
+        return mb_strtoupper(mb_substr($name, 0, 1));
+    }
+
     protected static function booted(): void
     {
         static::created(function (User $user) {
@@ -83,4 +104,3 @@ class User extends Authenticatable
         });
     }
 }
-

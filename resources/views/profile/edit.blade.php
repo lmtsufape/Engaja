@@ -47,7 +47,7 @@
     <div class="row g-4">
         {{-- PERFIL + PARTICIPANTE + DEMOGRÁFICOS (UM ÚNICO FORM) --}}
         <div class="col-12">
-            <form method="POST" action="{{ route('profile.update') }}" class="needs-validation" novalidate>
+            <form method="POST" action="{{ route('profile.update') }}" class="needs-validation" novalidate enctype="multipart/form-data">
                 @csrf
                 @method('patch')
 
@@ -56,6 +56,39 @@
                         <strong>Informações do perfil</strong>
                     </div>
                     <div class="card-body">
+                        <div class="mb-4">
+                            <label for="profile_photo" class="form-label">Foto de perfil</label>
+                            <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+                                @if ($u->profile_photo_url)
+                                    <img src="{{ $u->profile_photo_url }}" alt="Foto de perfil de {{ $u->name }}"
+                                         class="rounded-circle border"
+                                         style="width:72px; height:72px; object-fit:cover;">
+                                @else
+                                    <span class="admin-avatar" style="width:72px; height:72px; font-size:1.5rem;">{{ $u->profile_initial }}</span>
+                                @endif
+
+                                <div class="flex-grow-1">
+                                    <input id="profile_photo" type="file" name="profile_photo"
+                                           class="form-control @error('profile_photo') is-invalid @enderror"
+                                           accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp">
+                                    @error('profile_photo')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <div class="form-text">Formatos aceitos: JPG, JPEG, PNG, GIF e WEBP. Tamanho máximo: 5 MB.</div>
+
+                                    @if ($u->profile_photo_url)
+                                        <button type="submit"
+                                                name="remove_profile_photo"
+                                                value="1"
+                                                class="btn btn-outline-danger btn-sm mt-3"
+                                                onclick="return confirm('Deseja remover a foto de perfil?')">
+                                            Remover foto
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Nome --}}
                         <div class="mb-3">
                             <label for="name" class="form-label">Nome</label>

@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -178,6 +179,13 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
+        if (! empty($data['remove_profile_photo'])) {
+            $this->deleteProfilePhoto($user);
+            $user->profile_photo_path = null;
+        } elseif ($request->hasFile('profile_photo')) {
+            $user->profile_photo_path = $this->storeProfilePhoto($request, $user);
+        }
+
         $user->save();
 
         $participanteData = [
@@ -196,6 +204,27 @@ class ProfileController extends Controller
         );
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
+    }
+
+    private function storeProfilePhoto(Request $request, \App\Models\User $user): string
+    {
+        $file = $request->file('profile_photo');
+        $directory = "users/{$user->id}/perfil";
+        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+        $filename = "perfil.{$extension}";
+
+        $this->deleteProfilePhoto($user);
+
+        return $file->storeAs($directory, $filename, 'public');
+    }
+
+    private function deleteProfilePhoto(\App\Models\User $user): void
+    {
+        if (! $user->profile_photo_path) {
+            return;
+        }
+
+        Storage::disk('public')->delete($user->profile_photo_path);
     }
 
     /**

@@ -18,6 +18,8 @@ use Illuminate\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use App\Exports\UsersExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -27,6 +29,7 @@ class UserManagementController extends Controller
     private const PROTECTED_ROLES = ['administrador'];
 
     private const LEGACY_ROLES = ['gestor', 'formador'];
+    private const CREATOR_ROLES = ['administrador', 'gerente', 'articulador'];
     private const EMAIL_SIMILARITY_THRESHOLD = 0.85;
 
     public function index(Request $request): View
@@ -79,8 +82,78 @@ class UserManagementController extends Controller
         ]);
     }
 
+    public function create(): View
+    {
+        abort_unless(auth()->user()?->hasAnyRole(self::CREATOR_ROLES), 403);
+
+        $municipios = Municipio::with('estado')
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'estado_id']);
+
+        $organizacoes = config('engaja.organizacoes', []);
+        $participanteTags = config('engaja.participante_tags', Participante::TAGS);
+        $roles = $this->assignableRoles();
+
+        return view('usuarios.create', [
+            'user'             => new User(),
+            'municipios'       => $municipios,
+            'organizacoes'     => $organizacoes,
+            'participanteTags' => $participanteTags,
+            'roles'            => $roles,
+            'currentRole'      => 'participante',
+        ]);
+    }
+
+    public function store(UserManagementRequest $request): RedirectResponse
+    {
+        abort_unless(auth()->user()?->hasAnyRole(self::CREATOR_ROLES), 403);
+
+        $data = $request->validated();
+
+        DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name'                          => $data['name'],
+                'email'                         => $data['email'],
+                'password'                      => Hash::make($data['password']),
+                'identidade_genero'            => $data['identidade_genero'] ?? null,
+                'identidade_genero_outro'      => $data['identidade_genero_outro'] ?? null,
+                'raca_cor'                     => $data['raca_cor'] ?? null,
+                'comunidade_tradicional'       => $data['comunidade_tradicional'] ?? null,
+                'comunidade_tradicional_outro' => $data['comunidade_tradicional_outro'] ?? null,
+                'faixa_etaria'                 => $data['faixa_etaria'] ?? null,
+                'pcd'                          => $data['pcd'] ?? null,
+                'orientacao_sexual'            => $data['orientacao_sexual'] ?? null,
+                'orientacao_sexual_outra'      => $data['orientacao_sexual_outra'] ?? null,
+            ]);
+
+            $user->participante()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'cpf'              => $data['cpf'] ?? null,
+                    'telefone'         => $data['telefone'] ?? null,
+                    'municipio_id'     => $data['municipio_id'] ?? null,
+                    'escola_unidade'   => $data['escola_unidade'] ?? null,
+                    'tipo_organizacao' => $data['tipo_organizacao'] ?? null,
+                    'tag'              => $data['tag'] ?? null,
+                ]
+            );
+
+            $roleToApply = auth()->user()->hasRole('administrador')
+                ? ($data['role'] ?? 'participante')
+                : 'participante';
+
+            $user->syncRoles([$roleToApply]);
+        });
+
+        return redirect()
+            ->route('usuarios.index')
+            ->with('success', 'Usuario cadastrado com sucesso.');
+    }
+
     public function edit(User $managedUser): View|RedirectResponse
     {
+        abort_unless(auth()->user()?->can('user.editar'), 403);
+
         if ($this->isProtected($managedUser)) {
             return redirect()
                 ->route('usuarios.index')
@@ -109,6 +182,8 @@ class UserManagementController extends Controller
 
     public function update(UserManagementRequest $request, User $managedUser): RedirectResponse
     {
+        abort_unless(auth()->user()?->can('user.editar'), 403);
+
         if ($this->isProtected($managedUser)) {
             return redirect()
                 ->route('usuarios.index')

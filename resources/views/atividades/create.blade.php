@@ -49,6 +49,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (form) {
         form.addEventListener('submit', function (e) {
+            // O checklist só deve aparecer quando os obrigatórios do momento já estiverem preenchidos.
+            if (!this.checkValidity()) {
+                this.reportValidity();
+                return;
+            }
+
             if (!this.dataset.checklistConfirmed) {
                 e.preventDefault();
                 const modal = new bootstrap.Modal(document.getElementById('modalChecklistPosAcao'));
@@ -62,6 +68,8 @@ document.addEventListener('DOMContentLoaded', function () {
         btnConfirmarPos.addEventListener('click', function () {
             const container = document.getElementById('hidden-checklist-encerramento');
             container.innerHTML = '';
+
+            // Espelha as marcações do modal em inputs hidden para o backend receber no submit.
             document.querySelectorAll('#modalChecklistPosAcao .js-checklist-item:checked').forEach(cb => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
@@ -73,6 +81,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const modalEl = document.getElementById('modalChecklistPosAcao');
             bootstrap.Modal.getInstance(modalEl)?.hide();
             form.dataset.checklistConfirmed = 'true';
+
+            // Reenvia pelo mecanismo nativo para manter a validação HTML consistente.
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+                return;
+            }
             form.submit();
         });
     }

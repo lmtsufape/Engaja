@@ -25,6 +25,7 @@ class ProfileUpdateRequest extends FormRequest
             'cpf'          => $toNull($cpfDigits ?: null),
             'telefone'     => $toNull($telDigits ?: null),
             'municipio_id' => $toNull($this->municipio_id ?? null),
+            'remove_profile_photo' => $this->boolean('remove_profile_photo'),
         ]);
     }
 
@@ -38,6 +39,8 @@ class ProfileUpdateRequest extends FormRequest
             'cpf'          => ['required', 'digits:11'],
             'telefone'     => ['nullable', 'regex:/^\d{10,11}$/'],
             'municipio_id' => ['nullable', 'exists:municipios,id'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
+            'remove_profile_photo' => ['nullable', 'boolean'],
             'escola_unidade'   => ['nullable','string','max:255'],
             'tipo_organizacao' => ['nullable','string','max:255', Rule::in(config('engaja.organizacoes', []))],
             'tag'              => ['nullable', Rule::in(Participante::TAGS)],
@@ -126,6 +129,9 @@ class ProfileUpdateRequest extends FormRequest
             'cpf.digits'          => 'CPF deve conter 11 digitos.',
             'telefone.regex'      => 'Telefone deve ter DDD e 10 ou 11 digitos.',
             'municipio_id.exists' => 'Municipio invalido.',
+            'profile_photo.image' => 'Envie um arquivo de imagem valido.',
+            'profile_photo.mimes' => 'A foto deve estar em JPG, JPEG, PNG, GIF ou WEBP.',
+            'profile_photo.max'   => 'A foto deve ter no maximo 5 MB.',
         ];
     }
 }

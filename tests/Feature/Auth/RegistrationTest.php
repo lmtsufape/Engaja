@@ -7,6 +7,8 @@ use App\Models\Municipio;
 use App\Models\Participante;
 use App\Models\Regiao;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -22,6 +24,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        Storage::fake('public');
+
         $regiao = Regiao::create(['nome' => 'Nordeste']);
         $estado = Estado::create([
             'nome' => 'Ceara',
@@ -50,10 +54,11 @@ class RegistrationTest extends TestCase
             'faixa_etaria' => 'Adulto (18 a 59 anos)',
             'pcd' => 'Não',
             'orientacao_sexual' => 'Heterossexual',
+            'profile_photo' => UploadedFile::fake()->image('perfil.jpg'),
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect('/');
 
         $this->assertDatabaseHas('participantes', [
             'cpf' => '39053344705',
@@ -62,5 +67,14 @@ class RegistrationTest extends TestCase
             'escola_unidade' => 'Escola Teste',
             'tag' => Participante::TAGS[0],
         ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+        ]);
+
+        $user = \App\Models\User::where('email', 'test@example.com')->firstOrFail();
+
+        $this->assertNotNull($user->profile_photo_path);
+        Storage::disk('public')->assertExists($user->profile_photo_path);
     }
 }

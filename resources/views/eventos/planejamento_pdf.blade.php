@@ -220,7 +220,7 @@
     {{-- ── Situações Desafiadoras ── --}}
     @if ($evento->situacoesDesafiadoras->isNotEmpty())
     <div class="section">
-        <div class="section-title">Situações Desafiadoras da EJA</div>
+        <div class="section-title">Situações Desafiadoras da EJA a serem enfrentadas</div>
         @foreach ($evento->situacoesDesafiadoras as $sit)
         <div class="list-item">{{ $sit->nome }}</div>
         @endforeach
