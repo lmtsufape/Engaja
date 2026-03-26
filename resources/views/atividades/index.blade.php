@@ -27,12 +27,12 @@
             <th>Público esperado</th>
             <th>Carga horária</th>
             <th>Status</th>
-            @hasanyrole('administrador|formador')
+            @auth
             <th class="text-end">Ações</th>
-            @endhasanyrole
+            @endauth
           </tr>
         </thead>
-        @php $temPermissao = auth()->user()?->hasAnyRole('administrador', 'formador'); @endphp
+        @php $temPermissao = auth()->check(); @endphp
         <tbody>
           @forelse($atividades as $at)
             @php
@@ -66,16 +66,17 @@
                   </button>
                 @endif
               </td>
-              @hasanyrole('administrador|formador')
+              @auth
               <td class="text-end text-nowrap">
+                @php $minhaAvaliacaoAtividade = $at->minha_avaliacao_atividade; @endphp
                 <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
                 <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                <a href="{{ $at->avaliacaoAtividade 
+                 <a href="{{ $minhaAvaliacaoAtividade
                         ? route('avaliacao-atividade.edit',   $at) 
                         : route('avaliacao-atividade.create', $at) }}"
-                   class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}"
-                   title="{{ $at->avaliacaoAtividade ? 'Editar relatório' : 'Criar relatório' }}">
-                   📋 Avaliação
+                   class="btn btn-sm {{ $minhaAvaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}"
+                   title="{{ $minhaAvaliacaoAtividade ? 'Editar meu relatório' : 'Criar meu relatório' }}">
+                   📋 {{ $minhaAvaliacaoAtividade ? 'Meu relatório' : 'Criar relatório' }}
                 </a>
 
                 <form class="d-inline" method="POST" action="{{ route('atividades.destroy', $at) }}"
@@ -84,7 +85,7 @@
                   <button class="btn btn-sm btn-outline-danger">Excluir</button>
                 </form>
               </td>
-              @endhasanyrole
+              @endauth
             </tr>
           @empty
             <tr>
@@ -149,8 +150,8 @@
       document.querySelectorAll('.btn-checklist-reabrir').forEach(btn => {
           btn.addEventListener('click', function () {
               atividadeIdAtual = this.dataset.atividadeId;
-              const marcadosPl = JSON.parse(this.dataset.checklistPl || '[]');
-              const marcadosEn = JSON.parse(this.dataset.checklistEn || '[]');
+            const marcadosPl = normalizeMarkedIndexes(ITENS_PLANEJAMENTO, JSON.parse(this.dataset.checklistPl || '[]'));
+            const marcadosEn = normalizeMarkedIndexes(ITENS_ENCERRAMENTO, JSON.parse(this.dataset.checklistEn || '[]'));
 
               const body = document.getElementById('reopen-checklist-body');
               body.innerHTML = renderChecklist('planejamento', ITENS_PLANEJAMENTO, marcadosPl)
@@ -159,6 +160,34 @@
               new bootstrap.Modal(document.getElementById('modalReopenChecklist')).show();
           });
       });
+
+        function normalizeMarkedIndexes(itens, marcados) {
+          if (!Array.isArray(marcados)) {
+            return [];
+          }
+
+          const normalizedTextToIndex = new Map(
+            itens.map((item, index) => [String(item).trim().toLowerCase(), index])
+          );
+
+          return [...new Set(
+            marcados
+              .map((valor) => {
+                if (Number.isInteger(valor)) {
+                  return valor;
+                }
+
+                const asNumber = Number(valor);
+                if (Number.isInteger(asNumber)) {
+                  return asNumber;
+                }
+
+                const textKey = String(valor).trim().toLowerCase();
+                return normalizedTextToIndex.has(textKey) ? normalizedTextToIndex.get(textKey) : null;
+              })
+              .filter((index) => Number.isInteger(index) && index >= 0 && index < itens.length)
+          )];
+        }
 
       function renderChecklist(tipo, itens, marcados) {
           let html = `<h6 class="fw-bold mt-2" style="color: #421944;">${tipo === 'planejamento' ? '📋 Planejamento' : '✅ Encerramento'}</h6><div class="vstack gap-2 mb-4">`;

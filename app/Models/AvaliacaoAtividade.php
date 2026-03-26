@@ -9,6 +9,7 @@ class AvaliacaoAtividade extends Model
 {
     protected $fillable = [
         'atividade_id',
+        'user_id',
         'nome_educador',
         'qtd_participantes_prefeitura',
         'qtd_participantes_movimentos_sociais',
@@ -29,5 +30,10 @@ class AvaliacaoAtividade extends Model
     public function atividade(): BelongsTo
     {
         return $this->belongsTo(Atividade::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }
