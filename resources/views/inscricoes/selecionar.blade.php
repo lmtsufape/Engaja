@@ -34,11 +34,11 @@
         </div>
         <br>
       @endif
-      <form method="GET" action="{{ route('inscricoes.selecionar', $evento) }}">
+      <form method="GET" action="{{ route('inscricoes.selecionar', $evento) }}" id="selecionarFiltrosForm">
         <div class="row g-3 mb-2">
           <div class="col-12">
             <label class="form-label mb-1">Selecione o momento <span class="text-danger">*</span></label>
-            <select name="atividade_id" class="form-select form-select-sm">
+            <select name="atividade_id" id="atividadeIdSelect" class="form-select form-select-sm">
               <option value="">Selecione...</option>
               @foreach($atividades as $at)
                 @php
@@ -46,24 +46,19 @@
                   $hora = $at->hora_inicio ? Carbon::parse($at->hora_inicio)->format('H:i') : null;
                   $label = trim(($at->descricao ?: 'Momento') . ' - ' . $dia . ($hora ? ' ' . $hora : ''));
                 @endphp
-                <option value="{{ $at->id }}" @selected((string)$atividadeId === (string)$at->id)>{{ $label }}</option>
+                <option value="{{ $at->id }}" @selected((string) $atividadeId === (string) $at->id)>{{ $label }}</option>
               @endforeach
             </select>
           </div>
         </div>
 
         <div class="row g-3 align-items-end">
-          <div class="col-xl-3 col-md-4">
-            <label class="form-label mb-1">Buscar</label>
-            <input type="text" name="q" value="{{ $search }}" class="form-control form-control-sm" placeholder="Nome, email, CPF...">
-          </div>
-
           <div class="col-xl-2 col-md-4">
             <label class="form-label mb-1">Município</label>
             <select name="municipio_id" class="form-select form-select-sm">
               <option value="">Todos</option>
               @foreach($municipios as $m)
-                <option value="{{ $m->id }}" @selected((string)$municipioId === (string)$m->id)>
+                <option value="{{ $m->id }}" @selected((string) $municipioId === (string) $m->id)>
                   {{ $m->nome_com_estado ?? ($m->nome . ($m->estado?->sigla ? ' - '.$m->estado?->sigla : '')) }}
                 </option>
               @endforeach
@@ -83,7 +78,7 @@
           <div class="col-xl-1 col-md-4">
             <label class="form-label mb-1">Por página</label>
             <select name="per_page" class="form-select form-select-sm">
-              @foreach([25,50,100,200] as $pp)
+              @foreach([25, 50, 100, 200] as $pp)
                 <option value="{{ $pp }}" @selected($perPage == $pp)>{{ $pp }}</option>
               @endforeach
             </select>
@@ -112,7 +107,7 @@
 
   <form method="POST" action="{{ route('inscricoes.selecionar.store', $evento) }}" class="card shadow-sm">
     @csrf
-    <input type="hidden" name="atividade_id" value="{{ $atividadeId }}">
+    <input type="hidden" name="atividade_id" value="{{ $atividadeId }}" id="atividadeIdHidden">
     <input type="hidden" name="q" value="{{ $search }}">
     <input type="hidden" name="municipio_id" value="{{ $municipioId }}">
     <input type="hidden" name="tag" value="{{ $tagSelecionada }}">
@@ -120,18 +115,30 @@
     <input type="hidden" name="apenas_disponiveis" value="{{ $apenasDisponiveis ? 1 : 0 }}">
 
     <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <div>
-        <strong>{{ $participantes->total() }}</strong> participantes encontrados
-        <span class="text-muted small ms-1">
-          Página {{ $participantes->currentPage() }} de {{ $participantes->lastPage() }}
-        </span>
+      <div class="d-flex align-items-center flex-wrap gap-3">
+        <div>
+          <strong>{{ $participantes->total() }}</strong> participantes encontrados
+          <span class="text-muted small ms-1">
+            Página {{ $participantes->currentPage() }} de {{ $participantes->lastPage() }}
+          </span>
+        </div>
+        <div style="min-width: 320px; width: 100%; max-width: 420px;">
+          <input
+            type="text"
+            name="q"
+            form="selecionarFiltrosForm"
+            value="{{ $search }}"
+            class="form-control form-control-sm"
+            id="liveParticipantSearch"
+            placeholder="Buscar participante por nome">
+        </div>
       </div>
       <div class="d-flex gap-2 align-items-center">
         <div class="form-check mb-0">
           <input class="form-check-input" type="checkbox" id="selectAll">
           <label class="form-check-label small" for="selectAll">Selecionar página</label>
         </div>
-        <button type="submit" class="btn btn-engaja btn-sm" @disabled(!$atividadeId || $participantes->isEmpty())>
+        <button type="submit" class="btn btn-engaja btn-sm" id="inscreverSelecionadosBtn" @disabled(!$atividadeId || $participantes->isEmpty())>
           Inscrever selecionados
         </button>
       </div>
@@ -206,13 +213,86 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
+    const filtrosForm = document.getElementById('selecionarFiltrosForm');
+    const liveParticipantSearch = document.getElementById('liveParticipantSearch');
+    const atividadeSelect = document.getElementById('atividadeIdSelect');
+    const atividadeHidden = document.getElementById('atividadeIdHidden');
+    const disponibilidadeSwitch = document.getElementById('apenasDisponiveisSwitch');
     const selectAll = document.getElementById('selectAll');
-    if (!selectAll) return;
-    selectAll.addEventListener('change', () => {
-      document.querySelectorAll('.participant-checkbox:not(:disabled)').forEach((checkbox) => {
-        checkbox.checked = selectAll.checked;
+    const submitButton = document.getElementById('inscreverSelecionadosBtn');
+    const participantCheckboxes = () => Array.from(document.querySelectorAll('.participant-checkbox:not(:disabled)'));
+
+    const updateSubmitButton = () => {
+      if (!submitButton) return;
+
+      const hasAtividade = Boolean(atividadeHidden?.value || atividadeSelect?.value);
+      const hasSelectedParticipants = participantCheckboxes().some((checkbox) => checkbox.checked);
+
+      submitButton.disabled = !hasAtividade || !hasSelectedParticipants;
+    };
+
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        participantCheckboxes().forEach((checkbox) => {
+          checkbox.checked = selectAll.checked;
+        });
+        updateSubmitButton();
+      });
+    }
+
+    participantCheckboxes().forEach((checkbox) => {
+      checkbox.addEventListener('change', () => {
+        if (selectAll) {
+          const checkboxes = participantCheckboxes();
+          selectAll.checked = checkboxes.length > 0 && checkboxes.every((item) => item.checked);
+        }
+        updateSubmitButton();
       });
     });
+
+    if (atividadeSelect) {
+      atividadeSelect.addEventListener('change', () => {
+        const hasAtividade = atividadeSelect.value !== '';
+
+        if (atividadeHidden) {
+          atividadeHidden.value = atividadeSelect.value;
+        }
+
+        if (disponibilidadeSwitch) {
+          disponibilidadeSwitch.disabled = !hasAtividade;
+          if (!hasAtividade) {
+            disponibilidadeSwitch.checked = false;
+          }
+        }
+
+        updateSubmitButton();
+
+        if (filtrosForm) {
+          filtrosForm.requestSubmit();
+        }
+      });
+    }
+
+    if (disponibilidadeSwitch) {
+      disponibilidadeSwitch.addEventListener('change', () => {
+        if (filtrosForm) {
+          filtrosForm.requestSubmit();
+        }
+      });
+    }
+
+    if (liveParticipantSearch && filtrosForm) {
+      let searchTimeout;
+
+      liveParticipantSearch.addEventListener('input', () => {
+        window.clearTimeout(searchTimeout);
+        searchTimeout = window.setTimeout(() => {
+          filtrosForm.requestSubmit();
+        }, 300);
+      });
+    }
+
+    updateSubmitButton();
   });
 </script>
 @endsection
