@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
@@ -50,6 +51,7 @@ class RegisteredUserController extends Controller
             'escola_unidade'               => ['nullable', 'string', 'max:255'],
             'tipo_organizacao'             => ['nullable', 'string', 'max:255', Rule::in(config('engaja.organizacoes', []))],
             'tag'                          => ['nullable', Rule::in(Participante::TAGS)],
+            'profile_photo'                => ['nullable', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
             'identidade_genero'            => ['required', 'string'],
             'identidade_genero_outro'      => ['nullable', 'string', 'max:255', 'required_if:identidade_genero,Outro'],
             'raca_cor'                     => ['required', 'string'],
@@ -66,6 +68,9 @@ class RegisteredUserController extends Controller
             'municipio_id.exists'          => 'Município inválido.',
             'tipo_organizacao.in'          => 'Selecione um tipo de organização válido.',
             'tag.in'                       => 'Selecione uma tag válida.',
+            'profile_photo.image'          => 'Envie um arquivo de imagem válido.',
+            'profile_photo.mimes'          => 'A foto deve estar em JPG, JPEG, PNG, GIF ou WEBP.',
+            'profile_photo.max'            => 'A foto deve ter no máximo 5 MB.',
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -82,7 +87,7 @@ class RegisteredUserController extends Controller
 
         $data = $validator->validate();
 
-        $user = DB::transaction(function () use ($data) {
+        $user = DB::transaction(function () use ($data, $request) {
             $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
@@ -112,6 +117,12 @@ class RegisteredUserController extends Controller
 
             $user->assignRole('participante');
 
+            if ($request->hasFile('profile_photo')) {
+                $user->forceFill([
+                    'profile_photo_path' => $this->storeProfilePhoto($request, $user),
+                ])->save();
+            }
+
             return $user;
         });
 
@@ -135,7 +146,22 @@ class RegisteredUserController extends Controller
             'escola_unidade' => $toNull(isset($request->escola_unidade) ? trim((string) $request->escola_unidade) : null),
             'tipo_organizacao' => $toNull(isset($request->tipo_organizacao) ? trim((string) $request->tipo_organizacao) : null),
             'tag' => $toNull(isset($request->tag) ? trim((string) $request->tag) : null),
+            'profile_photo' => $request->file('profile_photo'),
         ]);
+    }
+
+    private function storeProfilePhoto(Request $request, User $user): string
+    {
+        $file = $request->file('profile_photo');
+        $directory = "users/{$user->id}/perfil";
+        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+        $filename = "perfil.{$extension}";
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+        }
+
+        return $file->storeAs($directory, $filename, 'public');
     }
 
     private function normalizeCpf(?string $cpf): ?string

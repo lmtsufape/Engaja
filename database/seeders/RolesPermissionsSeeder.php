@@ -106,10 +106,10 @@ class RolesPermissionsSeeder extends Seeder
         // ARTICULADOR
         $articulador->givePermissionTo([
             'user.ver','user.criar','user.editar',
-            'participante.ver',
+            'participante.ver','participante.criar',
             'evento.ver',
             'atividade.ver',
-            'inscricao.ver',
+            'inscricao.ver','inscricao.criar',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
             'dimensao.ver','dimensao.criar','dimensao.editar',
             'indicador.ver','indicador.criar','indicador.editar',

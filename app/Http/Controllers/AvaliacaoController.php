@@ -20,10 +20,13 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Throwable;
 
 class AvaliacaoController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
         $avaliacaoTable = (new Avaliacao())->getTable();

@@ -231,6 +231,14 @@
       align-items: center;
       justify-content: center;
       font-weight: 700;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .admin-avatar--image {
+      object-fit: cover;
+      background: #fff;
+      border: 1px solid #e7e8ed;
     }
 
     .admin-main {
@@ -389,9 +397,12 @@
           <div class="d-flex align-items-center gap-3">
             <span class="text-muted small d-none d-md-inline">Ola, {{ Auth::user()->name }}</span>
             <div class="dropdown">
-              @php($initial = strtoupper(substr(Auth::user()->name ?? '', 0, 1)))
               <button class="btn btn-light border dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <span class="admin-avatar">{{ $initial }}</span>
+                @if (Auth::user()->profile_photo_url)
+                  <img src="{{ Auth::user()->profile_photo_url }}" alt="Foto de perfil de {{ Auth::user()->name }}" class="admin-avatar admin-avatar--image">
+                @else
+                  <span class="admin-avatar">{{ Auth::user()->profile_initial }}</span>
+                @endif
                 <span class="d-none d-sm-inline">{{ Auth::user()->name }}</span>
               </button>
               <ul class="dropdown-menu dropdown-menu-end shadow-sm">

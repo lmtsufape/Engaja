@@ -203,7 +203,7 @@
           <i class="fas fa-file-pdf"></i> Gerar PDF do Planejamento
         </a>
 
-        @hasanyrole('administrador|gerente|eq_pedagogica')
+        @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
           <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
           <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
         @endhasanyrole

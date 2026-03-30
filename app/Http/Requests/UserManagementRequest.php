@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Participante;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class UserManagementRequest extends FormRequest
@@ -39,6 +40,7 @@ class UserManagementRequest extends FormRequest
     {
         $managedUser = $this->route('managedUser');
         $managedUserId = $managedUser?->id;
+        $isCreate = $managedUserId === null;
 
         return [
             'name'  => ['required','string','max:255'],
@@ -46,6 +48,7 @@ class UserManagementRequest extends FormRequest
                 'required','email','max:255',
                 Rule::unique('users','email')->ignore($managedUserId),
             ],
+            'password' => [$isCreate ? 'required' : 'nullable', 'confirmed', Password::defaults()],
             'role'  => ['nullable','string', Rule::in($this->assignableRoleNames())],
 
             'cpf'              => ['nullable','digits:11'],
@@ -142,6 +145,8 @@ class UserManagementRequest extends FormRequest
             'email.required'      => 'Informe o e-mail.',
             'email.email'         => 'Informe um e-mail valido.',
             'email.unique'        => 'Este e-mail ja esta em uso.',
+            'password.required'   => 'Informe a senha do usuario.',
+            'password.confirmed'  => 'A confirmacao da senha nao confere.',
             'role.in'             => 'O papel selecionado nao e permitido.',
             'cpf.required'        => 'CPF e obrigatorio.',
             'cpf.digits'          => 'CPF deve conter 11 digitos.',

@@ -2,8 +2,15 @@
 
 @section('content')
 <div class="mb-4">
-    <p class="text-uppercase text-muted small mb-1">Administração</p>
-    <h1 class="h4 fw-bold text-engaja mb-3">Gerenciar Usuários</h1>
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+        <div>
+            <p class="text-uppercase text-muted small mb-1">Administração</p>
+            <h1 class="h4 fw-bold text-engaja mb-0">Gerenciar Usuários</h1>
+        </div>
+        @hasanyrole('administrador|gerente|articulador')
+            <a href="{{ route('usuarios.create') }}" class="btn btn-engaja">Cadastrar Usuário</a>
+        @endhasanyrole
+    </div>
 
     <div class="filter-bar shadow-sm">
         <form action="{{ route('usuarios.index') }}" method="GET" class="row g-2 align-items-center">
