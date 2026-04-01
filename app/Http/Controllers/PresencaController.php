@@ -98,8 +98,10 @@ class PresencaController extends Controller
                 'atividade_nome' => $atividade->descricao,
                 'dia' => $dia,
                 'success-presenca' => 'Presença confirmada com sucesso!',
-                'status_presenca_label' => $inscricao->ouvinte ? 'Ouvinte' : 'Presença',
-                'artigo_status_presenca' => $inscricao->ouvinte ? 'sua participação como ouvinte' : 'sua presença',
+                // 'status_presenca_label' => $inscricao->ouvinte ? 'Ouvinte' : 'Presença',
+                // 'artigo_status_presenca' => $inscricao->ouvinte ? 'sua participação como ouvinte' : 'sua presença',
+                'status_presenca_label' => 'Sua presença foi confirmada!',
+                'artigo_status_presenca' => 'sua presença',
                 'avaliacao_token' => $presenca->avaliacao_respondida ? null : encrypt($presenca->id),
                 'avaliacao_disponivel' => ! $presenca->avaliacao_respondida,
             ]);
