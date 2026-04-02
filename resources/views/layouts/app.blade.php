@@ -57,7 +57,9 @@
     }
 
     .admin-sidebar {
-      width: 300px;
+      flex: 0 0 auto;
+      width: max-content;
+      min-width: 300px;
       background: linear-gradient(180deg, #421944 0%, #2c1230 100%);
       color: #f5f3ff;
       min-height: 100vh;
@@ -72,7 +74,6 @@
       z-index: 1030;
       transition: transform .3s ease;
       overflow-y: auto;
-      overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -157,7 +158,7 @@
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .admin-nav-link.btn {
@@ -198,7 +199,9 @@
     }
 
     .admin-nav-text {
+      flex: 0 0 auto;
       white-space: nowrap;
+      line-height: 1.2;
     }
 
     .admin-topbar {
