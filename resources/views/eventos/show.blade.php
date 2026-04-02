@@ -206,6 +206,7 @@
         @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
           <a href="{{ route('inscricoes.selecionar', $evento)}}" class="btn btn-engaja">Selecionar participantes</a>
           <a href="{{ route('inscricoes.import', $evento)}}" class="btn btn-outline-primary">Importar planilha</a>
+          <a href="{{ route('inscricoes.moodle.import', $evento)}}" class="btn btn-warning fw-semibold">Importação Moodle</a>
         @endhasanyrole
 
         @can('participante.ver')
@@ -454,7 +455,7 @@
                               ? route('avaliacao-atividade.edit',   $at)
                               : route('avaliacao-atividade.create', $at) }}"
                            class="btn btn-sm {{ $at->avaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}">
-                          📝 {{ $at->avaliacaoAtividade ? 'Avaliação' : 'Avaliar' }}
+                          📝 {{ $at->avaliacaoAtividade ? 'Relatório' : 'Criar relatório' }}
                         </a>
                       @endhasanyrole
 
@@ -647,8 +648,8 @@
       document.querySelectorAll('.btn-checklist-reabrir').forEach(btn => {
           btn.addEventListener('click', function () {
               atividadeIdAtual = this.dataset.atividadeId;
-              const marcadosPl = JSON.parse(this.dataset.checklistPl || '[]');
-              const marcadosEn = JSON.parse(this.dataset.checklistEn || '[]');
+            const marcadosPl = normalizeMarkedIndexes(ITENS_PLANEJAMENTO, JSON.parse(this.dataset.checklistPl || '[]'));
+            const marcadosEn = normalizeMarkedIndexes(ITENS_ENCERRAMENTO, JSON.parse(this.dataset.checklistEn || '[]'));
 
               const body = document.getElementById('reopen-checklist-body');
               body.innerHTML = renderChecklist('planejamento', ITENS_PLANEJAMENTO, marcadosPl)
@@ -657,6 +658,34 @@
               new bootstrap.Modal(document.getElementById('modalReopenChecklist')).show();
           });
       });
+
+        function normalizeMarkedIndexes(itens, marcados) {
+          if (!Array.isArray(marcados)) {
+            return [];
+          }
+
+          const normalizedTextToIndex = new Map(
+            itens.map((item, index) => [String(item).trim().toLowerCase(), index])
+          );
+
+          return [...new Set(
+            marcados
+              .map((valor) => {
+                if (Number.isInteger(valor)) {
+                  return valor;
+                }
+
+                const asNumber = Number(valor);
+                if (Number.isInteger(asNumber)) {
+                  return asNumber;
+                }
+
+                const textKey = String(valor).trim().toLowerCase();
+                return normalizedTextToIndex.has(textKey) ? normalizedTextToIndex.get(textKey) : null;
+              })
+              .filter((index) => Number.isInteger(index) && index >= 0 && index < itens.length)
+          )];
+        }
 
       function renderChecklist(tipo, itens, marcados) {
           let html = `<h6 class="fw-bold mt-2" style="color: #421944;">${tipo === 'planejamento' ? '📋 Planejamento' : '✅ Encerramento'}</h6><div class="vstack gap-2 mb-4">`;

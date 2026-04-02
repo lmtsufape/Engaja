@@ -14,6 +14,7 @@
     </div>
     <div class="d-flex gap-2">
       <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-sm btn-outline-primary">Importar planilha</a>
+      <a href="{{ route('inscricoes.moodle.import', $evento) }}" class="btn btn-sm btn-warning fw-semibold">Importação Moodle</a>
       <a href="{{ route('eventos.show', $evento) }}" class="btn btn-sm btn-outline-secondary">Voltar</a>
     </div>
   </div>

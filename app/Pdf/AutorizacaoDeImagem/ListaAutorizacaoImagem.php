@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Pdf;
+namespace App\Pdf\AutorizacaoDeImagem;
 
 use setasign\Fpdi\Fpdi;
 

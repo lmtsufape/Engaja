@@ -65,9 +65,9 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
           {{ $atividade->presenca_ativa ? 'Fechar presença' : 'Abrir presença' }}
         </button>
       </form>
-      <a href="{{ route('atividades.lista-presenca.pdf', $atividade) }}" class="btn btn-engaja btn-sm">
+      <button type="button" class="btn btn-engaja btn-sm" data-bs-toggle="modal" data-bs-target="#modalListaPresenca">
           Baixar Lista de Presença
-      </a>
+      </button>
       <a href="{{ route('atividades.lista-autorizacao.pdf', $atividade) }}" class="btn btn-engaja btn-sm">
           Baixar Autorização de Imagem
       </a>
@@ -190,6 +190,45 @@ $dia = \Carbon\Carbon::parse($atividade->dia)
     @endif
   </div>
   @endcan
+
+    {{-- Modal para escolher o Modelo de Lista de Presença --}}
+    <div class="modal fade" id="modalListaPresenca" tabindex="-1" aria-labelledby="modalListaPresencaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-engaja" id="modalListaPresencaLabel">Baixar Lista de Presença</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form action="{{ route('atividades.lista-presenca.pdf', $atividade) }}" method="GET">
+                    <div class="modal-body py-4">
+                        <p class="text-muted small mb-3">Selecione o modelo que deseja gerar para esta atividade:</p>
+
+                        <div class="form-group">
+                            <label for="tipoTemplate" class="form-label fw-semibold">Modelo da Lista</label>
+                            <select name="tipo" id="tipoTemplate" class="form-select form-select-lg" style="border-radius: 0.6rem; font-size: 0.95rem;">
+                                <option value="assessoria">Assessoria e Formação</option>
+                                <option value="oficina">Oficina de Leitura e Escrita</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius: 0.5rem;">Cancelar</button>
+                        <button type="submit" class="btn btn-engaja" style="border-radius: 0.5rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-download me-1" viewBox="0 0 16 16">
+                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                            </svg>
+                            Gerar PDF
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
 
 </div>
 @endsection

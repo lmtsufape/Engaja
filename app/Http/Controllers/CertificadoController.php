@@ -43,6 +43,7 @@ class CertificadoController extends Controller
             ->get();
 
         $created = 0;
+        $skippedZeroWorkload = 0;
         $paraNotificar = [];
         foreach ($eventos as $evento) {
             // Somat?rio por participante para este evento, apenas presen?as confirmadas ainda n?o certificadas
@@ -65,6 +66,11 @@ class CertificadoController extends Controller
                 $cargaTotal = $presencas->sum(function ($p) {
                     return (float) ($p->atividade?->carga_horaria ?? 0);
                 });
+
+                if ($cargaTotal <= 0) {
+                    $skippedZeroWorkload++;
+                    continue;
+                }
 
                 $map = [
                     '%participante%'   => $participante->user->name,
@@ -101,9 +107,14 @@ class CertificadoController extends Controller
 
         //$this->notificarLote($paraNotificar);
 
+        $message = "{$created} certificado(s) emitidos com sucesso.";
+        if ($skippedZeroWorkload > 0) {
+            $message .= " {$skippedZeroWorkload} certificado(s) não emitido(s) por carga horária total igual a 0.";
+        }
+
         return redirect()
             ->back()
-            ->with('success', "{$created} certificado(s) emitidos com sucesso.");
+            ->with('success', $message);
     }
 
     private function notificarLote(array $paraNotificar): void
@@ -146,6 +157,7 @@ class CertificadoController extends Controller
             ->filter(fn ($p) => $p->atividade?->evento); // garante evento carregado
 
         $created = 0;
+        $skippedZeroWorkload = 0;
         $paraNotificar = [];
 
         // Agrupa por participante para emitir um cert por evento
@@ -168,6 +180,11 @@ class CertificadoController extends Controller
                 $cargaTotal = $presencasEvento->sum(function ($p) {
                     return (float) ($p->atividade?->carga_horaria ?? 0);
                 });
+
+                if ($cargaTotal <= 0) {
+                    $skippedZeroWorkload++;
+                    continue;
+                }
 
                 $map = [
                     '%participante%'   => $participante->user->name,
@@ -203,9 +220,14 @@ class CertificadoController extends Controller
 
         //$this->notificarLote($paraNotificar);
 
+        $message = "{$created} certificado(s) emitidos com sucesso.";
+        if ($skippedZeroWorkload > 0) {
+            $message .= " {$skippedZeroWorkload} certificado(s) não emitido(s) por carga horária total igual a 0.";
+        }
+
         return redirect()
             ->back()
-            ->with('success', "{$created} certificado(s) emitidos com sucesso.");
+            ->with('success', $message);
     }
 
     private function renderPlaceholders(string $texto, array $map): string

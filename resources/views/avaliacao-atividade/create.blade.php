@@ -5,9 +5,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h4 fw-bold text-engaja mb-0">
-                Relatório de Avaliação da Ação
+                Relatório da Ação
             </h1>
-            <small class="text-muted">{{ $atividade->evento->nome ?? '' }} — {{ $atividade->descricao }}</small>
+            <small class="text-muted">Seu relatório individual para {{ $atividade->evento->nome ?? '' }} — {{ $atividade->descricao }}</small>
         </div>
         <a href="{{ route('eventos.show', $atividade->evento_id) }}"
            class="btn btn-outline-secondary">Voltar à ação pedagógica</a>

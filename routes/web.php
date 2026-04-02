@@ -72,6 +72,11 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::get('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'import'])->name('inscricoes.import');
     Route::post('/eventos/{evento}/inscricoes/import', [InscricaoController::class, 'cadastro'])->name('inscricoes.cadastro');
+    Route::get('/eventos/{evento}/inscricoes/import-moodle', [InscricaoController::class, 'moodleImport'])->name('inscricoes.moodle.import');
+    Route::get('/eventos/{evento}/inscricoes/import-moodle/modelo-momentos', [InscricaoController::class, 'moodleMomentTemplateDownload'])->name('inscricoes.moodle.template.momentos');
+    Route::post('/eventos/{evento}/inscricoes/import-moodle', [InscricaoController::class, 'moodleUpload'])->name('inscricoes.moodle.upload');
+    Route::get('/eventos/{evento}/inscricoes/import-moodle/preview', [InscricaoController::class, 'moodlePreview'])->name('inscricoes.moodle.preview');
+    Route::post('/eventos/{evento}/inscricoes/import-moodle/confirmar', [InscricaoController::class, 'moodleConfirm'])->name('inscricoes.moodle.confirm');
     Route::get('/eventos/{evento}/inscricoes/preview', [InscricaoController::class, 'preview'])->name('inscricoes.preview');
     Route::post('/eventos/{evento}/inscricoes/preview/save', [InscricaoController::class, 'savePage'])->name('inscricoes.preview.save');
     Route::post('/eventos/{evento}/inscricoes/confirmar', [InscricaoController::class, 'confirmar'])->name('inscricoes.confirmar');
@@ -142,7 +147,7 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     });
 
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::controller(AvaliacaoAtividadeController::class)
         ->prefix('atividades/{atividade}/relatorio')
         ->name('avaliacao-atividade.')
@@ -151,9 +156,19 @@ Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('/edit', 'edit')->name('edit');
             Route::put('/', 'update')->name('update');
+            Route::get('/pdf', 'downloadOwn')->name('download-own');
         });
+
+    Route::get('/relatorios-avaliacao/{relatorio}/pdf', [AvaliacaoAtividadeController::class, 'download'])
+        ->name('avaliacao-atividade.download');
+});
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::get('/relatorios-avaliacao', [AvaliacaoAtividadeController::class, 'index'])
         ->name('avaliacao-atividade.index');
+
+    Route::get('/relatorios-avaliacao/{relatorio}', [AvaliacaoAtividadeController::class, 'show'])
+        ->name('avaliacao-atividade.show');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
