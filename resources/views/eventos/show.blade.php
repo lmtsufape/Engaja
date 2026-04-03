@@ -198,9 +198,8 @@
         <a href="{{ $evento->link }}" target="_blank" class="btn btn-outline-secondary">Acessar link</a>
         @endif
 
-        {{-- BOTÃO GERAR PDF --}}
-        <a href="{{ route('eventos.planejamento.pdf', $evento) }}" target="_blank" class="btn btn-outline-danger">
-          <i class="fas fa-file-pdf"></i> Gerar PDF do Planejamento
+        <a href="{{ route('eventos.planejamento.pdf', $evento) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-danger">
+          <i class="fas fa-file-pdf"></i> Ver PDF
         </a>
 
         @hasanyrole('administrador|gerente|eq_pedagogica|articulador')

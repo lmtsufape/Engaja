@@ -105,10 +105,7 @@
                                         Ver
                                     </a>
                                     
-                                    {{-- Atalho para o PDF --}}
-                                    <a href="{{ route('eventos.planejamento.pdf', $ev) }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Baixar PDF do Planejamento">
-                                        PDF
-                                    </a>
+                                    <a href="{{ route('eventos.planejamento.pdf', $ev) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger" title="Ver PDF">PDF</a>
 
                                     @can('update', $ev)
                                         @hasanyrole('administrador|gerente|eq_pedagogica')

@@ -41,9 +41,7 @@
     </a>
 
     <a href="{{ route('eventos.planejamento.pdf', $atividade->evento) }}"
-       class="btn btn-sm btn-outline-danger" target="_blank">
-        📄 Planejamento da Ação
-    </a>
+       class="btn btn-sm btn-outline-danger" target="_blank" rel="noopener noreferrer">📄 Planejamento da Ação</a>
 </div>
 
 <div class="row g-4">

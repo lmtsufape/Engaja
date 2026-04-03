@@ -264,7 +264,7 @@ class EventoController extends Controller
             ])
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('planejamento-' . Str::slug($evento->nome) . '.pdf');
+        return $pdf->stream('planejamento-' . Str::slug($evento->nome) . '.pdf');
     }
 
     public function relatorioParticipantesUnicos(Request $request, Evento $evento)
