@@ -125,6 +125,16 @@
                     <a href="{{ route('usuarios.edit', $u) }}" class="btn btn-sm btn-engaja">
                       Editar
                     </a>
+                    @role('administrador')
+                      <button type="button"
+                              class="btn btn-sm btn-outline-secondary js-reset-password"
+                              data-bs-toggle="modal"
+                              data-bs-target="#modalRedefinirSenha"
+                              data-action="{{ route('usuarios.password.reset', $u) }}"
+                              data-user-name="{{ $u->name }}">
+                        Redefinir senha
+                      </button>
+                    @endrole
                   </td>
                 </tr>
               @endforeach
@@ -182,6 +192,55 @@
       </div>
     </div>
   </div>
+
+  @role('administrador')
+  <div class="modal fade" id="modalRedefinirSenha" tabindex="-1" aria-labelledby="modalRedefinirSenhaLabel" aria-hidden="true">
+      <div class="modal-dialog">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h5 class="modal-title" id="modalRedefinirSenhaLabel">Redefinir senha</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <form method="POST" id="form-redefinir-senha" action="{{ session('reset_password_action', '') }}">
+                  @csrf
+                  <div class="modal-body">
+                      <p class="text-muted small mb-3">
+                          A senha será alterada agora. No próximo acesso, o usuário será obrigado a definir uma nova senha.
+                      </p>
+                      <p class="fw-semibold mb-3" id="reset-password-user-name">{{ session('reset_password_user_name') }}</p>
+
+                      <div class="mb-3">
+                          <label for="reset_password" class="form-label">Nova senha</label>
+                          <input id="reset_password"
+                                 type="password"
+                                 name="password"
+                                 class="form-control @error('password', 'resetPassword') is-invalid @enderror"
+                                 required
+                                 autocomplete="new-password">
+                          @error('password', 'resetPassword')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                          @enderror
+                      </div>
+
+                      <div class="mb-3">
+                          <label for="reset_password_confirmation" class="form-label">Confirmar nova senha</label>
+                          <input id="reset_password_confirmation"
+                                 type="password"
+                                 name="password_confirmation"
+                                 class="form-control"
+                                 required
+                                 autocomplete="new-password">
+                      </div>
+                  </div>
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-engaja">Redefinir senha</button>
+                  </div>
+              </form>
+          </div>
+      </div>
+  </div>
+  @endrole
 @endif
 @endsection
 
@@ -197,6 +256,8 @@
     const btnSelectAllPage = document.getElementById('btn-select-all-page');
     const btnSelectAllGlobal = document.getElementById('btn-select-all-global');
     const selectAllPagesHidden = document.getElementById('select_all_pages_hidden');
+    const resetPasswordForm = document.getElementById('form-redefinir-senha');
+    const resetPasswordUserName = document.getElementById('reset-password-user-name');
 
     if (checkAll) {
       checkAll.addEventListener('change', () => {
@@ -249,6 +310,25 @@
         form.submit();
       });
     }
+
+    document.querySelectorAll('.js-reset-password').forEach(button => {
+      button.addEventListener('click', () => {
+        if (resetPasswordForm) {
+          resetPasswordForm.action = button.dataset.action || '';
+          resetPasswordForm.reset();
+        }
+        if (resetPasswordUserName) {
+          resetPasswordUserName.textContent = button.dataset.userName || '';
+        }
+      });
+    });
+
+    @if($errors->resetPassword->any() && session('reset_password_action'))
+      const resetPasswordModal = document.getElementById('modalRedefinirSenha');
+      if (resetPasswordModal) {
+        new bootstrap.Modal(resetPasswordModal).show();
+      }
+    @endif
   });
 
 

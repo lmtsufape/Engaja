@@ -20,6 +20,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 use App\Exports\UsersExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -241,6 +243,46 @@ class UserManagementController extends Controller
         return redirect()
             ->route('usuarios.index')
             ->with('success', 'Usuario atualizado com sucesso.');
+    }
+
+    public function resetPassword(Request $request, User $managedUser): RedirectResponse
+    {
+        abort_unless(auth()->user()?->hasRole('administrador'), 403);
+
+        if ($this->isProtected($managedUser)) {
+            return redirect()
+                ->route('usuarios.index')
+                ->with('error', 'Este usuario nao pode ter a senha redefinida por esta tela.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ], [
+            'password.required' => 'Informe a nova senha.',
+            'password.confirmed' => 'A confirmação da senha não confere.',
+        ], [
+            'password' => 'senha',
+            'password_confirmation' => 'confirmação da senha',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route('usuarios.index')
+                ->withErrors($validator, 'resetPassword')
+                ->with('reset_password_action', route('usuarios.password.reset', $managedUser))
+                ->with('reset_password_user_name', $managedUser->name);
+        }
+
+        $data = $validator->validated();
+
+        $managedUser->update([
+            'password' => Hash::make($data['password']),
+            'force_password_change' => true,
+        ]);
+
+        return redirect()
+            ->route('usuarios.index')
+            ->with('success', "Senha de {$managedUser->name} redefinida com sucesso. O usuario devera troca-la no proximo acesso.");
     }
 
     private function assignableRoles()

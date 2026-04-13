@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\CheckPerfilCompleto::class,
+            \App\Http\Middleware\EnsurePasswordChanged::class,
         ]);
       
         $middleware->prepend([App\Http\Middleware\TrustProxies::class]);

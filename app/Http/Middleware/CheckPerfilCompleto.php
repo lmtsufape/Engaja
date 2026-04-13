@@ -20,7 +20,7 @@ class CheckPerfilCompleto
 
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check()) {
+        if (auth()->check() && ! $request->routeIs('password.force.*')) {
             $user = auth()->user();
 
             $incompleto = collect($this->camposObrigatorios)

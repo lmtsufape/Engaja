@@ -137,6 +137,9 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         Route::get('verificar/exportar/{format}', [UserManagementController::class, 'verificarExportar'])->name('verificar.exportar');
         Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
         Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
+        Route::post('{managedUser}/redefinir-senha', [UserManagementController::class, 'resetPassword'])
+            ->middleware('role:administrador')
+            ->name('password.reset');
         Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
         Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
     });
