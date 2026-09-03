@@ -37,6 +37,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
         return [
             'Ação pedagógica',
             'Momento',
+            'ID do usuário',
             'Nome',
             'Email',
             'CPF',
@@ -54,6 +55,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
         return [
             $this->evento->nome,
             $row->momento,
+            $row->usuario_id,
             $row->nome,
             $row->email,
             $row->cpf,
@@ -83,6 +85,7 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             ->select([
                 'atividades.id as atividade_id',
                 'atividades.descricao as momento',
+                'users.id as usuario_id',
                 'users.name as nome',
                 'users.email',
                 'participantes.cpf',

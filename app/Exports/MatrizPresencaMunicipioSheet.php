@@ -39,6 +39,7 @@ class MatrizPresencaMunicipioSheet implements FromView, WithTitle, WithEvents
                 if (!isset($participantes[$partId])) {
                     $participantes[$partId] = [
                         'nome' => $inscricao->participante?->user?->name ?? 'Participante #'.$partId,
+                        'usuario_id' => $inscricao->participante?->user?->id ?? '-',
                         'cpf' => $inscricao->participante?->cpf ?? '-',
                         'email' => $inscricao->participante?->user?->email ?? '-',
                         'vinculo' => $inscricao->participante?->tag ?? '-',
@@ -65,7 +66,7 @@ class MatrizPresencaMunicipioSheet implements FromView, WithTitle, WithEvents
         //ordena alfabeticamente
         usort($participantes, fn($a, $b) => strcmp(strtolower($a['nome']), strtolower($b['nome'])));
 
-        $this->totalColunas = 4 + $this->atividades->count() + 3; //4 colunas de info + N momentos + 3 totalizadores
+        $this->totalColunas = 5 + $this->atividades->count() + 3; // 5 colunas de info + N momentos + 3 totalizadores
 
         return view('exports.matriz_presenca_municipio', [
             'atividades' => $this->atividades,
@@ -87,7 +88,7 @@ class MatrizPresencaMunicipioSheet implements FromView, WithTitle, WithEvents
                 $sheet = $event->sheet->getDelegate();
 
 
-                $sheet->freezePane('E3');
+                $sheet->freezePane('F3');
 
                 $highestRow = $sheet->getHighestRow();
                 $lastCol = $sheet->getHighestColumn();
@@ -101,21 +102,22 @@ class MatrizPresencaMunicipioSheet implements FromView, WithTitle, WithEvents
 
                 //largura fixa das colunas
                 $sheet->getColumnDimension('A')->setWidth(40);
-                $sheet->getColumnDimension('B')->setWidth(16);
-                $sheet->getColumnDimension('C')->setWidth(35);
-                $sheet->getColumnDimension('D')->setWidth(20);
+                $sheet->getColumnDimension('B')->setWidth(12);
+                $sheet->getColumnDimension('C')->setWidth(16);
+                $sheet->getColumnDimension('D')->setWidth(35);
+                $sheet->getColumnDimension('E')->setWidth(20);
 
                 //carrega as colunas no loop
                 $highestCol = $lastCol;
                 $highestCol++;
-                for ($col = 'E'; $col !== $highestCol; $col++) {
+                for ($col = 'F'; $col !== $highestCol; $col++) {
                     $sheet->getColumnDimension($col)->setWidth(16);
                     $sheet->getStyle($col . '3:' . $col . $highestRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 }
 
                 //cores de fundo para os status
                 for ($row = 3; $row <= $highestRow; $row++) {
-                    for ($col = 'E'; $col !== $highestCol; $col++) {
+                    for ($col = 'F'; $col !== $highestCol; $col++) {
                         $cell = $sheet->getCell($col . $row);
                         $val = $cell->getValue();
 

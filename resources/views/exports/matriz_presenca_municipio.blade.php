@@ -1,12 +1,13 @@
 <table>
     <thead>
         <tr>
-            <th colspan="{{ 4 + $atividades->count() + 3 }}" style="font-size: 14px; font-weight: bold; text-align: center;">
+            <th colspan="{{ 5 + $atividades->count() + 3 }}" style="font-size: 14px; font-weight: bold; text-align: center;">
                 Matriz de Frequência - Município: {{ $municipioNome }}
             </th>
         </tr>
         <tr>
             <th style="width: 35px;">Nome do Participante</th>
+            <th style="width: 12px;">ID do usuário</th>
             <th style="width: 20px;">CPF</th>
             <th style="width: 35px;">E-mail</th>
             <th style="width: 15px;">Vínculo</th>
@@ -30,6 +31,7 @@
         @foreach($participantes as $participante)
             <tr>
                 <td>{{ $participante['nome'] }}</td>
+                <td>{{ $participante['usuario_id'] }}</td>
                 <td>{{ $participante['cpf'] }}</td>
                 <td>{{ $participante['email'] }}</td>
                 <td>{{ $participante['vinculo'] }}</td>

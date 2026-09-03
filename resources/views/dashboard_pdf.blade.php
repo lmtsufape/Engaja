@@ -126,8 +126,9 @@
                 <table class="subtable">
                     <thead>
                         <tr>
-                            <th style="width: 35%;">Nome</th>
-                            <th style="width: 25%;">E-mail</th>
+                            <th style="width: 29%;">Nome</th>
+                            <th style="width: 8%;">ID</th>
+                            <th style="width: 23%;">E-mail</th>
                             <th style="width: 15%;">CPF</th>
                             <th style="width: 13%;">Tag</th>
                             <th style="width: 12%;">Status</th>
@@ -155,6 +156,7 @@
                         @endphp
                         <tr>
                             <td>{{ $user->name ?? ('Participante #'.$part->id) }}</td>
+                            <td>{{ $user->id ?? '-' }}</td>
                             <td>{{ $user->email ?? '-' }}</td>
                             <td>{{ $part->cpf ?: '-' }}</td>
                             <td>{{ $part->tag ?: '-' }}</td>

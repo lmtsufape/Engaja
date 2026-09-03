@@ -83,6 +83,7 @@ class MatrizPresencaWordBuilder
                 if (! isset($participantes[$partId])) {
                     $participantes[$partId] = [
                         'nome' => $inscricao->participante?->user?->name ?? 'Participante #'.$partId,
+                        'usuario_id' => $inscricao->participante?->user?->id ?? '-',
                         'cpf' => $inscricao->participante?->cpf ?? '-',
                         'email' => $inscricao->participante?->user?->email ?? '-',
                         'vinculo' => $inscricao->participante?->tag ?? '-',
@@ -106,7 +107,7 @@ class MatrizPresencaWordBuilder
 
         usort($participantes, fn ($a, $b) => strcmp(strtolower($a['nome']), strtolower($b['nome'])));
 
-        $headings = ['Nome', 'CPF', 'E-mail', 'Vínculo'];
+        $headings = ['Nome', 'ID do usuário', 'CPF', 'E-mail', 'Vínculo'];
         foreach ($atividades as $atividade) {
             $headings[] = self::momentoLabel($atividade);
         }
@@ -118,6 +119,7 @@ class MatrizPresencaWordBuilder
         foreach ($participantes as $participante) {
             $row = [
                 $participante['nome'],
+                $participante['usuario_id'],
                 $participante['cpf'],
                 $participante['email'],
                 $participante['vinculo'],
