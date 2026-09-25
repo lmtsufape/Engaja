@@ -135,16 +135,15 @@
         </div>
 
         <p>
-            💬 Precisa de uma ajuda? Estamos à disposição!
+            💬 Precisa de ajuda? Estamos à disposição!
         </p>
 
         <p>
-            Se encontrar qualquer dificuldade para acessar a plataforma ou baixar o seu certificado, não hesite em nos procurar. Nossa equipe está prontinha para te acolher e ajudar:
+            Se encontrar qualquer dificuldade para acessar a plataforma ou baixar o seu certificado, entre em contato com nossa equipe pelo canal de suporte:
         </p>
 
         <p>
-            👉 Clique no link abaixo para acessar o nosso canal de suporte: <br>
-            <a>{vamos definir o link do canal do whatsapp}</a>
+            👉 <a href="https://chat.whatsapp.com/Do6SVDfTQWL3kwqVLephTY">Acessar canal de suporte no WhatsApp</a>
         </p>
 
         <p>
