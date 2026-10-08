@@ -3,6 +3,7 @@
 namespace Tests\Feature\Cartas;
 
 use App\Models\Inscricao;
+use Illuminate\Support\Str;
 
 class CartaEnvioInscreveRemetenteTest extends CartasBaseTest
 {
@@ -17,6 +18,7 @@ class CartaEnvioInscreveRemetenteTest extends CartasBaseTest
 
         $response = $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);
@@ -40,6 +42,7 @@ class CartaEnvioInscreveRemetenteTest extends CartasBaseTest
 
         $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);

@@ -5,6 +5,7 @@ namespace Tests\Feature\Cartas;
 use App\Models\Cartas\Carta;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class CartaDistribuicaoTest extends CartasBaseTest
 {
@@ -23,6 +24,7 @@ class CartaDistribuicaoTest extends CartasBaseTest
         for ($i = 0; $i < 5; $i++) {
             $this->actingAs($this->gestor)
                 ->post(route('cartas.cartas.store'), [
+                    'envio_token' => (string) Str::uuid(),
                     'remetente_user_id' => $this->remetente->id,
                     'arquivo' => UploadedFile::fake()->create("carta_{$i}.pdf", 100, 'application/pdf'),
                 ]);
@@ -63,6 +65,7 @@ class CartaDistribuicaoTest extends CartasBaseTest
 
         $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);
@@ -102,6 +105,7 @@ class CartaDistribuicaoTest extends CartasBaseTest
         for ($i = 0; $i < 6; $i++) {
             $this->actingAs($this->gestor)
                 ->post(route('cartas.cartas.store'), [
+                    'envio_token' => (string) Str::uuid(),
                     'remetente_user_id' => $this->remetente->id,
                     'arquivo' => UploadedFile::fake()->create("carta_{$i}.pdf", 100, 'application/pdf'),
                 ]);
@@ -159,6 +163,7 @@ class CartaDistribuicaoTest extends CartasBaseTest
 
         $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);
@@ -218,6 +223,7 @@ class CartaDistribuicaoTest extends CartasBaseTest
 
         $response = $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);

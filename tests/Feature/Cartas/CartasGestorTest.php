@@ -6,6 +6,7 @@ use App\Models\Cartas\Carta;
 use App\Models\Cartas\CartaEvento;
 use App\Models\Cartas\CartaMensagem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 
 class CartasGestorTest extends CartasBaseTest
 {
@@ -15,6 +16,7 @@ class CartasGestorTest extends CartasBaseTest
 
         $response = $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);
@@ -68,6 +70,7 @@ class CartasGestorTest extends CartasBaseTest
 
         $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file,
             ]);
@@ -85,6 +88,7 @@ class CartasGestorTest extends CartasBaseTest
     {
         $response = $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
             ]);
 
@@ -98,6 +102,7 @@ class CartasGestorTest extends CartasBaseTest
 
         $response = $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'arquivo' => $file,
             ]);
 

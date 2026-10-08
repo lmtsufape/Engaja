@@ -22,6 +22,7 @@
 
                 <form id="gestorCartaForm" method="POST" action="{{ route('cartas.cartas.store') }}" enctype="multipart/form-data" class="cpe-manager-form">
                     @csrf
+                    <input type="hidden" name="envio_token" value="{{ $errors->has('envio_token') ? (string) \Illuminate\Support\Str::uuid() : old('envio_token', (string) \Illuminate\Support\Str::uuid()) }}">
                     <label class="cpe-upload">
                         <input type="file" name="arquivo" required accept=".pdf,application/pdf">
                         <span>
@@ -545,23 +546,77 @@
             const gestorConfirmOk = document.getElementById('gestorConfirmOk');
             const gestorConfirmCancel = document.querySelectorAll('[data-gestor-confirm-close]');
 
-            if (gestorSubmitBtn && gestorForm && gestorConfirmModal) {
-                gestorSubmitBtn.addEventListener('click', function() {
-                    gestorConfirmModal.classList.add('is-open');
-                });
+            if (gestorSubmitBtn && gestorForm && gestorConfirmModal && gestorConfirmOk) {
+                let envioConfirmado = false;
+                let envioEmAndamento = false;
+                const submitLabel = gestorSubmitBtn.textContent;
+                const confirmLabel = gestorConfirmOk.textContent;
 
-                gestorConfirmOk.addEventListener('click', function() {
-                    gestorForm.submit();
-                });
-
-                gestorConfirmCancel.forEach(function(btn) {
-                    btn.addEventListener('click', function() {
+                function fecharConfirmacao() {
+                    if (!envioEmAndamento) {
                         gestorConfirmModal.classList.remove('is-open');
+                    }
+                }
+
+                gestorForm.addEventListener('submit', function(event) {
+                    if (envioEmAndamento) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    if (!envioConfirmado) {
+                        event.preventDefault();
+                        gestorConfirmModal.classList.add('is-open');
+                        gestorConfirmOk.focus();
+                        return;
+                    }
+
+                    envioEmAndamento = true;
+                    gestorForm.setAttribute('aria-busy', 'true');
+                    gestorSubmitBtn.disabled = true;
+                    gestorConfirmOk.disabled = true;
+                    gestorSubmitBtn.textContent = 'Enviando...';
+                    gestorConfirmOk.textContent = 'Enviando...';
+                    gestorConfirmCancel.forEach(function(button) {
+                        button.disabled = true;
                     });
                 });
 
-                gestorConfirmModal.querySelector('.cpe-modal__backdrop').addEventListener('click', function() {
-                    gestorConfirmModal.classList.remove('is-open');
+                gestorSubmitBtn.addEventListener('click', function() {
+                    if (!envioEmAndamento) {
+                        gestorForm.requestSubmit();
+                    }
+                });
+
+                gestorConfirmOk.addEventListener('click', function() {
+                    if (envioEmAndamento || !gestorForm.reportValidity()) {
+                        return;
+                    }
+
+                    envioConfirmado = true;
+                    gestorForm.requestSubmit();
+                    envioConfirmado = false;
+                });
+
+                gestorConfirmCancel.forEach(function(button) {
+                    button.addEventListener('click', fecharConfirmacao);
+                });
+                gestorConfirmModal.querySelector('.cpe-modal__backdrop').addEventListener('click', fecharConfirmacao);
+
+                window.addEventListener('pageshow', function(event) {
+                    if (!event.persisted) return;
+
+                    envioEmAndamento = false;
+                    envioConfirmado = false;
+                    gestorForm.removeAttribute('aria-busy');
+                    gestorSubmitBtn.disabled = false;
+                    gestorConfirmOk.disabled = false;
+                    gestorSubmitBtn.textContent = submitLabel;
+                    gestorConfirmOk.textContent = confirmLabel;
+                    gestorConfirmCancel.forEach(function(button) {
+                        button.disabled = false;
+                    });
+                    fecharConfirmacao();
                 });
             }
         });

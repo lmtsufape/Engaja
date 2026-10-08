@@ -5,6 +5,7 @@ namespace Tests\Feature\Cartas;
 use App\Models\Cartas\Carta;
 use App\Models\Cartas\CartaMensagem;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 class CartasFluxoTest extends CartasBaseTest
 {
@@ -15,6 +16,7 @@ class CartasFluxoTest extends CartasBaseTest
 
         $this->actingAs($this->gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $this->remetente->id,
                 'arquivo' => $file1,
             ]);
