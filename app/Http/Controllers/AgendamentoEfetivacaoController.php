@@ -101,7 +101,7 @@ class AgendamentoEfetivacaoController extends Controller
                 'publico_esperado' => $dados['publico_esperado'],
                 'carga_horaria' => $dados['carga_horaria'],
                 'municipio_id' => $agendamento->municipio_id,
-                'presenca_ativa' => false,
+                'presenca_ativa' => true,
                 'checklist_planejamento' => [],
                 'checklist_encerramento' => [],
             ]);

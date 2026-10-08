@@ -43,6 +43,18 @@ class Atividade extends Model
         'checklist_encerramento' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Atividade $atividade) {
+            // Se presenca_ativa não foi explicitamente fornecida ou for nula:
+            // abre a presença por padrão (true), a menos que haja um horário de abertura agendado no futuro.
+            if (! array_key_exists('presenca_ativa', $atividade->getAttributes()) || $atividade->presenca_ativa === null) {
+                $temAberturaFutura = $atividade->presenca_abre_em?->isFuture() ?? false;
+                $atividade->presenca_ativa = ! $temAberturaFutura;
+            }
+        });
+    }
+
     /**
      * Estado efetivo da confirmação de presença, calculado no momento da chamada.
      *

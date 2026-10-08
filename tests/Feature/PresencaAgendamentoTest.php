@@ -429,6 +429,53 @@ class PresencaAgendamentoTest extends TestCase
         $atividade = Atividade::where('descricao', 'Novo Momento Agendado')->firstOrFail();
         $this->assertEquals('2026-10-06 11:00:00', $atividade->presenca_abre_em->format('Y-m-d H:i:s'));
         $this->assertEquals('2026-10-06 15:00:00', $atividade->presenca_fecha_em->format('Y-m-d H:i:s'));
+        $this->assertFalse($atividade->presenca_ativa);
+    }
+
+    public function test_criacao_de_atividade_sem_agendamento_de_abertura_cria_com_presenca_aberta(): void
+    {
+        Permission::findOrCreate('atividade.criar');
+        Permission::findOrCreate('presenca.abrir');
+
+        $gerente = User::factory()->create();
+        $gerente->givePermissionTo(['atividade.criar', 'presenca.abrir']);
+
+        $eixo = Eixo::create(['nome' => 'Eixo Teste']);
+        $evento = Evento::factory()->create(['eixo_id' => $eixo->id]);
+
+        // 1. Sem preencher nada no agendamento: deve criar com presença ABERTA
+        $this->actingAs($gerente)->post(route('eventos.atividades.store', $evento), [
+            'descricao' => 'Momento Sem Agendamento',
+            'dia' => '2026-10-06',
+            'hora_inicio' => '08:00',
+            'hora_fim' => '12:00',
+            'presenca_abre_em' => '',
+            'presenca_fecha_em' => '',
+        ])->assertRedirect(route('eventos.show', $evento));
+
+        $atividadeSemAgendamento = Atividade::where('descricao', 'Momento Sem Agendamento')->firstOrFail();
+        $this->assertTrue($atividadeSemAgendamento->presenca_ativa);
+        $this->assertNull($atividadeSemAgendamento->presenca_abre_em);
+        $this->assertNull($atividadeSemAgendamento->presenca_fecha_em);
+        $this->assertTrue($atividadeSemAgendamento->presencaEstaAberta());
+
+        // 2. Preenchendo apenas horário de fechamento futuro (sem data de abertura): deve criar ABERTA
+        Carbon::setTestNow(Carbon::parse('2026-10-06 09:00:00', 'America/Sao_Paulo'));
+
+        $this->actingAs($gerente)->post(route('eventos.atividades.store', $evento), [
+            'descricao' => 'Momento So Com Fechamento Futuro',
+            'dia' => '2026-10-06',
+            'hora_inicio' => '08:00',
+            'hora_fim' => '12:00',
+            'presenca_abre_em' => '',
+            'presenca_fecha_em' => '2026-10-06T12:00',
+        ])->assertRedirect(route('eventos.show', $evento));
+
+        $atividadeComFechamento = Atividade::where('descricao', 'Momento So Com Fechamento Futuro')->firstOrFail();
+        $this->assertTrue($atividadeComFechamento->presenca_ativa);
+        $this->assertNull($atividadeComFechamento->presenca_abre_em);
+        $this->assertNotNull($atividadeComFechamento->presenca_fecha_em);
+        $this->assertTrue($atividadeComFechamento->presencaEstaAberta());
     }
 
     public function test_comando_sincronizar_agendamentos_consolida_presencas_vencidas(): void

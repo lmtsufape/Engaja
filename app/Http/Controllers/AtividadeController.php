@@ -153,7 +153,16 @@ class AtividadeController extends Controller
         // Mantém o campo legado municipio_id preenchido com o primeiro selecionado (para compatibilidade).
         $dados['municipio_id'] = $municipiosSelecionados[0] ?? null;
 
-        $atividade = $evento->atividades()->make($this->converterAgendamentoFormulario($request, $dados));
+        $dadosAtividade = $this->converterAgendamentoFormulario($request, $dados);
+
+        // Se o agendamento de abertura estiver vazio/não preenchido (ou já estiver no passado),
+        // o momento deve ser criado com a confirmação de presença ABERTA (presenca_ativa = true).
+        // Se houver um horário de abertura agendado no futuro, inicia com presença fechada (false).
+        $abreEm = $dadosAtividade['presenca_abre_em'] ?? null;
+        $temAberturaFutura = $abreEm?->isFuture() ?? false;
+        $dadosAtividade['presenca_ativa'] = ! $temAberturaFutura;
+
+        $atividade = $evento->atividades()->make($dadosAtividade);
         $atividade->consolidarAgendamentoPresenca();
         $atividade->save();
         $atividade->municipios()->sync($municipiosSelecionados);

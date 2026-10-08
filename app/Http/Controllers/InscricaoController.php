@@ -269,7 +269,7 @@ class InscricaoController extends Controller
                         'hora_inicio' => $horaInicio,
                         'hora_fim' => $horaFim,
                         'carga_horaria' => $cargaMinutos,
-                        'presenca_ativa' => false,
+                        'presenca_ativa' => true,
                     ]);
                     $momentoCriado++;
                     $atividadesByName->put($key, $atividade);

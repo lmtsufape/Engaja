@@ -759,7 +759,7 @@
       </div>
     </div>
     <div class="form-text mb-3">
-      Se configurado, a confirmação de presença abrirá e/ou fechará automaticamente nos dias e horários determinados (horário de Brasília). Deixe em branco se preferir o controle manual.
+      Se configurado, a confirmação de presença abrirá e/ou fechará automaticamente nos dias e horários determinados (horário de Brasília). Deixe em branco para que o momento inicie com a presença aberta.
     </div>
 
     <div class="row g-3">
@@ -822,15 +822,7 @@
         }
       }
 
-      // Em criação ou quando dia/horários são alterados e o agendamento ainda está vazio
-      [inputDia, inputHoraInicio, inputHoraFim].forEach((el) => {
-        el?.addEventListener('change', () => {
-          if (!editouAbreManualmente || !editouFechaManualmente) {
-            aplicarSugestao(false);
-          }
-        });
-      });
-
+      // A sugestão de agendamento é aplicada explicitamente quando o usuário clica no botão:
       btnSugestao?.addEventListener('click', function () {
         aplicarSugestao(true);
         editouAbreManualmente = true;
