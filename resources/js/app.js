@@ -213,3 +213,64 @@ document.addEventListener("submit", (event) => {
         pendingForm = null;
     }
 });
+
+let blockedDeleteModalInstance = null;
+let blockedDeleteTitleEl = null;
+let blockedDeleteMessageEl = null;
+
+const ensureBlockedDeleteModalSetup = () => {
+    if (blockedDeleteModalInstance || !bootstrap?.Modal) {
+        return;
+    }
+
+    const modalEl = document.getElementById("blockedDeleteModal");
+    if (!modalEl) {
+        return;
+    }
+
+    blockedDeleteModalInstance = new bootstrap.Modal(modalEl);
+    blockedDeleteTitleEl = modalEl.querySelector(".js-blocked-delete-title");
+    blockedDeleteMessageEl = modalEl.querySelector(".js-blocked-delete-message");
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureBlockedDeleteModalSetup, {
+        once: true,
+    });
+} else {
+    ensureBlockedDeleteModalSetup();
+}
+
+document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-blocked-delete]");
+    if (!trigger) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    ensureBlockedDeleteModalSetup();
+
+    const blockedMessage = trigger.dataset.blockedDelete;
+    const blockedTitle = trigger.dataset.blockedDeleteTitle;
+
+    if (blockedDeleteMessageEl && blockedMessage) {
+        blockedDeleteMessageEl.textContent = blockedMessage;
+    }
+    if (blockedDeleteTitleEl && blockedTitle) {
+        blockedDeleteTitleEl.textContent = blockedTitle;
+    }
+
+    if (blockedDeleteModalInstance) {
+        blockedDeleteModalInstance.show();
+    } else {
+        const modalEl = document.getElementById("blockedDeleteModal");
+        if (modalEl && window.bootstrap?.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else {
+            window.alert(blockedMessage || "Este momento possui presenças associadas e não pode ser excluído.");
+        }
+    }
+});
+

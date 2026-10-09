@@ -28,6 +28,10 @@ $border-radius-lg: .8rem;
 
 @import "bootstrap/scss/bootstrap";
 
+/* Bootstrap Icons (classes `bi bi-*` usadas nas views) */
+$bootstrap-icons-font-dir: "bootstrap-icons/font/fonts";
+@import "bootstrap-icons/font/bootstrap-icons";
+
 $theme-colors: map.merge(
   $theme-colors,
   (

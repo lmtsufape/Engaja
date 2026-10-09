@@ -84,14 +84,23 @@
 
                 $acoesHtml .= '<li><a class="dropdown-item" href="' . ($minhaAvaliacaoAtividade ? route('avaliacao-atividade.edit', $at) : route('avaliacao-atividade.create', $at)) . '">📋 ' . ($minhaAvaliacaoAtividade ? 'Editar meu relatório' : 'Criar meu relatório') . '</a></li>';
 
-                if (auth()->user()->hasRole('administrador')) {
+                if (auth()->user()->hasAnyRole(['administrador', 'gerente'])) {
                     $acoesHtml .= '<li><hr class="dropdown-divider"></li>'
-                        . '<li>'
-                        . '<form method="POST" action="' . route('atividades.destroy', $at) . '" data-confirm="Tem certeza que deseja excluir este momento?">'
-                        . csrf_field() . method_field('DELETE')
-                        . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
-                        . '</form>'
-                        . '</li>';
+                        . '<li>';
+
+                    $presencasCount = (int) ($at->presencas_count ?? 0);
+                    if ($presencasCount > 0) {
+                        $presencasTexto = $presencasCount === 1 ? '1 presença registrada' : "{$presencasCount} presenças registradas";
+                        $msgBloqueio = "Este momento possui {$presencasTexto} e não pode ser excluído.";
+                        $acoesHtml .= '<button type="button" class="dropdown-item text-danger" data-blocked-delete="' . e($msgBloqueio) . '" data-blocked-delete-title="Momento possui presenças associadas">Excluir</button>';
+                    } else {
+                        $acoesHtml .= '<form method="POST" action="' . route('atividades.destroy', $at) . '" data-confirm="Tem certeza que deseja excluir este momento?">'
+                            . csrf_field() . method_field('DELETE')
+                            . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                            . '</form>';
+                    }
+
+                    $acoesHtml .= '</li>';
                 }
 
                 $acoesHtml .= '</ul></div>';

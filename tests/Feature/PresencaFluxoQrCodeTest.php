@@ -33,12 +33,12 @@ class PresencaFluxoQrCodeTest extends TestCase
     private function criarUsuarioComDemograficos(array $extra = []): User
     {
         return User::factory()->create(array_merge([
-            'identidade_genero'      => 'Homem Cisgênero',
-            'raca_cor'               => 'Parda',
+            'identidade_genero' => 'Homem Cisgênero',
+            'raca_cor' => 'Parda',
             'comunidade_tradicional' => 'Não',
-            'faixa_etaria'           => 'Adulto (18 a 59 anos)',
-            'pcd'                    => 'Não',
-            'orientacao_sexual'      => 'Heterossexual',
+            'faixa_etaria' => 'Adulto (18 a 59 anos)',
+            'pcd' => 'Não',
+            'orientacao_sexual' => 'Heterossexual',
         ], $extra));
     }
 
@@ -51,11 +51,11 @@ class PresencaFluxoQrCodeTest extends TestCase
     /** Cria uma Atividade com presença aberta. */
     private function criarAtividadeAtiva(): Atividade
     {
-        $eixo   = Eixo::create(['nome' => 'Eixo Teste']);
+        $eixo = Eixo::create(['nome' => 'Eixo Teste']);
         $evento = Evento::factory()->create(['eixo_id' => $eixo->id]);
 
         return Atividade::factory()->create([
-            'evento_id'      => $evento->id,
+            'evento_id' => $evento->id,
             'presenca_ativa' => true,
         ]);
     }
@@ -64,12 +64,12 @@ class PresencaFluxoQrCodeTest extends TestCase
     private function dadosDemograficosValidos(): array
     {
         return [
-            'identidade_genero'      => 'Homem Cisgênero',
-            'raca_cor'               => 'Parda',
+            'identidade_genero' => 'Homem Cisgênero',
+            'raca_cor' => 'Parda',
             'comunidade_tradicional' => 'Não',
-            'faixa_etaria'           => 'Adulto (18 a 59 anos)',
-            'pcd'                    => 'Não',
-            'orientacao_sexual'      => 'Heterossexual',
+            'faixa_etaria' => 'Adulto (18 a 59 anos)',
+            'pcd' => 'Não',
+            'orientacao_sexual' => 'Heterossexual',
         ];
     }
 
@@ -94,7 +94,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_store_redireciona_com_token_quando_usuario_sem_demograficos(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos(['email' => 'sem.dados@test.com']);
+        $user = $this->criarUsuarioSemDemograficos(['email' => 'sem.dados@test.com']);
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         // Visitante deslogado buscando por e-mail
@@ -115,8 +115,8 @@ class PresencaFluxoQrCodeTest extends TestCase
 
     public function test_store_redireciona_com_token_quando_encontrado_por_cpf_sem_demograficos(): void
     {
-        $atividade    = $this->criarAtividadeAtiva();
-        $user         = $this->criarUsuarioSemDemograficos();
+        $atividade = $this->criarAtividadeAtiva();
+        $user = $this->criarUsuarioSemDemograficos();
         $participante = Participante::firstOrCreate(['user_id' => $user->id]);
         $participante->update(['cpf' => '390.533.447-05']);
 
@@ -132,8 +132,8 @@ class PresencaFluxoQrCodeTest extends TestCase
 
     public function test_store_redireciona_com_token_quando_encontrado_por_telefone_sem_demograficos(): void
     {
-        $atividade    = $this->criarAtividadeAtiva();
-        $user         = $this->criarUsuarioSemDemograficos();
+        $atividade = $this->criarAtividadeAtiva();
+        $user = $this->criarUsuarioSemDemograficos();
         $participante = Participante::firstOrCreate(['user_id' => $user->id]);
         $participante->update(['telefone' => '85999999999']);
 
@@ -152,10 +152,10 @@ class PresencaFluxoQrCodeTest extends TestCase
 
         $pageResponse = $this
             ->withSession([
-                'demograficos_pendentes'    => true,
-                'demograficos_user_token'   => encrypt(999),
-                'demograficos_user_nome'    => 'João Silva',
-                'demograficos_campo_input'  => 'joao@test.com',
+                'demograficos_pendentes' => true,
+                'demograficos_user_token' => encrypt(999),
+                'demograficos_user_nome' => 'João Silva',
+                'demograficos_campo_input' => 'joao@test.com',
             ])
             ->get(route('presenca.confirmar', $atividade));
 
@@ -172,7 +172,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_salvar_demograficos_e_confirmar_preenche_dados_e_cria_presenca(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos(['email' => 'preenchendo@test.com']);
+        $user = $this->criarUsuarioSemDemograficos(['email' => 'preenchendo@test.com']);
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $this->assertFalse($user->demograficosCompletos());
@@ -188,18 +188,11 @@ class PresencaFluxoQrCodeTest extends TestCase
         $response->assertSessionHas('success-presenca', 'Presença confirmada com sucesso!');
         $response->assertSessionHas('usuario_nome', $user->name);
 
-        // Os dados demográficos do usuário NÃO devem ser atualizados diretamente
+        // Os dados demográficos do usuário são atualizados diretamente na tabela users
         $user->refresh();
-        $this->assertFalse($user->demograficosCompletos());
-
-        // Os dados devem ter ido para a tabela de curadoria
-        $this->assertDatabaseCount('curadoria_demograficos', 1);
-        $this->assertDatabaseHas('curadoria_demograficos', [
-            'user_id'           => $user->id,
-            'identidade_genero' => 'Homem Cisgênero',
-            'raca_cor'          => 'Parda',
-            'vinculado'         => false,
-        ]);
+        $this->assertTrue($user->demograficosCompletos());
+        $this->assertEquals('Homem Cisgênero', $user->identidade_genero);
+        $this->assertEquals('Parda', $user->raca_cor);
 
         // A presença deve ter sido criada
         $this->assertDatabaseCount('presencas', 1);
@@ -209,7 +202,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_salvar_demograficos_cria_inscricao_automaticamente(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos();
+        $user = $this->criarUsuarioSemDemograficos();
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $this->assertDatabaseCount('inscricaos', 0);
@@ -222,14 +215,14 @@ class PresencaFluxoQrCodeTest extends TestCase
         $this->assertDatabaseCount('inscricaos', 1);
         $this->assertDatabaseHas('inscricaos', [
             'atividade_id' => $atividade->id,
-            'evento_id'    => $atividade->evento_id,
+            'evento_id' => $atividade->evento_id,
         ]);
     }
 
     public function test_salvar_demograficos_gera_token_de_avaliacao(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos();
+        $user = $this->criarUsuarioSemDemograficos();
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $response = $this->post(route('presenca.demograficos', $atividade), array_merge(
@@ -258,7 +251,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_salvar_demograficos_falha_sem_campos_obrigatorios(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos();
+        $user = $this->criarUsuarioSemDemograficos();
 
         $response = $this
             ->from(route('presenca.confirmar', $atividade))
@@ -281,7 +274,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_salvar_demograficos_nao_duplica_presenca_em_segunda_chamada(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos();
+        $user = $this->criarUsuarioSemDemograficos();
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $payload = array_merge($this->dadosDemograficosValidos(), ['user_token' => encrypt($user->id)]);
@@ -300,7 +293,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_confirmacao_bem_sucedida_por_email_quando_dados_completos(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioComDemograficos(['email' => 'confirmado@test.com']);
+        $user = $this->criarUsuarioComDemograficos(['email' => 'confirmado@test.com']);
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $response = $this->post(route('presenca.store', $atividade), ['campo' => $user->email]);
@@ -316,7 +309,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_confirmacao_bem_sucedida_define_avaliacao_respondida_como_false(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioComDemograficos(['email' => 'flag@test.com']);
+        $user = $this->criarUsuarioComDemograficos(['email' => 'flag@test.com']);
         Participante::firstOrCreate(['user_id' => $user->id]);
 
         $this->post(route('presenca.store', $atividade), ['campo' => $user->email]);
@@ -363,7 +356,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_checkin_autenticado_e_bloqueado_sem_dados_demograficos(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioSemDemograficos();
+        $user = $this->criarUsuarioSemDemograficos();
 
         $response = $this
             ->actingAs($user)
@@ -378,7 +371,7 @@ class PresencaFluxoQrCodeTest extends TestCase
     public function test_checkin_autenticado_bem_sucedido_cria_presenca(): void
     {
         $atividade = $this->criarAtividadeAtiva();
-        $user      = $this->criarUsuarioComDemograficos();
+        $user = $this->criarUsuarioComDemograficos();
 
         $response = $this
             ->actingAs($user)
@@ -410,12 +403,12 @@ class PresencaFluxoQrCodeTest extends TestCase
 
         foreach ($camposObrigatorios as $campo) {
             $dados = [
-                'identidade_genero'      => 'Homem Cisgênero',
-                'raca_cor'               => 'Parda',
+                'identidade_genero' => 'Homem Cisgênero',
+                'raca_cor' => 'Parda',
                 'comunidade_tradicional' => 'Não',
-                'faixa_etaria'           => 'Adulto (18 a 59 anos)',
-                'pcd'                    => 'Não',
-                'orientacao_sexual'      => 'Heterossexual',
+                'faixa_etaria' => 'Adulto (18 a 59 anos)',
+                'pcd' => 'Não',
+                'orientacao_sexual' => 'Heterossexual',
             ];
             $dados[$campo] = null;
 

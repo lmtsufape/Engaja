@@ -354,12 +354,13 @@
         .cpe-conversation {
             position: relative;
             --cpe-sidebar-w: clamp(360px, 28vw, 460px);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-start;
+            display: grid;
+            grid-template-columns: var(--cpe-sidebar-w) minmax(0, 1fr);
+            align-items: start;
         }
 
         .cpe-conversation > .cpe-logo-top {
+            grid-column: 1 / -1;
             width: 100%;
             margin-bottom: 24px;
         }
@@ -368,6 +369,7 @@
         .cpe-conversation__main .cpe-title {
             font-size: 24px;
             line-height: 1.2;
+            overflow-wrap: anywhere;
         }
 
         /* Barra lateral sticky: acompanha o scroll mas respeita o limite do footer */
@@ -375,6 +377,7 @@
             position: sticky;
             top: 0;
             width: var(--cpe-sidebar-w);
+            min-width: 0;
             max-height: 100vh;
             overflow-y: auto;
             box-sizing: border-box;
@@ -383,6 +386,8 @@
         }
 
         .cpe-conversation__content {
+            min-width: 0;
+            grid-template-columns: minmax(0, 1fr);
             margin-top: 8px;
             padding-bottom: 24px;
             display: grid;
@@ -391,11 +396,14 @@
 
         /* Lista lateral compacta de mensagens */
         .cpe-msg-list {
+            min-width: 0;
+            grid-template-columns: minmax(0, 1fr);
             display: grid;
             gap: 10px;
         }
 
         .cpe-msg-item {
+            min-width: 0;
             display: flex;
             align-items: stretch;
             gap: 6px;
@@ -435,6 +443,7 @@
         }
 
         .cpe-msg-item__name {
+            width: 100%;
             max-width: 160px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -454,14 +463,10 @@
             align-self: center;
         }
 
-        /* Visualizador da carta: centralizado na tela inteira.
-           A margem direita espelha a largura da barra lateral, entao o eixo
-           central do painel coincide com o centro da viewport, e nao com o
-           centro do espaco que sobra ao lado da lista de mensagens. */
+        /* O visualizador ocupa o espaco disponivel ao lado da lista, sem
+           descontar uma segunda barra lateral da largura da carta. */
         .cpe-conversation__aside {
-            flex: 1;
             min-width: 0;
-            margin-right: var(--cpe-sidebar-w);
             background: transparent;
             min-height: calc(100vh - 130px);
             border-left: 0;
@@ -486,7 +491,8 @@
         }
 
         .cpe-aside-panel:not(.cpe-aside-panel--default) {
-            width: min(1100px, calc(100vw - (var(--cpe-sidebar-w) * 2) - 64px));
+            width: 100%;
+            max-width: 1100px;
             min-width: 0;
             padding: 8px 0 0;
             box-sizing: border-box;
@@ -523,7 +529,9 @@
 
         /* Informacoes e botoes formam uma linha unica, com as bases alinhadas */
         .cpe-letter-header .cpe-letter-actions {
-            flex: none;
+            flex: 0 1 auto;
+            min-width: 0;
+            max-width: 100%;
             align-self: flex-end;
         }
 
@@ -535,15 +543,16 @@
         .cpe-letter-stage .cpe-letter-actions .cpe-button {
             width: auto;
             min-width: 0;
-            height: 34px;
-            padding: 0 14px;
+            max-width: 100%;
+            min-height: 34px;
+            height: auto;
+            padding: 8px 14px;
             font-size: 13px;
             font-weight: 700;
-        }
-
-        .cpe-letter-stage > .cpe-verification-box,
-        .cpe-letter-stage > .cpe-verification-note {
-
+            line-height: 1.3;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            text-align: center;
         }
 
         .cpe-letter-stage > .cpe-verification-note .cpe-button {
@@ -555,6 +564,8 @@
         }
 
         .cpe-letter-stage {
+            min-width: 0;
+            overflow-wrap: anywhere;
             display: flex;
             flex-direction: column;
             gap: 24px;
@@ -574,7 +585,7 @@
 
         .cpe-letter-header__party {
             min-width: 0;
-            flex: 1;
+            flex: 1 1 240px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -594,11 +605,19 @@
             white-space: nowrap;
         }
 
+        .cpe-conversation .cpe-letter-preview {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow-wrap: anywhere;
+        }
+
         .cpe-conversation .cpe-letter-preview--media {
             border: 0;
             background: transparent;
             border-radius: 9px;
             width: 100%;
+            min-height: 0;
             max-height: none;
             overflow: visible;
         }
@@ -606,6 +625,7 @@
         /* Documento PDF renderizado como imagem (pdf.js), rolavel entre paginas */
         .cpe-letter-doc {
             width: 100%;
+            min-width: 0;
             max-height: 82vh;
             overflow-y: auto;
             display: flex;
@@ -625,7 +645,9 @@
 
         .cpe-letter-page {
             display: block;
+            flex: none;
             width: 100%;
+            max-width: 100%;
             height: auto;
             border-radius: 4px;
             box-shadow: 0 1px 6px rgba(0, 0, 0, .14);
@@ -638,10 +660,10 @@
             padding: 40px 0;
         }
 
-        .cpe-letter-media {
+        .cpe-conversation .cpe-letter-media {
             width: 100%;
             height: auto;
-            max-height: 82vh;
+            max-height: none;
             object-fit: contain;
             border-radius: 9px;
             user-select: none;
@@ -758,29 +780,63 @@
             margin: 14px 0;
         }
 
-        /* Em telas mais estreitas a barra lateral volta ao fluxo (empilhada acima da carta),
-           evitando sobreposicao com a carta centralizada. */
+        /* Em telas mais estreitas, a lista e o visualizador se empilham
+           e a leitura usa a rolagem normal da pagina. */
         @media (max-width: 1050px) {
+            .cpe-conversation {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
             .cpe-conversation__main {
                 position: static;
                 width: 100%;
                 max-width: 720px;
                 margin: 0 auto;
-                top: auto;
-                bottom: auto;
+                max-height: none;
+                overflow: visible;
                 padding: 8px 24px;
             }
 
             .cpe-conversation__aside {
                 width: 100%;
                 min-height: 0;
-                margin-right: 0;
+            }
+
+            .cpe-letter-doc,
+            .cpe-conversation .cpe-letter-preview {
+                max-height: none;
+                overflow: visible;
             }
         }
 
         @media (max-width: 720px) {
+            .cpe-conversation > .cpe-logo-top {
+                padding-top: 68px;
+            }
+
+            .cpe-conversation__main {
+                padding: 8px 16px;
+            }
+
+            .cpe-conversation__aside {
+                padding: 8px 16px 32px;
+            }
+
             .cpe-letter-header {
                 gap: 12px;
+                font-size: 16px;
+            }
+
+            .cpe-letter-header__party {
+                flex-basis: 100%;
+            }
+
+            .cpe-letter-header .cpe-letter-actions {
+                width: 100%;
+            }
+
+            .cpe-letter-doc {
+                padding: 8px;
             }
 
             .cpe-form-row {

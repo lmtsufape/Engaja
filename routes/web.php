@@ -29,6 +29,7 @@ use App\Http\Controllers\MunicipioController;
 use App\Http\Controllers\PainelGerencialController;
 use App\Http\Controllers\ParticipantesExclusivosController;
 use App\Http\Controllers\PresencaController;
+use App\Http\Controllers\PresencaGerenciamentoController;
 use App\Http\Controllers\PresencaImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestaoController;
@@ -148,7 +149,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'permission:presenca.abrir'])->group(function () {
+    Route::get('/operacoes/presencas', [PresencaGerenciamentoController::class, 'index'])->name('presencas.gerenciamento');
     Route::patch('/atividades/{atividade}/presenca/toggle', [AtividadeController::class, 'togglePresenca'])->name('atividades.presenca.toggle');
+    Route::patch('/atividades/{atividade}/presenca/agendamento', [AtividadeController::class, 'agendarPresenca'])->name('atividades.presenca.agendamento');
+    Route::delete('/atividades/{atividade}/presenca/agendamento', [AtividadeController::class, 'limparAgendamentoPresenca'])->name('atividades.presenca.agendamento.limpar');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {

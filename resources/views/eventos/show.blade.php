@@ -535,12 +535,20 @@
                       @endhasanyrole
 
                       @hasanyrole('administrador|gerente')
-                        <form action="{{ route('atividades.destroy', $at) }}" method="POST"
-                              class="d-inline m-0 p-0"
-                              data-confirm="Tem certeza que deseja excluir este momento?">
-                          @csrf @method('DELETE')
-                          <button class="btn btn-sm btn-outline-danger">🗑️ Excluir</button>
-                        </form>
+                        @if (($at->presencas_count ?? 0) > 0)
+                          <button type="button" class="btn btn-sm btn-outline-danger"
+                                  data-blocked-delete="Este momento possui {{ $at->presencas_count == 1 ? '1 presença registrada' : $at->presencas_count . ' presenças registradas' }} e não pode ser excluído."
+                                  data-blocked-delete-title="Momento possui presenças associadas">
+                            🗑️ Excluir
+                          </button>
+                        @else
+                          <form action="{{ route('atividades.destroy', $at) }}" method="POST"
+                                class="d-inline m-0 p-0"
+                                data-confirm="Tem certeza que deseja excluir este momento?">
+                            @csrf @method('DELETE')
+                            <button class="btn btn-sm btn-outline-danger">🗑️ Excluir</button>
+                          </form>
+                        @endif
                       @endhasanyrole
                     </div>
                   </div>

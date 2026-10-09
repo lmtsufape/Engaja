@@ -652,6 +652,26 @@
       </div>
     </div>
   </div>
+
+  <div class="modal fade" id="blockedDeleteModal" tabindex="-1" aria-labelledby="blockedDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title" id="blockedDeleteModalLabel">⚠️ Exclusão bloqueada</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="fw-semibold text-dark mb-2 js-blocked-delete-title">Não é possível excluir este momento.</p>
+          <p class="mb-0 text-secondary js-blocked-delete-message">
+            Este momento possui presenças associadas e não pode ser excluído. Para excluí-lo, é necessário remover as presenças antes.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Entendi</button>
+        </div>
+      </div>
+    </div>
+  </div>
   
   @if (empty($exibirModalCompletarPerfil) && (!empty($showProfilePhotoPromptModal) || $errors->getBag('photoPrompt')->isNotEmpty()))
     @include('layouts.partials.profile-photo-prompt-modal')

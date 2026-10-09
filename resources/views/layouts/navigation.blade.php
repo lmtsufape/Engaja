@@ -69,6 +69,9 @@
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{{ route('usuarios.index') }}">Usuários</a></li>
+            @can('presenca.abrir')
+            <li><a class="dropdown-item" href="{{ route('presencas.gerenciamento') }}">Controle de Presenças</a></li>
+            @endcan
             @role('administrador')
             <li><a class="dropdown-item" href="{{ route('regioes.index') }}">Regiões</a></li>
             <li><a class="dropdown-item" href="{{ route('estados.index') }}">Estados</a></li>

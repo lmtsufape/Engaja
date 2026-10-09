@@ -14,12 +14,14 @@ use App\Notifications\Cartas\AjusteSolicitadoNotification;
 use App\Notifications\Cartas\CartaRecebidaNotification;
 use App\Services\Cartas\CartaTimbradoService;
 use App\Services\Cartas\CartaViewerLogger;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CartaController extends Controller
@@ -76,13 +78,28 @@ class CartaController extends Controller
         abort_unless($this->isGestor($request->user()), 403);
 
         $data = $request->validate([
-            'remetente_user_id' => ['required', 'exists:users,id'],
+            'envio_token' => ['required', 'uuid'],
+            'remetente_user_id' => ['required', 'integer', 'exists:users,id'],
             'arquivo' => ['required', 'file', 'mimes:pdf', 'max:10240'],
         ], [
+            'envio_token.required' => 'Atualize a página e tente enviar a carta novamente.',
+            'envio_token.uuid' => 'Atualize a página e tente enviar a carta novamente.',
             'remetente_user_id.required' => 'Selecione o remetente.',
             'arquivo.required' => 'Selecione o arquivo da carta.',
             'arquivo.mimes' => 'Envie um arquivo em PDF.',
         ]);
+
+        $file = $request->file('arquivo');
+        $envioToken = strtolower($data['envio_token']);
+        $envioHash = hash('sha256', json_encode([
+            (int) $data['remetente_user_id'],
+            hash('sha256', $file->getClientOriginalName()),
+            hash_file('sha256', $file->getRealPath()),
+        ], JSON_THROW_ON_ERROR));
+
+        if ($this->cartaDoEnvio($request->user(), $envioToken, $envioHash)) {
+            return redirect()->route('cartas.dashboard')->with('status', 'Carta enviada para o voluntário.');
+        }
 
         $remetente = User::with('participante')->findOrFail($data['remetente_user_id']);
         $participante = $remetente->participante;
@@ -104,64 +121,73 @@ class CartaController extends Controller
             return back()->withErrors(['destinatario' => 'Não há voluntários disponíveis para receber a carta.'])->withInput();
         }
 
-        $file = $request->file('arquivo');
+        try {
+            $carta = DB::transaction(function () use ($request, $participante, $voluntario, $file, $eventoCartas, $envioToken, $envioHash) {
+                if (! $participante->inscricoes()->where('evento_id', $eventoCartas->id)->exists()) {
+                    Inscricao::create([
+                        'evento_id' => $eventoCartas->id,
+                        'participante_id' => $participante->id,
+                    ]);
+                }
 
-        $carta = DB::transaction(function () use ($request, $participante, $voluntario, $file, $eventoCartas) {
-            if (! $participante->inscricoes()->where('evento_id', $eventoCartas->id)->exists()) {
-                Inscricao::create([
-                    'evento_id' => $eventoCartas->id,
-                    'participante_id' => $participante->id,
+                $codigo = $this->nextCodigo();
+
+                $carta = Carta::create([
+                    'envio_token' => $envioToken,
+                    'envio_hash' => $envioHash,
+                    'codigo' => $codigo,
+                    'educando_participante_id' => $participante->id,
+                    'voluntario_user_id' => $voluntario->id,
+                    'municipio_id' => $participante->municipio_id,
+                    'status' => Carta::STATUS_AGUARDANDO_VOLUNTARIO,
+                    'distribuida_em' => now(),
+                    'criada_por' => $request->user()->id,
+                    'atualizada_por' => $request->user()->id,
                 ]);
+
+                $path = $file->store("cartas/{$carta->id}/originais", 'local');
+
+                $mensagem = CartaMensagem::create([
+                    'carta_id' => $carta->id,
+                    'rodada' => 1,
+                    'remetente_participante_id' => $participante->id,
+                    'destinatario_user_id' => $voluntario->id,
+                    'tipo_remetente' => CartaMensagem::TIPO_REMETENTE_EDUCANDO,
+                    'canal_entrada' => CartaMensagem::CANAL_ANEXO_DIGITALIZADO,
+                    'status' => CartaMensagem::STATUS_APROVADA,
+                    'anexo_original_path' => $path,
+                    'anexo_original_nome' => $file->getClientOriginalName(),
+                    'anexo_original_mime' => $file->getClientMimeType(),
+                    'anexo_original_tamanho' => $file->getSize(),
+                    'enviada_em' => now(),
+                    'criada_por' => $request->user()->id,
+                    'atualizada_por' => $request->user()->id,
+                ]);
+
+                $this->timbrado->aplicarAnexo($mensagem);
+
+                CartaEvento::create([
+                    'carta_id' => $carta->id,
+                    'carta_mensagem_id' => $mensagem->id,
+                    'user_id' => $request->user()->id,
+                    'tipo' => CartaEvento::TIPO_CRIADA,
+                    'dados_depois' => [
+                        'codigo' => $codigo,
+                        'voluntario_user_id' => $voluntario->id,
+                        'educando_participante_id' => $participante->id,
+                    ],
+                ]);
+
+                return $carta;
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            // The unique index also protects requests that passed the initial check together.
+            if (! $this->cartaDoEnvio($request->user(), $envioToken, $envioHash)) {
+                throw $exception;
             }
 
-            $codigo = $this->nextCodigo();
-
-            $carta = Carta::create([
-                'codigo' => $codigo,
-                'educando_participante_id' => $participante->id,
-                'voluntario_user_id' => $voluntario->id,
-                'municipio_id' => $participante->municipio_id,
-                'status' => Carta::STATUS_AGUARDANDO_VOLUNTARIO,
-                'distribuida_em' => now(),
-                'criada_por' => $request->user()->id,
-                'atualizada_por' => $request->user()->id,
-            ]);
-
-            $path = $file->store("cartas/{$carta->id}/originais", 'local');
-
-            $mensagem = CartaMensagem::create([
-                'carta_id' => $carta->id,
-                'rodada' => 1,
-                'remetente_participante_id' => $participante->id,
-                'destinatario_user_id' => $voluntario->id,
-                'tipo_remetente' => CartaMensagem::TIPO_REMETENTE_EDUCANDO,
-                'canal_entrada' => CartaMensagem::CANAL_ANEXO_DIGITALIZADO,
-                'status' => CartaMensagem::STATUS_APROVADA,
-                'anexo_original_path' => $path,
-                'anexo_original_nome' => $file->getClientOriginalName(),
-                'anexo_original_mime' => $file->getClientMimeType(),
-                'anexo_original_tamanho' => $file->getSize(),
-                'enviada_em' => now(),
-                'criada_por' => $request->user()->id,
-                'atualizada_por' => $request->user()->id,
-            ]);
-
-            $this->timbrado->aplicarAnexo($mensagem);
-
-            CartaEvento::create([
-                'carta_id' => $carta->id,
-                'carta_mensagem_id' => $mensagem->id,
-                'user_id' => $request->user()->id,
-                'tipo' => CartaEvento::TIPO_CRIADA,
-                'dados_depois' => [
-                    'codigo' => $codigo,
-                    'voluntario_user_id' => $voluntario->id,
-                    'educando_participante_id' => $participante->id,
-                ],
-            ]);
-
-            return $carta;
-        });
+            return redirect()->route('cartas.dashboard')->with('status', 'Carta enviada para o voluntário.');
+        }
 
         $voluntario->notify(new CartaRecebidaNotification($carta->load('mensagens')));
 
@@ -262,6 +288,10 @@ class CartaController extends Controller
                 $path = $file->store("cartas/{$carta->id}/originais", 'local');
             }
 
+            $textoLimpo = isset($data['texto'])
+                ? $this->timbrado->normalizarTexto($data['texto'])
+                : null;
+
             $mensagem = CartaMensagem::create([
                 'carta_id' => $carta->id,
                 'rodada' => $rodada,
@@ -270,8 +300,8 @@ class CartaController extends Controller
                 'tipo_remetente' => CartaMensagem::TIPO_REMETENTE_VOLUNTARIO,
                 'canal_entrada' => $data['modo_resposta'] === 'digitada' ? CartaMensagem::CANAL_DIGITADA : CartaMensagem::CANAL_ANEXO_MANUSCRITO,
                 'status' => CartaMensagem::STATUS_AGUARDANDO_VERIFICACAO,
-                'texto' => $data['texto'] ?? null,
-                'texto_resumo' => isset($data['texto']) ? str($data['texto'])->limit(500)->toString() : null,
+                'texto' => $textoLimpo,
+                'texto_resumo' => $textoLimpo ? str($textoLimpo)->limit(500)->toString() : null,
                 'anexo_original_path' => $path,
                 'anexo_original_nome' => $file?->getClientOriginalName(),
                 'anexo_original_mime' => $file?->getClientMimeType(),
@@ -327,7 +357,7 @@ class CartaController extends Controller
 
         $remetenteCpf = $user->participante?->cpf ? preg_replace('/\D+/', '', $user->participante->cpf) : null;
         $destinatarioCpf = $destinatario->participante?->cpf ? preg_replace('/\D+/', '', $destinatario->participante->cpf) : null;
-        
+
         if ($remetenteCpf && $destinatarioCpf && $remetenteCpf === $destinatarioCpf) {
             return back()->withErrors(['destinatario_user_id' => 'Você não pode enviar uma carta para si mesmo.'])->withInput();
         }
@@ -723,10 +753,10 @@ class CartaController extends Controller
 
         $cartas = Carta::query()
             ->with([
-                'educando.user', 
-                'educando.municipio.estado.regiao', 
-                'voluntario' => fn($q) => $q->withCount('cartasComoVoluntario')->with('participante.municipio.estado.regiao'), 
-                'ultimaMensagem'
+                'educando.user',
+                'educando.municipio.estado.regiao',
+                'voluntario' => fn ($q) => $q->withCount('cartasComoVoluntario')->with('participante.municipio.estado.regiao'),
+                'ultimaMensagem',
             ])
             ->when($search !== '', function ($query) use ($search) {
                 $this->applySearchFilter($query, $search);
@@ -879,6 +909,22 @@ class CartaController extends Controller
             ->orderByRaw("CASE WHEN \"users\".\"cartas_tipo_vinculo\" = 'petrobras' THEN 0 ELSE 1 END ASC")
             ->orderByRaw("cartas_atribuidas_count ASC, {$randomFn}")
             ->first();
+    }
+
+    private function cartaDoEnvio(User $gestor, string $token, string $hash): ?Carta
+    {
+        $carta = Carta::withTrashed()
+            ->where('criada_por', $gestor->id)
+            ->where('envio_token', $token)
+            ->first();
+
+        if ($carta && ($carta->trashed() || ! hash_equals($carta->envio_hash, $hash))) {
+            throw ValidationException::withMessages([
+                'envio_token' => 'Este envio já foi utilizado com outros dados ou sua carta foi excluída. Atualize a página para iniciar um novo envio.',
+            ]);
+        }
+
+        return $carta;
     }
 
     private function nextCodigo(): string

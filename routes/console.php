@@ -14,3 +14,9 @@ Schedule::command('limesurvey:importar-dados')
     ->runInBackground()
     ->withoutOverlapping()
     ->onFailure(fn () => Log::error('Falha na importação diária do LimeSurvey'));
+
+Schedule::command('presenca:sincronizar-agendamentos')
+    ->everyMinute()
+    ->runInBackground()
+    ->withoutOverlapping()
+    ->onFailure(fn () => Log::error('Falha na sincronização periódica de presenças agendadas'));

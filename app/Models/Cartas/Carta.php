@@ -48,6 +48,8 @@ class Carta extends Model
 
     protected $fillable = [
         'codigo',
+        'envio_token',
+        'envio_hash',
         'evento_id',
         'atividade_id',
         'educando_participante_id',

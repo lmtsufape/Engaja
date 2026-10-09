@@ -38,7 +38,7 @@
                 @foreach ($atividades as $atividade)
                 <option value="{{ $atividade->id }}"
                   @selected(old('atividade_id', $avaliacao->atividade_id) == $atividade->id)>
-                  {{ $atividade->descricao }} — {{ $atividade->evento->nome ?? 'Sem evento' }}
+                  {{ $atividade->descricao }}@if($atividade->dia) ({{ \Carbon\Carbon::parse($atividade->dia)->format('d/m/Y') }})@endif — {{ $atividade->evento->nome ?? 'Sem evento' }}
                 </option>
                 @endforeach
               </select>

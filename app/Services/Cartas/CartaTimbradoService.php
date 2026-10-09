@@ -30,7 +30,7 @@ class CartaTimbradoService
      */
     public function aplicar(CartaMensagem $mensagem): void
     {
-        $texto = trim((string) $mensagem->texto);
+        $texto = trim($this->normalizarTexto((string) $mensagem->texto));
 
         if ($texto === '') {
             throw new RuntimeException('Não há texto para aplicar ao timbrado.');
@@ -96,6 +96,8 @@ class CartaTimbradoService
      */
     public function render(string $texto): string
     {
+        $texto = $this->normalizarTexto($texto);
+
         $config = config('cartas.timbrado');
         $modelo = $config['path'];
 
@@ -288,7 +290,11 @@ class CartaTimbradoService
         $palavrasLinha = [];
         $this->quebrarPaginaSeNecessario($pdf, $config);
 
-        foreach (preg_split('/\s+/', $paragrafo) as $palavra) {
+        foreach (preg_split('/\s+/u', $paragrafo) as $palavra) {
+            if ($palavra === '') {
+                continue;
+            }
+
             $tentativa = [...$palavrasLinha, $palavra];
             $largura = $this->larguraDisponivel($pdf, $config);
 
@@ -390,16 +396,44 @@ class CartaTimbradoService
      */
     private function paragrafos(string $texto): array
     {
-        $normalizado = str_replace(["\r\n", "\r"], "\n", $texto);
-
-        return explode("\n", $normalizado);
+        return explode("\n", $texto);
     }
 
     /**
-     * As fontes core do FPDF usam Windows-1252; converte o UTF-8 mantendo acentos.
+     * Normaliza e sanitiza o texto da carta antes da renderização:
+     * - Garante sequência UTF-8 válida, descartando bytes órfãos ou malformados;
+     * - Remove caracteres de largura zero e invisíveis (ZWSP, ZWNJ, ZWJ, BOM);
+     * - Converte espaços não quebráveis e espaços Unicode especiais para espaço comum;
+     * - Converte quebras de linha Unicode (LS \u2028, PS \u2029) e retornos de carro para \n.
      */
-    private function encode(string $texto): string
+    public function normalizarTexto(string $texto): string
     {
-        return iconv('UTF-8', 'windows-1252//TRANSLIT', $texto) ?: $texto;
+        // 1. Descarta bytes que não formam sequências UTF-8 válidas (evita erro no iconv)
+        $texto = @iconv('UTF-8', 'UTF-8//IGNORE', $texto) ?: mb_convert_encoding($texto, 'UTF-8', 'UTF-8');
+
+        // 2. Remove caracteres de largura zero e invisíveis (evita '?' no FPDF)
+        $texto = preg_replace('/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $texto) ?? $texto;
+
+        // 3. Normaliza espaços não quebráveis e espaços Unicode especiais para espaço comum
+        $texto = preg_replace('/[\x{00A0}\x{202F}\x{2000}-\x{200A}\x{205F}\x{3000}]/u', ' ', $texto) ?? $texto;
+
+        // 4. Normaliza quebras de linha Unicode (LS \u2028, PS \u2029) e retornos de carro
+        return str_replace(["\r\n", "\r", "\u{2028}", "\u{2029}"], "\n", $texto);
+    }
+
+    /**
+     * As fontes core do FPDF usam Windows-1252. Converte o UTF-8 mantendo acentos,
+     * aspas tipográficas e travessões, e transliterando ou ignorando caracteres
+     * incompatíveis sem emitir avisos ou exceções fatais.
+     */
+    public function encode(string $texto): string
+    {
+        $convertido = @iconv('UTF-8', 'windows-1252//TRANSLIT//IGNORE', $texto);
+
+        if ($convertido !== false) {
+            return $convertido;
+        }
+
+        return mb_convert_encoding($texto, 'Windows-1252', 'UTF-8');
     }
 }

@@ -127,7 +127,7 @@
             ];
 
             $roles = $u->roles->pluck('name')->map(fn($r) => $roleNames[$r] ?? ucwords(str_replace('_', ' ', $r)))->implode(', ');
-            $papelFmt = $roles ?: 'Participante';
+            $papelFmt = $roles ?: 'Sem acesso definido';
 
             $acoesHtml = '<div class="dropdown d-inline-block">'
                 . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Gerenciar</button>'

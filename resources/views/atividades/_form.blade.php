@@ -737,6 +737,108 @@
   </div>
 </div>
 
+@can('presenca.abrir')
+  @php
+    $sugestaoAgendamento = isset($atividade) ? \App\Support\AgendamentoPresenca::sugestao($atividade) : ['abre' => null, 'fecha' => null];
+    $temAgendamentoGravado = isset($atividade) && ($atividade->presenca_abre_em || $atividade->presenca_fecha_em);
+    $valorAbreEm = old('presenca_abre_em', $temAgendamentoGravado ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em) : ($sugestaoAgendamento['abre'] ?? null));
+    $valorFechaEm = old('presenca_fecha_em', $temAgendamentoGravado ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em) : ($sugestaoAgendamento['fecha'] ?? null));
+  @endphp
+  <div class="border rounded p-3 mt-3 bg-light">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <label class="form-label fw-bold mb-0 text-engaja">
+        <i class="bi bi-clock-history me-1"></i> Confirmação de presença — Agendamento de abertura/fechamento
+      </label>
+      <div class="btn-group btn-group-sm">
+        <button type="button" class="btn btn-outline-secondary" id="btn-preencher-agendamento-sugestao" title="Preenche os campos com a data e horários do momento">
+          Preencher com dia/horário do momento
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btn-limpar-agendamento-form" title="Limpa os campos de agendamento">
+          Limpar agendamento
+        </button>
+      </div>
+    </div>
+    <div class="form-text mb-3">
+      Se configurado, a confirmação de presença abrirá e/ou fechará automaticamente nos dias e horários determinados (horário de Brasília). Deixe em branco para que o momento inicie com a presença aberta.
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="presenca_abre_em" class="form-label">Abrir presença em</label>
+        <input type="datetime-local" name="presenca_abre_em" id="presenca_abre_em"
+               value="{{ $valorAbreEm }}"
+               class="form-control @error('presenca_abre_em') is-invalid @enderror">
+        @error('presenca_abre_em') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+
+      <div class="col-md-6">
+        <label for="presenca_fecha_em" class="form-label">Fechar presença em</label>
+        <input type="datetime-local" name="presenca_fecha_em" id="presenca_fecha_em"
+               value="{{ $valorFechaEm }}"
+               class="form-control @error('presenca_fecha_em') is-invalid @enderror">
+        @error('presenca_fecha_em') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const btnSugestao = document.getElementById('btn-preencher-agendamento-sugestao');
+      const btnLimpar = document.getElementById('btn-limpar-agendamento-form');
+      const inputDia = document.getElementById('dia');
+      const inputHoraInicio = document.getElementById('hora_inicio');
+      const inputHoraFim = document.getElementById('hora_fim');
+      const inputAbre = document.getElementById('presenca_abre_em');
+      const inputFecha = document.getElementById('presenca_fecha_em');
+
+      let editouAbreManualmente = Boolean(inputAbre && inputAbre.value);
+      let editouFechaManualmente = Boolean(inputFecha && inputFecha.value);
+
+      inputAbre?.addEventListener('input', () => { editouAbreManualmente = true; });
+      inputFecha?.addEventListener('input', () => { editouFechaManualmente = true; });
+
+      function formatarDateTime(dia, hora) {
+        if (!dia || !hora) return '';
+        const h = hora.length >= 5 ? hora.substring(0, 5) : hora;
+        // Horário (Brasília, UTC-3) que já passou não é sugerido: evitaria agendar um
+        // fechamento/abertura no passado e alterar o estado da presença sem querer.
+        if (new Date(`${dia}T${h}:00-03:00`).getTime() <= Date.now()) return '';
+        return `${dia}T${h}`;
+      }
+
+      function aplicarSugestao(forcar = false) {
+        if (!inputDia || !inputAbre || !inputFecha) return;
+        const dia = inputDia.value;
+        const hIni = inputHoraInicio?.value;
+        const hFim = inputHoraFim?.value;
+
+        if (dia && hIni && (forcar || !editouAbreManualmente || !inputAbre.value)) {
+          const v = formatarDateTime(dia, hIni);
+          if (v || forcar) inputAbre.value = v;
+        }
+        if (dia && hFim && (forcar || !editouFechaManualmente || !inputFecha.value)) {
+          const v = formatarDateTime(dia, hFim);
+          if (v || forcar) inputFecha.value = v;
+        }
+      }
+
+      // A sugestão de agendamento é aplicada explicitamente quando o usuário clica no botão:
+      btnSugestao?.addEventListener('click', function () {
+        aplicarSugestao(true);
+        editouAbreManualmente = true;
+        editouFechaManualmente = true;
+      });
+
+      btnLimpar?.addEventListener('click', function () {
+        if (inputAbre) inputAbre.value = '';
+        if (inputFecha) inputFecha.value = '';
+        editouAbreManualmente = true;
+        editouFechaManualmente = true;
+      });
+    });
+  </script>
+@endcan
+
 @php
   $listaCopiaveis = collect($atividadesCopiaveis ?? []);
 @endphp

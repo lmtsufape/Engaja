@@ -31,14 +31,19 @@
       <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
     </svg>
     <div>
-      <strong>Apenas Nome e Email são obrigatórios.</strong>
+      <strong>Nome é obrigatório. Informe e-mail ou CPF em cada registro.</strong>
       Todos os demais campos da planilha são opcionais durante o processo de importação.
     </div>
   </div>
 
   @if ($errors->any())
   <div class="alert alert-danger">
-    <strong>Ops!</strong> Verifique o arquivo e tente novamente.
+    <strong>Verifique os registros antes de importar:</strong>
+    <ul class="mb-0">
+      @foreach ($errors->all() as $error)
+      <li>{{ $error }}</li>
+      @endforeach
+    </ul>
   </div>
   @endif
 
@@ -164,7 +169,7 @@
 
         {{-- Aviso obrigatórios --}}
         <div class="alert alert-success py-2 mb-4">
-           <strong>Somente Nome e Email são obrigatórios.</strong> Todos os outros campos são opcionais durante o processo de importação.
+           <strong>Nome é obrigatório. Informe e-mail ou CPF em cada registro.</strong> Todos os outros campos são opcionais durante o processo de importação.
         </div>
 
         {{-- Accordion por campo --}}
@@ -189,7 +194,7 @@
           <div class="accordion-item">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#campo-email">
-                <span class="badge bg-danger me-2">Obrigatório</span> Email
+                <span class="badge bg-secondary me-2">Email ou CPF</span> Email
               </button>
             </h2>
             <div id="campo-email" class="accordion-collapse collapse" data-bs-parent="#accordionCampos">
@@ -204,12 +209,12 @@
           <div class="accordion-item">
             <h2 class="accordion-header">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#campo-cpf">
-                <span class="badge bg-secondary me-2">Opcional</span> CPF
+                <span class="badge bg-secondary me-2">Email ou CPF</span> CPF
               </button>
             </h2>
             <div id="campo-cpf" class="accordion-collapse collapse" data-bs-parent="#accordionCampos">
               <div class="accordion-body">
-                <p>CPF do participante. Pode ser informado <strong>somente com números</strong> (recomendado) ou com pontuação — o sistema aceita ambos os formatos.</p>
+                <p>CPF do participante, obrigatório quando não houver e-mail. Nesse caso, o sistema utiliza o perfil mais recente com esse CPF ou cria um novo cadastro com e-mail fictício derivado do nome. Pode ser informado <strong>somente com números</strong> (recomendado) ou com pontuação — o sistema aceita ambos os formatos.</p>
                 <p class="mb-0 text-muted small">Exemplos aceitos: <code>12345678900</code> ou <code>123.456.789-00</code></p>
               </div>
             </div>

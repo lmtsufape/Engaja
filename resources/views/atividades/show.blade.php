@@ -45,12 +45,21 @@
         $ini = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
         $dia = \Carbon\Carbon::parse($atividade->dia)
         ->locale('pt_BR')->translatedFormat('l, d \\d\\e F \\d\\e Y');
+        $presencaAberta = $atividade->presencaEstaAberta();
     @endphp
     <div class="container py-4">
 
         {{-- Cabeçalho do momento --}}
         <div class="d-flex justify-content-between align-items-start mb-4">
-            <x-header-atividade :atividade="$atividade" />
+            <div>
+                <x-header-atividade :atividade="$atividade" />
+                <div class="mt-2">
+                    <span class="badge {{ $presencaAberta ? 'bg-success' : 'bg-secondary' }} d-inline-flex align-items-center gap-1">
+                        <i class="bi {{ $presencaAberta ? 'bi-check-circle-fill' : 'bi-lock-fill' }}"></i>
+                        {{ $atividade->status_presenca_label }}
+                    </span>
+                </div>
+            </div>
 
         <div class="d-flex flex-wrap gap-2 mb-3">
                 {{-- Alerta de dados demográficos pendentes --}}
@@ -72,12 +81,12 @@
                 @auth
                     <form action="{{ route('atividades.presenca.checkin', $atividade) }}" method="POST" class="d-inline">
                         @csrf
-                        <button class="btn btn-primary" {{ $atividade->presenca_ativa ? '' : 'disabled' }}>
+                        <button class="btn btn-primary" {{ $presencaAberta ? '' : 'disabled' }}>
                             Confirmar minha presença
                         </button>
                     </form>
                 @else
-                    @if($atividade->presenca_ativa)
+                    @if($presencaAberta)
                         <a class="btn btn-primary" href="{{ route('presenca.confirmar', $atividade) }}">
                             Confirmar presença
                         </a>
@@ -121,12 +130,17 @@
                                          <i class="bi bi-card-checklist"></i>Diário de Presenças
                                      </a>
                                 </li>
-                                    <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button type="button" class="dropdown-item text-engaja" data-bs-toggle="modal" data-bs-target="#modalAgendamentoPresenca">
+                                        <i class="bi bi-clock-history me-1"></i>Agendar abertura/fechamento
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="{{ route('atividades.presenca.toggle', $atividade) }}" method="POST" class="m-0">
                                         @csrf @method('PATCH')
-                                        <button type="submit" class="dropdown-item {{ $atividade->presenca_ativa ? 'text-danger' : 'text-success' }}">
-                                            {{ $atividade->presenca_ativa ? 'Fechar presença' : 'Abrir presença' }}
+                                        <button type="submit" class="dropdown-item {{ $presencaAberta ? 'text-danger' : 'text-success' }}">
+                                            {{ $presencaAberta ? 'Fechar presença' : 'Abrir presença' }}
                                         </button>
                                     </form>
                                 </li>
@@ -272,6 +286,111 @@
                 </div>
             </div>
         </div>
+
+        @can('presenca.abrir')
+            @php
+                $sugestaoModal = \App\Support\AgendamentoPresenca::sugestao($atividade);
+                $temAgendamentoAtivo = $atividade->presenca_abre_em || $atividade->presenca_fecha_em;
+                $valModalAbre = old('presenca_abre_em', $temAgendamentoAtivo ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em) : ($sugestaoModal['abre'] ?? null));
+                $valModalFecha = old('presenca_fecha_em', $temAgendamentoAtivo ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em) : ($sugestaoModal['fecha'] ?? null));
+            @endphp
+            <div class="modal fade" id="modalAgendamentoPresenca" tabindex="-1" aria-labelledby="modalAgendamentoPresencaLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+
+                        <div class="modal-header border-bottom-0 pb-0">
+                            <h5 class="modal-title fw-bold text-engaja" id="modalAgendamentoPresencaLabel">
+                                <i class="bi bi-clock-history me-1"></i> Agendar Confirmação de Presença
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <form action="{{ route('atividades.presenca.agendamento', $atividade) }}" method="POST" id="form-agendamento-presenca">
+                            @csrf
+                            @method('PATCH')
+                            <div class="modal-body py-3">
+                                <p class="text-muted small mb-3">
+                                    Defina a data e a hora para abertura e/ou fechamento automático da presença neste momento (horário de Brasília).
+                                </p>
+
+                                @if ($errors->agendamentoPresenca->any())
+                                    <div class="alert alert-danger py-2 small mb-3">
+                                        <ul class="mb-0 ps-3">
+                                            @foreach ($errors->agendamentoPresenca->all() as $erro)
+                                                <li>{{ $erro }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+
+                                <div class="mb-3">
+                                    <label for="modal_presenca_abre_em" class="form-label fw-semibold">Abrir presença em</label>
+                                    <input type="datetime-local"
+                                           name="presenca_abre_em"
+                                           id="modal_presenca_abre_em"
+                                           value="{{ $valModalAbre }}"
+                                           class="form-control @if($errors->agendamentoPresenca->has('presenca_abre_em')) is-invalid @endif">
+                                    @if($errors->agendamentoPresenca->has('presenca_abre_em'))
+                                        <div class="invalid-feedback">{{ $errors->agendamentoPresenca->first('presenca_abre_em') }}</div>
+                                    @endif
+                                    <div class="form-text">Deixe em branco se já estiver aberta ou se desejar abrir manualmente.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="modal_presenca_fecha_em" class="form-label fw-semibold">Fechar presença em</label>
+                                    <input type="datetime-local"
+                                           name="presenca_fecha_em"
+                                           id="modal_presenca_fecha_em"
+                                           value="{{ $valModalFecha }}"
+                                           class="form-control @if($errors->agendamentoPresenca->has('presenca_fecha_em')) is-invalid @endif">
+                                    @if($errors->agendamentoPresenca->has('presenca_fecha_em'))
+                                        <div class="invalid-feedback">{{ $errors->agendamentoPresenca->first('presenca_fecha_em') }}</div>
+                                    @endif
+                                    <div class="form-text">Deixe em branco se desejar fechar manualmente.</div>
+                                </div>
+                            </div>
+
+                            <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between">
+                                <div>
+                                    @if($temAgendamentoAtivo)
+                                        <button type="submit"
+                                                form="form-limpar-agendamento"
+                                                class="btn btn-outline-danger btn-sm"
+                                                onclick="return confirm('Tem certeza que deseja remover o agendamento?');">
+                                            Remover agendamento
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-engaja">Salvar agendamento</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        @if($temAgendamentoAtivo)
+                            <form id="form-limpar-agendamento" action="{{ route('atividades.presenca.agendamento.limpar', $atividade) }}" method="POST" class="d-none">
+                                @csrf
+                                @method('DELETE')
+                            </form>
+                        @endif
+
+                    </div>
+                </div>
+            </div>
+
+            @if ($errors->agendamentoPresenca->any())
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const modalEl = document.getElementById('modalAgendamentoPresenca');
+                        if (modalEl) {
+                            const modal = new bootstrap.Modal(modalEl);
+                            modal.show();
+                        }
+                    });
+                </script>
+            @endif
+        @endcan
 
     </div>
 @endsection

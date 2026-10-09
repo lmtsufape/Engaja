@@ -10,15 +10,23 @@
   </p>
 
   @if($errors->any())
-  <div class="alert alert-danger">{{ $errors->first() }}</div>
+  <div class="alert alert-danger" role="alert">
+    <strong>Importação interrompida. Corrija os problemas abaixo antes de continuar.</strong>
+    <ul class="mb-0 mt-2">
+      @foreach($errors->all() as $message)
+      <li>{{ $message }}</li>
+      @endforeach
+    </ul>
+  </div>
   @endif
 
   <form method="POST" action="{{ route('atividades.presencas.cadastro', $atividade) }}" enctype="multipart/form-data" class="card p-3 shadow-sm">
     @csrf
     <div class="mb-3">
       <label class="form-label">Arquivo Excel (.xlsx)</label>
-      <input type="file" name="your_file" class="form-control" accept=".xlsx,.xls" required>
+      <input type="file" name="your_file" class="form-control" accept=".xlsx,.xls,.csv" required>
       <div class="form-text">
+        <strong>Cada registro de participante deve ter nome, além de pelo menos um identificador: E-mail ou CPF.</strong><br>
         Colunas: nome, email, cpf, telefone, municipio, tipo_de_organizacao, organização, tag, status, data_entrada
       </div>
       <div class="mt-2">

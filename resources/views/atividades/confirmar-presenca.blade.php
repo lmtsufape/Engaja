@@ -8,44 +8,65 @@
         <div class="card ev-card">
           <div class="card-body">
             <x-header-atividade :atividade="$atividade" class="mb-4" />
-            <h1 class="h5 fw-bold mb-3">Olá, seja bem vindo(a)!</h1>
-            <p class="mb-3">Para confirmar a sua presença nesta atividade e/ou responder a avaliação, preencha o campo com
-              o seu e-mail, CPF ou
-              telefone e clique no botão.<br /></p>
 
-            {{-- Erro genérico / usuário não encontrado --}}
+            {{-- Erro genérico / retorno de bloqueio --}}
             @if (session('error') && !session('demograficos_pendentes'))
               <div class="alert alert-danger" role="alert">
                 {{ session('error') }}
               </div>
             @endif
 
-            {{-- Formulário principal de busca --}}
-            <form method="POST" action="{{ route('presenca.store', $atividade) }}" id="form-busca-presenca">
-              @csrf
-              <div class="mb-3">
-                <label for="campo" class="form-label">E-mail, CPF ou telefone</label>
-                <input type="text"
-                       class="form-control @error('campo') is-invalid @enderror"
-                       id="campo"
-                       name="campo"
-                       value="{{ old('campo', session('demograficos_campo_input')) }}"
-                       required>
-                @error('campo')
-                  <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-              </div>
-              <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary">Confirmar Presença / Realizar Avaliação</button>
-              </div>
+            @php
+              $estaAberta = isset($presencaAberta) ? $presencaAberta : $atividade->presencaEstaAberta();
+              $proximoAgendamento = $atividade->proximoAgendamentoPresenca();
+            @endphp
 
-              @if (session('show_register_button') && session('error'))
-                <a class="btn btn-outline-primary float-end mt-2"
-                  href="{{ route('evento.cadastro_inscricao', ['evento_id' => $atividade->evento->id, 'atividade_id' => $atividade->id]) }}">
-                  Cadastre-se
-                </a>
-              @endif
-            </form>
+            @if(!$estaAberta)
+              <div class="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-lock-fill flex-shrink-0" viewBox="0 0 16 16">
+                  <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                </svg>
+                <div>
+                  <strong>Confirmação de presença encerrada</strong><br>
+                  A confirmação de presença para este momento não está aberta.
+                  @if($proximoAgendamento && $proximoAgendamento['tipo'] === 'abre')
+                    <div class="mt-1 small">Abertura prevista para: <strong>{{ \App\Support\AgendamentoPresenca::formatar($proximoAgendamento['em']) }}</strong>.</div>
+                  @endif
+                </div>
+              </div>
+            @else
+              <h1 class="h5 fw-bold mb-3">Olá, seja bem vindo(a)!</h1>
+              <p class="mb-3">Para confirmar a sua presença nesta atividade e/ou responder a avaliação, preencha o campo com
+                o seu e-mail, CPF ou
+                telefone e clique no botão.<br /></p>
+
+              {{-- Formulário principal de busca --}}
+              <form method="POST" action="{{ route('presenca.store', $atividade) }}" id="form-busca-presenca">
+                @csrf
+                <div class="mb-3">
+                  <label for="campo" class="form-label">E-mail, CPF ou telefone</label>
+                  <input type="text"
+                         class="form-control @error('campo') is-invalid @enderror"
+                         id="campo"
+                         name="campo"
+                         value="{{ old('campo', session('demograficos_campo_input')) }}"
+                         required>
+                  @error('campo')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                  @enderror
+                </div>
+                <div class="d-flex justify-content-end">
+                  <button type="submit" class="btn btn-primary">Confirmar Presença / Realizar Avaliação</button>
+                </div>
+
+                @if (session('show_register_button') && session('error'))
+                  <a class="btn btn-outline-primary float-end mt-2"
+                    href="{{ route('evento.cadastro_inscricao', ['evento_id' => $atividade->evento->id, 'atividade_id' => $atividade->id]) }}">
+                    Cadastre-se
+                  </a>
+                @endif
+              </form>
+            @endif
           </div>
         </div>
       </div>

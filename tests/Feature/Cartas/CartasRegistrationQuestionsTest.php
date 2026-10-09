@@ -6,12 +6,14 @@ use App\Models\Cartas\Carta;
 use App\Models\Estado;
 use App\Models\Evento;
 use App\Models\Municipio;
+use App\Models\Participante;
 use App\Models\Regiao;
 use App\Models\User;
 use App\Notifications\Cartas\CartasVerifyEmailNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -225,6 +227,7 @@ class CartasRegistrationQuestionsTest extends TestCase
 
         $this->actingAs($gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $remetente->id,
                 'arquivo' => UploadedFile::fake()->createWithContent(
                     'carta.pdf',
@@ -294,6 +297,7 @@ class CartasRegistrationQuestionsTest extends TestCase
         // Nova carta deve ir para voluntário 2 (ainda tem capacidade)
         $this->actingAs($gestor)
             ->post(route('cartas.cartas.store'), [
+                'envio_token' => (string) Str::uuid(),
                 'remetente_user_id' => $remetente->id,
                 'arquivo' => UploadedFile::fake()->createWithContent(
                     'carta.pdf',
@@ -360,7 +364,7 @@ class CartasRegistrationQuestionsTest extends TestCase
         $response->assertOk();
         $response->assertSee('Funcionário Petrobras');
     }
-    
+
     /**
      * A tabela do dashboard exibe as cartas atribuídas e o limite do voluntário.
      */
@@ -373,7 +377,7 @@ class CartasRegistrationQuestionsTest extends TestCase
         ]);
         $admin->assignRole('cartas_admin');
 
-        $educando = \App\Models\Participante::factory()->create();
+        $educando = Participante::factory()->create();
         $voluntario = User::factory()->create([
             'sistema_origem' => User::SISTEMA_CARTAS,
             'email_verified_at' => now(),
@@ -382,7 +386,7 @@ class CartasRegistrationQuestionsTest extends TestCase
         ]);
         $voluntario->assignRole('cartas_voluntario');
 
-        \App\Models\Cartas\Carta::create([
+        Carta::create([
             'codigo' => '123',
             'educando_participante_id' => $educando->id,
             'voluntario_user_id' => $voluntario->id,

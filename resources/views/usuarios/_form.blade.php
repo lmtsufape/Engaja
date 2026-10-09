@@ -1,7 +1,7 @@
 @php
   $isEdit = isset($isEdit) ? $isEdit : false;
   $submitLabel = $submitLabel ?? ($isEdit ? 'Salvar usuário' : 'Cadastrar usuário');
-  $currentRole = old('role', $currentRole ?? 'participante');
+  $currentRole = old('role', $currentRole ?? ($isEdit ? '' : 'participante'));
   $participante = $user->participante ?? null;
 @endphp
 
@@ -54,6 +54,9 @@
               <div class="col-md-6">
                 <label for="role" class="form-label">Papel / Acesso no Sistema</label>
                 <select name="role" id="role" class="form-select @error('role') is-invalid @enderror">
+                  @if($isEdit)
+                    <option value="" @selected($currentRole === '')>Sem acesso definido</option>
+                  @endif
                   @foreach($roles as $role)
                     <option value="{{ $role->name }}" @selected($currentRole === $role->name)>{{ ucfirst($role->name) }}</option>
                   @endforeach

@@ -5,6 +5,7 @@
 @php
   $modoTodosMomentos = $modoTodosMomentos ?? false;
   $atividadesEscopo = $atividadesEscopo ?? collect();
+  $identityErrors = $identityErrors ?? [];
 @endphp
 <div class="container py-4">
   <h1 class="h4 mb-3">Pré-visualização da Importação - {{ $evento->nome }}</h1>
@@ -46,16 +47,18 @@
     @endif
   </div>
 
-  @if ($errors->any())
+  @if ($errors->any() || $identityErrors !== [])
   <div class="alert alert-danger">
     <strong>Corrija os erros antes de confirmar:</strong>
     <ul class="mb-0">
-      @foreach ($errors->all() as $error)
+      @foreach (array_merge($errors->all(), $identityErrors) as $error)
       <li>{{ $error }}</li>
       @endforeach
     </ul>
   </div>
   @endif
+
+  <p class="text-muted"><strong>Nome é obrigatório. Informe e-mail ou CPF em cada registro. Salve as alterações da página antes de confirmar.</strong> </p>
 
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="text-muted">
@@ -110,7 +113,7 @@
         <thead class="table-light">
           <tr>
             <th style="min-width:220px;">Nome *</th>
-            <th style="min-width:240px;">Email *</th>
+            <th style="min-width:240px;">Email</th>
             <th style="min-width:140px;">CPF</th>
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
@@ -128,9 +131,26 @@
           @foreach($rows as $i => $r)
           @php $idx = $globalOffset + $loop->index; @endphp
           <tr>
-            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required></td>
-            <td><input type="email" class="form-control form-control-sm" name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}" required></td>
-            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}"></td>
+            <td>
+              <input class="form-control form-control-sm @error("rows.$idx.nome") is-invalid @enderror"
+                name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required>
+              @error("rows.$idx.nome") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+            <td>
+              <input type="email"
+                class="form-control form-control-sm {{ $errors->has("rows.$idx.email") || $errors->has("rows.$idx.identificacao") ? 'is-invalid' : '' }}"
+                name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}">
+              @if($errors->has("rows.$idx.email") || $errors->has("rows.$idx.identificacao"))
+              <div class="invalid-feedback">{{ $errors->first("rows.$idx.email") ?: $errors->first("rows.$idx.identificacao") }}</div>
+              @endif
+            </td>
+            <td>
+              <input class="form-control form-control-sm {{ $errors->has("rows.$idx.cpf") || $errors->has("rows.$idx.identificacao") ? 'is-invalid' : '' }}"
+                name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}">
+              @if($errors->has("rows.$idx.cpf") || $errors->has("rows.$idx.identificacao"))
+              <div class="invalid-feedback">{{ $errors->first("rows.$idx.cpf") ?: $errors->first("rows.$idx.identificacao") }}</div>
+              @endif
+            </td>
             <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][telefone]" value="{{ old("rows.$idx.telefone", $r['telefone']) }}"></td>
 
             <td>

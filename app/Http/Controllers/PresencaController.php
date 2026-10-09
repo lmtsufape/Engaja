@@ -5,9 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Atividade;
 use App\Models\Inscricao;
 use App\Models\Participante;
-use App\Models\Presenca;
 use App\Models\User;
-
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Throwable;
@@ -17,11 +15,19 @@ class PresencaController extends Controller
     public function confirmarPresenca(Atividade $atividade)
     {
         $atividade->load(['municipios.estado']);
-        return view('atividades.confirmar-presenca', compact('atividade'));
+        $presencaAberta = $atividade->presencaEstaAberta();
+
+        return view('atividades.confirmar-presenca', compact('atividade', 'presencaAberta'));
     }
 
     public function store(Request $request, Atividade $atividade)
     {
+        if (! $atividade->presencaEstaAberta()) {
+            return redirect()
+                ->route('presenca.confirmar', $atividade)
+                ->with('error', 'A confirmação de presença deste momento está encerrada.');
+        }
+
         $request->validate([
             'campo' => 'required|string',
         ]);
@@ -33,12 +39,12 @@ class PresencaController extends Controller
             ->orWhere('telefone', $campo)
             ->first();
 
-        if (!$usuario && $participante) {
+        if (! $usuario && $participante) {
             $usuario = User::find($participante->user_id);
         }
 
-        //TODO redirecionar para a tela de cadastro de participante
-        if (!$usuario && !$participante) {
+        // TODO redirecionar para a tela de cadastro de participante
+        if (! $usuario && ! $participante) {
             return redirect()
                 ->back()
                 ->withInput()
@@ -46,7 +52,7 @@ class PresencaController extends Controller
                 ->with('show_register_button', true);
         }
 
-        if ($usuario && !$participante) {
+        if ($usuario && ! $participante) {
             $participante = Participante::where('user_id', $usuario->id)->first();
         }
 
@@ -70,24 +76,30 @@ class PresencaController extends Controller
      */
     public function salvarDemograficosEConfirmar(Request $request, Atividade $atividade)
     {
+        if (! $atividade->presencaEstaAberta()) {
+            return redirect()
+                ->route('presenca.confirmar', $atividade)
+                ->with('error', 'A confirmação de presença deste momento está encerrada.');
+        }
+
         $request->validate([
-            'user_token'                   => 'required|string',
-            'identidade_genero'            => 'required|string',
-            'identidade_genero_outro'      => 'nullable|string|max:255|required_if:identidade_genero,Outro',
-            'raca_cor'                     => 'required|string',
-            'comunidade_tradicional'       => 'required|string',
+            'user_token' => 'required|string',
+            'identidade_genero' => 'required|string',
+            'identidade_genero_outro' => 'nullable|string|max:255|required_if:identidade_genero,Outro',
+            'raca_cor' => 'required|string',
+            'comunidade_tradicional' => 'required|string',
             'comunidade_tradicional_outro' => 'nullable|string|max:255|required_if:comunidade_tradicional,Outro',
-            'faixa_etaria'                 => 'required|string',
-            'pcd'                          => 'required|string',
-            'orientacao_sexual'            => 'required|string',
-            'orientacao_sexual_outra'      => 'nullable|string|max:255|required_if:orientacao_sexual,Outra',
+            'faixa_etaria' => 'required|string',
+            'pcd' => 'required|string',
+            'orientacao_sexual' => 'required|string',
+            'orientacao_sexual_outra' => 'nullable|string|max:255|required_if:orientacao_sexual,Outra',
         ], [
-            'identidade_genero.required'       => 'Identidade de gênero é obrigatória.',
-            'raca_cor.required'                => 'Raça/Cor é obrigatória.',
-            'comunidade_tradicional.required'  => 'Pertencimento a comunidade é obrigatório.',
-            'faixa_etaria.required'            => 'Faixa etária é obrigatória.',
-            'pcd.required'                     => 'Campo PcD é obrigatório.',
-            'orientacao_sexual.required'       => 'Orientação sexual é obrigatória.',
+            'identidade_genero.required' => 'Identidade de gênero é obrigatória.',
+            'raca_cor.required' => 'Raça/Cor é obrigatória.',
+            'comunidade_tradicional.required' => 'Pertencimento a comunidade é obrigatório.',
+            'faixa_etaria.required' => 'Faixa etária é obrigatória.',
+            'pcd.required' => 'Campo PcD é obrigatório.',
+            'orientacao_sexual.required' => 'Orientação sexual é obrigatória.',
         ]);
 
         // Resolve o usuário de forma segura via token criptografado
@@ -108,15 +120,15 @@ class PresencaController extends Controller
 
         // Salva os dados demográficos diretamente na tabela users
         $usuario->update([
-            'identidade_genero'            => $request->identidade_genero,
-            'identidade_genero_outro'      => $request->identidade_genero_outro,
-            'raca_cor'                     => $request->raca_cor,
-            'comunidade_tradicional'       => $request->comunidade_tradicional,
+            'identidade_genero' => $request->identidade_genero,
+            'identidade_genero_outro' => $request->identidade_genero_outro,
+            'raca_cor' => $request->raca_cor,
+            'comunidade_tradicional' => $request->comunidade_tradicional,
             'comunidade_tradicional_outro' => $request->comunidade_tradicional_outro,
-            'faixa_etaria'                 => $request->faixa_etaria,
-            'pcd'                          => $request->pcd,
-            'orientacao_sexual'            => $request->orientacao_sexual,
-            'orientacao_sexual_outra'      => $request->orientacao_sexual_outra,
+            'faixa_etaria' => $request->faixa_etaria,
+            'pcd' => $request->pcd,
+            'orientacao_sexual' => $request->orientacao_sexual,
+            'orientacao_sexual_outra' => $request->orientacao_sexual_outra,
         ]);
 
         $participante = Participante::where('user_id', $usuario->id)->first();
@@ -132,6 +144,12 @@ class PresencaController extends Controller
      */
     private function confirmarPresencaParaUsuario(Atividade $atividade, User $usuario, ?Participante $participante)
     {
+        if (! $atividade->presencaEstaAberta()) {
+            return redirect()
+                ->route('presenca.confirmar', $atividade)
+                ->with('error', 'A confirmação de presença deste momento está encerrada.');
+        }
+
         $evento = $atividade->evento;
 
         $inscricao = Inscricao::withTrashed()
@@ -139,7 +157,7 @@ class PresencaController extends Controller
             ->where('atividade_id', $atividade->id)
             ->first();
 
-        if (!$inscricao) {
+        if (! $inscricao) {
             $inscricao = Inscricao::withTrashed()
                 ->where('participante_id', $participante->id)
                 ->where('evento_id', $evento->id)
@@ -149,19 +167,19 @@ class PresencaController extends Controller
 
         if ($inscricao) {
             $inscricao->fill([
-                'evento_id'       => $evento->id,
-                'atividade_id'    => $atividade->id,
+                'evento_id' => $evento->id,
+                'atividade_id' => $atividade->id,
                 'participante_id' => $participante->id,
-                'ouvinte'         => $inscricao->atividade_id === $atividade->id ? $inscricao->ouvinte : true,
+                'ouvinte' => $inscricao->atividade_id === $atividade->id ? $inscricao->ouvinte : true,
             ]);
             $inscricao->deleted_at = null;
             $inscricao->save();
         } else {
             $inscricao = Inscricao::create([
-                'evento_id'       => $evento->id,
-                'atividade_id'    => $atividade->id,
+                'evento_id' => $evento->id,
+                'atividade_id' => $atividade->id,
                 'participante_id' => $participante->id,
-                'ouvinte'         => true,
+                'ouvinte' => true,
             ]);
         }
 
@@ -181,15 +199,15 @@ class PresencaController extends Controller
         return redirect()
             ->route('presenca.confirmar', $atividade->id)
             ->with([
-                'usuario_nome'           => $usuario->name,
-                'evento_nome'            => $evento->nome,
-                'atividade_nome'         => $atividade->descricao,
-                'dia'                    => $dia,
-                'success-presenca'       => 'Presença confirmada com sucesso!',
-                'status_presenca_label'  => 'Sua presença foi confirmada!',
+                'usuario_nome' => $usuario->name,
+                'evento_nome' => $evento->nome,
+                'atividade_nome' => $atividade->descricao,
+                'dia' => $dia,
+                'success-presenca' => 'Presença confirmada com sucesso!',
+                'status_presenca_label' => 'Sua presença foi confirmada!',
                 'artigo_status_presenca' => 'sua presença',
-                'avaliacao_token'        => $presenca->avaliacao_respondida ? null : encrypt($presenca->id),
-                'avaliacao_disponivel'   => ! $presenca->avaliacao_respondida,
+                'avaliacao_token' => $presenca->avaliacao_respondida ? null : encrypt($presenca->id),
+                'avaliacao_disponivel' => ! $presenca->avaliacao_respondida,
             ]);
     }
 }

@@ -2,7 +2,56 @@ import { AllCommunityModule, ModuleRegistry, createGrid } from "ag-grid-communit
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const htmlCellRenderer = (params) => params.value ?? "";
+class HtmlCellRenderer {
+    init(params) {
+        this.eGui = document.createElement("div");
+        this.eGui.className = "dt-cell-html";
+        this.eGui.style.width = "100%";
+        this.eGui.style.display = "flex";
+        this.eGui.style.alignItems = "center";
+        const align = params.colDef?.align;
+        if (align) {
+            this.eGui.style.justifyContent = ALIGN_TO_JUSTIFY[align] ?? "flex-start";
+        }
+        this.render(params);
+    }
+
+    getGui() {
+        return this.eGui;
+    }
+
+    render(params) {
+        // Tratar estados onde os dados do nó ainda estão carregando ou ausentes
+        if (!params || !params.node || !params.data) {
+            this.eGui.innerHTML = "";
+            return;
+        }
+
+        const field = params.colDef?.field || params.colDef?.colId;
+        const rawValue = params.value !== undefined ? params.value : (field ? params.data[field] : "");
+        const html = rawValue != null ? String(rawValue) : "";
+
+        // Evita recriar nós do DOM desnecessariamente para preservar o estado de montagem (switches, inputs, foco)
+        if (this.eGui.innerHTML !== html) {
+            this.eGui.innerHTML = html;
+        }
+    }
+
+    refresh(params) {
+        // Tratar estados de carregamento
+        if (!params || !params.node || !params.data) {
+            this.eGui.innerHTML = "";
+            return false;
+        }
+
+        this.render(params);
+        return true;
+    }
+
+    destroy() {
+        this.eGui = null;
+    }
+}
 
 // Cabeçalho com HTML cru (ex.: o link de ordenação server-side já usado nos
 // relatórios). Usado quando a coluna não deve ter sort nativo do grid — quem
@@ -31,16 +80,35 @@ class FullWidthHtmlRenderer {
     init(params) {
         this.eGui = document.createElement("div");
         this.eGui.className = "dt-detail-row";
-        this.eGui.innerHTML = params.data?.detailHtml ?? "";
+        this.render(params);
     }
 
     getGui() {
         return this.eGui;
     }
 
+    render(params) {
+        if (!params || !params.node || !params.data) {
+            this.eGui.innerHTML = "";
+            return;
+        }
+        const html = params.data?.detailHtml ?? "";
+        if (this.eGui.innerHTML !== html) {
+            this.eGui.innerHTML = html;
+        }
+    }
+
     refresh(params) {
-        this.eGui.innerHTML = params.data?.detailHtml ?? "";
+        if (!params || !params.node || !params.data) {
+            this.eGui.innerHTML = "";
+            return false;
+        }
+        this.render(params);
         return true;
+    }
+
+    destroy() {
+        this.eGui = null;
     }
 }
 
@@ -58,21 +126,26 @@ const buildColumnDefs = (columns, rowClassField) =>
             };
         }
 
+        const field = col.field ?? col.colId;
+        const colId = col.colId ?? col.field ?? field;
+
         const def = {
-            field: col.field,
+            field,
             headerName: col.headerName,
-            colId: col.field,
+            colId,
+            align: col.align,
             sortable: col.html ? false : col.sortable ?? true,
-            filter: false,
+            filter: col.filter ?? false,
             resizable: col.resizable ?? true,
             hide: col.hide ?? false,
-            flex: col.flex ?? 1,
+            flex: col.flex !== undefined ? (col.flex || undefined) : (col.width ? undefined : 1),
             // Sem um piso, `sizeColumnsToFit()` espreme colunas até ficarem
             // ilegíveis em telas estreitas (ex.: cabeçalhos cortados para 2-3
             // letras no mobile) em vez de habilitar o scroll horizontal do
             // grid. Colunas que precisam de mais espaço já passam `minWidth`
             // explícito (ex.: nomes longos, botões de ação).
-            minWidth: col.minWidth ?? 100,
+            minWidth: col.minWidth ?? (col.width ? col.width : 100),
+            maxWidth: col.maxWidth,
             width: col.width,
             pinned: col.pinned,
             cellClass: col.cellClass,
@@ -83,6 +156,7 @@ const buildColumnDefs = (columns, rowClassField) =>
             // customizado (sort link server-side) e colunas normais —
             // desabilitar em todas evita essa inconsistência.
             suppressMovable: true,
+            suppressSizeToFit: col.suppressSizeToFit ?? false,
         };
 
         if (col.headerHtml) {
@@ -101,21 +175,24 @@ const buildColumnDefs = (columns, rowClassField) =>
         }
 
         if (col.html) {
-            def.cellRenderer = htmlCellRenderer;
+            def.cellRenderer = HtmlCellRenderer;
             def.cellStyle = {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: ALIGN_TO_JUSTIFY[col.align] ?? "flex-start",
                 height: "100%",
                 minWidth: "0",
-                width: "100%",
                 overflow: col.overflow ?? "hidden",
                 // O tema do AG Grid aplica line-height pensado pra texto de uma
                 // linha só; quando o HTML da célula tem 2+ linhas (ex.: data e
                 // "até X" embaixo), isso dobra a altura do conteúdo e o conteúdo
                 // estoura a linha. "normal" deixa cada linha com sua altura real.
                 lineHeight: "normal",
+                ...(col.cellStyle || {}),
             };
+            if (col.align) {
+                def.cellClass = [col.cellClass, ALIGN_TO_TEXT_CLASS[col.align]].filter(Boolean).join(" ");
+            }
         } else {
             // O AG Grid centraliza células de texto via line-height (display:
             // block), que não alinha verticalmente com colunas HTML (que usam
@@ -128,6 +205,7 @@ const buildColumnDefs = (columns, rowClassField) =>
                 alignItems: "center",
                 justifyContent: ALIGN_TO_JUSTIFY[col.align] ?? "flex-start",
                 minWidth: "0",
+                ...(col.cellStyle || {}),
             };
 
             // Trunca com "..." (comportamento padrão do AG Grid para células de
@@ -160,6 +238,7 @@ const initTable = (el) => {
     const detailRowHeight = Number(el.dataset.detailRowHeight || 420);
 
     const hasHtmlColumn = columns.some((col) => col.html);
+    const customRowHeight = Number(el.dataset.rowHeight || 0) || null;
 
     const gridOptions = {
         columnDefs: buildColumnDefs(columns, rowClassField),
@@ -168,10 +247,15 @@ const initTable = (el) => {
         paginationPageSize: pageSize,
         paginationPageSizeSelector: false,
         domLayout,
-        rowHeight: hasHtmlColumn ? 52 : undefined,
+        rowHeight: customRowHeight || (hasHtmlColumn ? 52 : undefined),
         suppressCellFocus: true,
+        suppressColumnVirtualisation: true,
+        defaultColDef: {
+            resizable: true,
+        },
         autoSizeStrategy: {
             type: "fitGridWidth",
+            defaultMinWidth: 90,
         },
         tooltipShowMode: "whenTruncated",
         tooltipShowDelay: 300,
@@ -185,8 +269,21 @@ const initTable = (el) => {
             next: "Próxima",
             last: "Última",
         },
+        onFirstDataRendered: (event) => {
+            try {
+                event.api?.sizeColumnsToFit();
+            } catch (_) {}
+        },
+        onGridSizeChanged: (event) => {
+            try {
+                event.api?.sizeColumnsToFit();
+            } catch (_) {}
+        },
         onGridReady: (event) => {
-            event.api.sizeColumnsToFit();
+            try {
+                event.api.sizeColumnsToFit();
+            } catch (_) {}
+
             if (rowSelectionMode && selectedIds.length) {
                 event.api.forEachNode((node) => {
                     if (selectedIds.includes(String(node.data?.[idField]))) {
@@ -248,8 +345,38 @@ const initTable = (el) => {
         }
     }
 
+    // Limpa estado defasado de colunas que possa ter ficado em cache de versões anteriores
+    try {
+        const tableId = el.id || "dt-default";
+        localStorage.removeItem(`ag-grid-state-${tableId}`);
+        localStorage.removeItem(`ag-grid-col-state-${tableId}`);
+    } catch (_) {}
+
     el.dataset.agGridInitialized = "true";
     el._agGridApi = createGrid(el, gridOptions);
+
+    if (window.ResizeObserver) {
+        let resizeTimer;
+        const ro = new ResizeObserver(() => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                try {
+                    el._agGridApi?.sizeColumnsToFit();
+                } catch (_) {}
+            }, 60);
+        });
+        ro.observe(el);
+    }
+
+    if (document.fonts?.ready) {
+        document.fonts.ready.then(() => {
+            requestAnimationFrame(() => {
+                try {
+                    el._agGridApi?.sizeColumnsToFit();
+                } catch (_) {}
+            });
+        });
+    }
 };
 
 const initTablesIfNeeded = () => {

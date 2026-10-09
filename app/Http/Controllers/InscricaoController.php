@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Imports\ParticipantesPreviewImport;
-use App\Services\DemograficoNormalizerService;
 use App\Models\Atividade;
 use App\Models\Evento;
 use App\Models\Inscricao;
@@ -11,13 +10,15 @@ use App\Models\Municipio;
 use App\Models\Participante;
 use App\Models\Presenca;
 use App\Models\User;
+use App\Services\DemograficoNormalizerService;
+use App\Services\InscricaoImportValidator;
+use App\Services\ParticipanteImportIdentityResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,9 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -68,10 +72,10 @@ class InscricaoController extends Controller
 
         $sheet->getStyle('A1:C2')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
         $sheet->getStyle('A1:C2')->getAlignment()
-            ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
-            ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+            ->setVertical(Alignment::VERTICAL_CENTER);
         $sheet->getStyle('A1:C2')->getFill()
-            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setRGB('963D79');
 
         $sheet->getColumnDimension('A')->setWidth(95);
@@ -81,7 +85,7 @@ class InscricaoController extends Controller
         // Mantem varias linhas em branco com grade para preenchimento manual.
         $lastRow = 26;
         $sheet->getStyle("A1:C{$lastRow}")->getBorders()->getAllBorders()
-            ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN)
+            ->setBorderStyle(Border::BORDER_THIN)
             ->getColor()->setRGB('C7C7C7');
 
         for ($row = 3; $row <= $lastRow; $row++) {
@@ -265,7 +269,7 @@ class InscricaoController extends Controller
                         'hora_inicio' => $horaInicio,
                         'hora_fim' => $horaFim,
                         'carga_horaria' => $cargaMinutos,
-                        'presenca_ativa' => false,
+                        'presenca_ativa' => true,
                     ]);
                     $momentoCriado++;
                     $atividadesByName->put($key, $atividade);
@@ -1009,7 +1013,7 @@ class InscricaoController extends Controller
     /**
      * Lê o arquivo e guarda TODAS as linhas na sessão. Redireciona para a prévia paginada.
      */
-    public function cadastro(Request $request, Evento $evento)
+    public function cadastro(Request $request, Evento $evento, InscricaoImportValidator $validator, ParticipanteImportIdentityResolver $resolver)
     {
         if ($request->input('atividade_id') === '' || $request->input('atividade_id') === null) {
             $request->merge(['atividade_id' => null]);
@@ -1059,9 +1063,24 @@ class InscricaoController extends Controller
 
             $bestRows = collect();
             $bestScore = -1;
+            $reader = IOFactory::createReaderForFile($tmpAbsolutePath);
+            $reader->setReadDataOnly(config('excel.imports.read_only', true));
+            $reader->setReadEmptyCells(! config('excel.imports.ignore_empty', false));
+            $workbook = $reader->load($tmpAbsolutePath);
+            $worksheetInfo = collect(iterator_to_array($workbook->getWorksheetIterator()))
+                ->filter(fn (Worksheet $sheet) => $sheet->getSheetState() === Worksheet::SHEETSTATE_VISIBLE
+                    && mb_strtolower(trim($sheet->getTitle())) !== '_valid')
+                ->map(fn (Worksheet $sheet) => [
+                    'worksheetName' => $sheet->getTitle(),
+                    'totalRows' => $sheet->getHighestRow(),
+                ])->values()->all();
+            $workbook->disconnectWorksheets();
+            unset($workbook);
+            $prototype = new ParticipantesPreviewImport(1, $worksheetInfo);
+            $maxHeaderRow = max(1, min(30, (int) collect($worksheetInfo)->max('totalRows') - 1));
 
-            for ($headerRow = 1; $headerRow <= 30; $headerRow++) {
-                $attempt = new ParticipantesPreviewImport($headerRow);
+            for ($headerRow = 1; $headerRow <= $maxHeaderRow; $headerRow++) {
+                $attempt = $prototype->withHeadingRow($headerRow);
                 Excel::import($attempt, $tmpAbsolutePath);
 
                 $candidateRows = collect($attempt->rows)->values();
@@ -1081,15 +1100,9 @@ class InscricaoController extends Controller
             }
 
             $rows = $bestRows
-                ->filter(function ($row) {
-                    $nome = trim((string) ($row['nome'] ?? ''));
-                    $email = trim((string) ($row['email'] ?? ''));
-                    $cpf = trim((string) ($row['cpf'] ?? ''));
-                    $telefone = trim((string) ($row['telefone'] ?? ''));
-                    $municipio = trim((string) ($row['municipio'] ?? ''));
-
-                    return $nome !== '' || $email !== '' || $cpf !== '' || $telefone !== '' || $municipio !== '';
-                })
+                ->filter(fn ($row) => collect($row)->except(['linha_original', 'aba_original'])
+                    ->contains(fn ($value, $key) => ! str_ends_with($key, '_ok')
+                        && is_scalar($value) && trim((string) $value) !== ''))
                 ->values()
                 ->all();
 
@@ -1107,11 +1120,13 @@ class InscricaoController extends Controller
 
             Storage::delete($tmpRelativePath);
 
-            $sessionKey = $modoTodosMomentos
-                ? "import_preview_evento_{$evento->id}_todos"
-                : "import_preview_evento_{$evento->id}_atividade_{$validated['atividade_id']}";
+            $rows = $validator->validate($rows);
+            $validator->validateProfiles($rows, $resolver);
+            $sessionKey = "import_preview_evento_{$evento->id}_".Str::uuid();
 
             session([$sessionKey => [
+                'evento_id' => $evento->id,
+                'user_id' => $request->user()->id,
                 'modo_todos_momentos' => $modoTodosMomentos,
                 'atividade_id' => $modoTodosMomentos ? null : $validated['atividade_id'],
                 'origem' => $origemImportacao !== '' ? $origemImportacao : null,
@@ -1123,6 +1138,12 @@ class InscricaoController extends Controller
                 'session_key' => $sessionKey,
                 'atividade_id' => $modoTodosMomentos ? null : $validated['atividade_id'],
             ]));
+        } catch (ValidationException $e) {
+            if (! empty($tmpRelativePath ?? null)) {
+                Storage::delete($tmpRelativePath);
+            }
+
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Throwable $e) {
             if (! empty($tmpRelativePath ?? null)) {
                 Storage::delete($tmpRelativePath);
@@ -1176,6 +1197,11 @@ class InscricaoController extends Controller
         $bestScore = -1;
 
         foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
+            if ($sheet->getSheetState() !== Worksheet::SHEETSTATE_VISIBLE
+                || mb_strtolower(trim($sheet->getTitle())) === '_valid') {
+                continue;
+            }
+
             $highestRow = (int) $sheet->getHighestDataRow();
             if ($highestRow < 1) {
                 continue;
@@ -1222,6 +1248,8 @@ class InscricaoController extends Controller
                     $organizacao = $this->sheetCellValue($sheet, $fieldToColumn['organizacao'] ?? null, $rowNumber);
                     $tag = $this->sheetCellValue($sheet, $fieldToColumn['tag'] ?? null, $rowNumber);
                     $dataEntrada = $this->sheetCellValue($sheet, $fieldToColumn['data_entrada'] ?? null, $rowNumber);
+                    $hasDemographicData = collect(array_keys(DemograficoNormalizerService::headerAliases()))
+                        ->contains(fn ($field) => $this->sheetCellValue($sheet, $fieldToColumn[$field] ?? null, $rowNumber) !== '');
 
                     if (
                         $nome === '' &&
@@ -1232,7 +1260,9 @@ class InscricaoController extends Controller
                         $estado === '' &&
                         $tipoOrganizacao === '' &&
                         $organizacao === '' &&
-                        $tag === ''
+                        $tag === '' &&
+                        $dataEntrada === '' &&
+                        ! $hasDemographicData
                     ) {
                         continue;
                     }
@@ -1266,6 +1296,8 @@ class InscricaoController extends Controller
                     $demograficosNormalizados = $demograficoNormalizer->normalizeRow($demograficosRaw);
 
                     $rows->push(array_merge([
+                        'linha_original' => $rowNumber,
+                        'aba_original' => $sheet->getTitle(),
                         'nome' => $nome,
                         'email' => $email,
                         'cpf' => preg_replace('/\D+/', '', $cpfRaw) ?: null,
@@ -1320,10 +1352,11 @@ class InscricaoController extends Controller
     /**
      * Mostra a prévia paginada (sem gravar no banco).
      */
-    public function preview(Request $request, Evento $evento)
+    public function preview(Request $request, Evento $evento, ParticipanteImportIdentityResolver $resolver)
     {
+        $request->validate(['session_key' => 'required|string|max:150']);
         $sessionKey = $request->query('session_key');
-        $sessionPayload = session($sessionKey);
+        $sessionPayload = $this->inscricaoPreviewData($request, $evento, $sessionKey);
 
         if (! is_array($sessionPayload) || empty($sessionPayload['rows'] ?? [])) {
             return redirect()->route('inscricoes.import', $evento)
@@ -1367,9 +1400,9 @@ class InscricaoController extends Controller
         $allRows = collect($sessionPayload['rows']);
         $origemImportacao = trim((string) ($sessionPayload['origem'] ?? ''));
 
-        $resumoImportacao = $this->montarResumoImportacao($allRows);
+        $resumoImportacao = $resolver->summarize($allRows->all());
 
-        $perPage = (int) $request->query('per_page', 50);
+        $perPage = max(1, min(100, (int) $request->query('per_page', 50)));
         $page = (int) max(1, $request->query('page', 1));
         $total = $allRows->count();
 
@@ -1413,123 +1446,101 @@ class InscricaoController extends Controller
             'demograficos' => config('engaja.demograficos'),
             'usuariosExistentesCount' => $resumoImportacao['usuariosExistentesCount'],
             'usuariosNovosCount' => $resumoImportacao['usuariosNovosCount'],
+            'identityErrors' => $resumoImportacao['identityErrors'],
             'origemImportacao' => $origemImportacao,
         ]);
     }
 
-    private function montarResumoImportacao(Collection $allRows): array
+    private function inscricaoPreviewData(Request $request, Evento $evento, string $sessionKey): array
     {
-        $rowsUnicosPorEmail = $allRows
-            ->filter(function ($row) {
-                $email = strtolower(trim((string) ($row['email'] ?? '')));
+        if (! Str::startsWith($sessionKey, "import_preview_evento_{$evento->id}_")) {
+            return [];
+        }
 
-                return $email !== '';
-            })
-            ->groupBy(fn ($row) => strtolower(trim((string) ($row['email'] ?? ''))))
-            ->map(fn ($grupo) => $grupo->first())
-            ->values();
+        $preview = session($sessionKey, []);
+        if (! is_array($preview)
+            || ($preview['evento_id'] ?? null) !== $evento->id
+            || ($preview['user_id'] ?? null) !== $request->user()->id
+            || ! is_array($preview['rows'] ?? null)) {
+            return [];
+        }
 
-        $emailsImportacao = $rowsUnicosPorEmail
-            ->map(fn ($row) => strtolower(trim((string) ($row['email'] ?? ''))))
-            ->values();
-
-        $emailsExistentes = $emailsImportacao->isEmpty()
-            ? collect()
-            : User::whereIn('email', $emailsImportacao)
-                ->pluck('email')
-                ->map(fn ($email) => strtolower(trim((string) $email)))
-                ->unique()
-                ->values();
-
-        $emailsExistentesLookup = array_fill_keys($emailsExistentes->all(), true);
-
-        $rowsNovos = $rowsUnicosPorEmail
-            ->filter(function ($row) use ($emailsExistentesLookup) {
-                $email = strtolower(trim((string) ($row['email'] ?? '')));
-
-                return ! isset($emailsExistentesLookup[$email]);
-            })
-            ->values();
-
-        $usuariosExistentesCount = $emailsExistentes->count();
-        $usuariosNovosCount = max($emailsImportacao->count() - $usuariosExistentesCount, 0);
-
-        return [
-            'usuariosExistentesCount' => $usuariosExistentesCount,
-            'usuariosNovosCount' => $usuariosNovosCount,
-            'rowsNovos' => $rowsNovos,
-        ];
+        return $preview;
     }
 
     /**
      * Salva as edições da PÁGINA ATUAL na sessão.
      */
-    public function savePage(Request $request, Evento $evento)
+    public function savePage(Request $request, Evento $evento, InscricaoImportValidator $validator, ParticipanteImportIdentityResolver $resolver)
     {
-        $request->validate([
-            'session_key' => 'required|string',
+        $fields = ['nome', 'email', 'cpf', 'telefone', 'municipio_id', 'estado', 'tipo_organizacao', 'escola_unidade', 'tag', 'data_entrada'];
+        $rules = [
+            'session_key' => 'required|string|max:150',
             'rows' => 'required|array',
-        ]);
+            'rows.*.nome' => 'sometimes|nullable|string|max:255',
+            'rows.*.email' => 'sometimes|nullable|string|max:255',
+            'rows.*.cpf' => 'sometimes|nullable|string|max:255',
+            'rows.*.telefone' => 'sometimes|nullable|string|max:255',
+            'rows.*.municipio_id' => ['sometimes', 'nullable', 'integer', Rule::exists('municipios', 'id')->whereNull('deleted_at')],
+            'rows.*.estado' => 'sometimes|nullable|string|max:255',
+            'rows.*.tipo_organizacao' => 'sometimes|nullable|string|max:255',
+            'rows.*.escola_unidade' => 'sometimes|nullable|string|max:255',
+            'rows.*.tag' => 'sometimes|nullable|string|max:255',
+            'rows.*.data_entrada' => 'sometimes|nullable|date_format:Y-m-d',
+        ];
+        foreach (config('engaja.demograficos', []) as $field => $definition) {
+            $fields[] = $field;
+            $rules['rows.*.'.$field] = ['sometimes', 'nullable', 'string', 'max:255', Rule::in($definition['opcoes'])];
+            if (! empty($definition['campo_outro'])) {
+                $fields[] = $definition['campo_outro'];
+                $rules['rows.*.'.$definition['campo_outro']] = 'sometimes|nullable|string|max:255';
+            }
+        }
+        $rules['rows.*'] = 'array:'.implode(',', $fields);
+        $data = $request->validate($rules);
 
-        $sessionKey = $request->input('session_key');
-        $sessionPayload = session($sessionKey);
-
-        if (! is_array($sessionPayload) || empty($sessionPayload['rows'] ?? [])) {
+        $sessionKey = $data['session_key'];
+        $sessionPayload = $this->inscricaoPreviewData($request, $evento, $sessionKey);
+        $allRows = $sessionPayload['rows'] ?? [];
+        if ($allRows === []) {
             return back()->withErrors(['rows' => 'Sessão expirada. Reenvie o arquivo.']);
         }
 
-        $modoTodosMomentos = ! empty($sessionPayload['modo_todos_momentos']);
-        $atividadeId = $sessionPayload['atividade_id'] ?? $request->input('atividade_id');
-
-        if (! $modoTodosMomentos && ! $atividadeId) {
-            return back()->withErrors(['atividade_id' => 'Momento da importação não encontrado. Inicie novamente.']);
-        }
-
-        $allRows = collect($sessionPayload['rows']);
-
-        foreach ($request->input('rows') as $globalIndex => $data) {
-            $globalIndex = (int) $globalIndex;
-            if ($allRows->has($globalIndex)) {
-                $allRows[$globalIndex] = array_merge($allRows[$globalIndex], $data);
+        foreach ($data['rows'] as $globalIndex => $row) {
+            if (! ctype_digit((string) $globalIndex) || ! array_key_exists($globalIndex, $allRows)) {
+                throw ValidationException::withMessages(['rows' => 'A linha editada não pertence a esta importação.']);
             }
+            $allRows[$globalIndex] = array_merge($allRows[$globalIndex], $row);
         }
 
-        session([
-            $sessionKey => [
-                'modo_todos_momentos' => $modoTodosMomentos,
-                'atividade_id' => $modoTodosMomentos ? null : $atividadeId,
-                'origem' => $sessionPayload['origem'] ?? null,
-                'rows' => $allRows->values()->all(),
-            ],
-        ]);
-
-        $page = (int) $request->query('page', 1);
-        $perPage = (int) $request->query('per_page', 50);
+        $sessionPayload['rows'] = $validator->validate($allRows);
+        $validator->validateProfiles($sessionPayload['rows'], $resolver);
+        session([$sessionKey => $sessionPayload]);
 
         return redirect()->route('inscricoes.preview', array_filter([
             'evento' => $evento,
             'session_key' => $sessionKey,
-            'page' => $page,
-            'per_page' => $perPage,
-            'atividade_id' => $modoTodosMomentos ? null : $atividadeId,
+            'page' => max(1, (int) $request->query('page', 1)),
+            'per_page' => max(1, min(100, (int) $request->query('per_page', 50))),
+            'atividade_id' => $sessionPayload['atividade_id'],
         ]))->with('success', 'Alterações desta página salvas.');
     }
 
     /**
      * Confirma TUDO: lê as linhas da sessão e grava no banco.
      */
-    public function confirmar(Request $request, Evento $evento)
+    public function confirmar(Request $request, Evento $evento, InscricaoImportValidator $validator, ParticipanteImportIdentityResolver $resolver)
     {
         if ($request->input('atividade_id') === '' || $request->input('atividade_id') === null) {
             $request->merge(['atividade_id' => null]);
         }
 
         $validatedBase = $request->validate([
-            'session_key' => 'required|string',
+            'session_key' => 'required|string|max:150',
         ]);
 
         $sessionKey = $validatedBase['session_key'];
-        $sessionPayload = session($sessionKey);
+        $sessionPayload = $this->inscricaoPreviewData($request, $evento, $sessionKey);
 
         if (! is_array($sessionPayload) || empty($sessionPayload['rows'] ?? [])) {
             return back()->withErrors(['rows' => 'Sessão de importação vazia/expirada. Reenvie o arquivo.']);
@@ -1577,99 +1588,15 @@ class InscricaoController extends Controller
             $atividadesAlvo = collect([$atividade]);
         }
 
-        $rows = collect($sessionPayload['rows']);
+        $rows = $validator->validate($sessionPayload['rows']);
         $origemImportacao = trim((string) ($sessionPayload['origem'] ?? ''));
 
-        DB::transaction(function () use ($rows, $evento, $atividadesAlvo, $origemImportacao) {
-            $ids = [];
-
-            $emails = collect($rows)->pluck('email')->map(fn ($e) => strtolower(trim((string) $e)))->unique()->filter()->values();
-            $usersExistentes = User::whereIn('email', $emails)->get()->keyBy(fn ($u) => strtolower($u->email));
-
-            $novosUsuarios = [];
-            foreach ($rows as $row) {
-                $email = strtolower(trim((string) ($row['email'] ?? '')));
-                if (! $email || $usersExistentes->has($email)) {
-                    continue;
-                }
-                $name = trim((string) ($row['nome'] ?? ''));
-                $novosUsuarios[] = [
-                    'email' => $email,
-                    'name' => $name !== '' ? $name : ($row['cpf'] ?? 'Participante'),
-                    'password' => Hash::make(Str::random(12)),
-                ];
-            }
-            if (count($novosUsuarios)) {
-                User::insert($novosUsuarios);
-                $usersExistentes = User::whereIn('email', $emails)->get()->keyBy(fn ($u) => strtolower($u->email));
-            }
-
-            if ($origemImportacao !== '' && $usersExistentes->isNotEmpty()) {
-                $now = now();
-                $origens = $usersExistentes
-                    ->pluck('id')
-                    ->unique()
-                    ->map(fn ($userId) => [
-                        'evento_id' => $evento->id,
-                        'user_id' => $userId,
-                        'origem' => $origemImportacao,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ])
-                    ->values()
-                    ->all();
-
-                DB::table('origem_usuario')->upsert(
-                    $origens,
-                    ['evento_id', 'user_id'],
-                    ['origem', 'updated_at']
-                );
-            }
-
-            // Persistir dados demográficos na tabela users.
-            // Os valores já foram normalizados pela preview (ParticipantesPreviewImport/parseParticipantesSpreadsheetFallback)
-            // Não normalizamos novamente aqui para evitar perda do texto original de "outro".
+        DB::transaction(function () use ($rows, $evento, $atividadesAlvo, $origemImportacao, $validator, $resolver) {
+            $resolver->lock();
+            $validator->validateProfiles($rows, $resolver);
+            $participantes = [];
+            $users = [];
             $demograficosConfig = config('engaja.demograficos', []);
-
-            foreach ($rows as $row) {
-                $email = strtolower(trim((string) ($row['email'] ?? '')));
-                if (! $email) {
-                    continue;
-                }
-                $user = $usersExistentes[$email] ?? null;
-                if (! $user) {
-                    continue;
-                }
-
-                $dadosDemograficos = [];
-                foreach ($demograficosConfig as $campo => $definicao) {
-                    $valor = $row[$campo] ?? null;
-                    if (! is_string($valor) || trim($valor) === '') {
-                        continue;
-                    }
-
-                    $dadosDemograficos[$campo] = $valor;
-
-                    // Ler também o campo_outro diretamente da sessão
-                    $campoOutro = $definicao['campo_outro'] ?? null;
-                    if ($campoOutro !== null) {
-                        $valorOutro = $row[$campoOutro] ?? null;
-                        $dadosDemograficos[$campoOutro] = is_string($valorOutro) && trim($valorOutro) !== ''
-                            ? $valorOutro
-                            : null;
-                    }
-                }
-
-                if (! empty($dadosDemograficos)) {
-                    $user->update($dadosDemograficos);
-                }
-            }
-
-            $userIds = $usersExistentes->pluck('id')->values();
-            $participantesExistentes = Participante::whereIn('user_id', $userIds)->get()->keyBy('user_id');
-
-            $novosParticipantes = [];
-            $atualizacoes = [];
 
             $toDate = function ($raw) {
                 if ($raw === null) {
@@ -1703,15 +1630,32 @@ class InscricaoController extends Controller
             $municipiosResolvidos = [];
 
             foreach ($rows as $rowIndex => $row) {
-                $email = strtolower(trim((string) ($row['email'] ?? '')));
-                if (! $email) {
-                    continue;
+                $participante = $resolver->resolve($row);
+                $user = $participante->user;
+
+                $dadosDemograficos = [];
+                foreach ($demograficosConfig as $campo => $definicao) {
+                    $valor = $row[$campo] ?? null;
+                    if (! is_string($valor) || trim($valor) === '') {
+                        continue;
+                    }
+
+                    $dadosDemograficos[$campo] = $valor;
+
+                    // Ler também o campo_outro diretamente da sessão
+                    $campoOutro = $definicao['campo_outro'] ?? null;
+                    if ($campoOutro !== null) {
+                        $valorOutro = $row[$campoOutro] ?? null;
+                        $dadosDemograficos[$campoOutro] = is_string($valorOutro) && trim($valorOutro) !== ''
+                            ? $valorOutro
+                            : null;
+                    }
                 }
-                $user = $usersExistentes[$email] ?? null;
-                if (! $user) {
-                    continue;
+
+                $user->fill($dadosDemograficos);
+                if ($user->isDirty()) {
+                    $user->save();
                 }
-                $userId = $user->id;
 
                 $tipoOrgRaw = $row['tipo_organizacao'] ?? $row['organizacao'] ?? null;
                 $tipoOrg = is_string($tipoOrgRaw) ? trim($tipoOrgRaw) : null;
@@ -1741,12 +1685,12 @@ class InscricaoController extends Controller
                     $row,
                     $municipiosConhecidos,
                     $municipiosResolvidos,
-                    (int) $rowIndex + 2,
+                    (int) ($row['linha_original'] ?? $rowIndex + 2),
                 );
 
                 $dados = [
                     'municipio_id' => $municipioId,
-                    'cpf' => (($row['cpf'] ?? '') !== '') ? trim((string) $row['cpf']) : null,
+                    'cpf' => $row['cpf'],
                     'telefone' => $telefoneValue,
                     'escola_unidade' => ($org !== '') ? $org : null,
                     'tipo_organizacao' => ($tipoOrg !== '') ? $tipoOrg : null,
@@ -1754,61 +1698,33 @@ class InscricaoController extends Controller
                     'data_entrada' => $toDate($row['data_entrada'] ?? null),
                 ];
 
-                if ($participantesExistentes->has($userId)) {
-                    $camposProtegidos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tipo_organizacao', 'tag', 'data_entrada'];
-                    foreach ($camposProtegidos as $campo) {
-                        if (array_key_exists($campo, $dados) && $dados[$campo] === null) {
-                            unset($dados[$campo]);
-                        }
-                    }
-
-                    if (! empty($dados)) {
-                        $atualizacoes[] = ['user_id' => $userId] + $dados;
-                    }
-
-                    $ids[] = $participantesExistentes[$userId]->id;
-
-                } else {
-                    $dados['user_id'] = $userId;
-                    $dados['created_at'] = now();
-                    $novosParticipantes[] = $dados;
+                // Campos vazios não apagam informações já cadastradas.
+                $participante->fill(array_filter($dados, fn ($value) => $value !== null));
+                if ($participante->isDirty()) {
+                    $participante->save();
                 }
+                $resolver->remember($participante);
+                $participantes[$participante->id] = $participante;
+                $users[$user->id] = $user;
             }
 
-            if (count($novosParticipantes)) {
-                Participante::insert($novosParticipantes);
-                $participantesExistentes = Participante::whereIn('user_id', $userIds)->get()->keyBy('user_id');
-                foreach ($novosParticipantes as $np) {
-                    $ids[] = $participantesExistentes[$np['user_id']]->id ?? null;
+            if ($origemImportacao !== '') {
+                $now = now();
+                $origens = collect($users)->map(fn ($user) => [
+                    'evento_id' => $evento->id,
+                    'user_id' => $user->id,
+                    'origem' => $origemImportacao,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->values()->all();
+                foreach (array_chunk($origens, 1000) as $chunk) {
+                    DB::table('origem_usuario')->upsert(
+                        $chunk,
+                        ['evento_id', 'user_id'],
+                        ['origem', 'updated_at']
+                    );
                 }
             }
-
-            if (count($atualizacoes)) {
-                $idsToUpdate = array_column($atualizacoes, 'user_id');
-                $campos = ['municipio_id', 'cpf', 'telefone', 'escola_unidade', 'tipo_organizacao', 'tag', 'data_entrada'];
-                $cases = [];
-                foreach ($campos as $field) {
-                    $sql = "$field = CASE user_id\n";
-                    foreach ($atualizacoes as $upd) {
-                        if (! array_key_exists($field, $upd)) {
-                            $sql .= "WHEN {$upd['user_id']} THEN $field\n";
-
-                            continue;
-                        }
-                        $value = $upd[$field] === null ? 'NULL' : DB::getPdo()->quote($upd[$field]);
-                        $sql .= "WHEN {$upd['user_id']} THEN $value\n";
-                    }
-                    $sql .= "ELSE $field END";
-                    $cases[] = $sql;
-                }
-                $setSql = implode(",\n", $cases);
-                $idsStr = implode(',', $idsToUpdate);
-                DB::statement("UPDATE participantes SET $setSql WHERE user_id IN ($idsStr)");
-            }
-
-            $participanteIds = collect($ids)->filter()->unique()->values();
-
-            $participantes = Participante::whereIn('id', $participanteIds->all())->get();
 
             foreach ($participantes as $participante) {
                 foreach ($atividadesAlvo as $atividade) {

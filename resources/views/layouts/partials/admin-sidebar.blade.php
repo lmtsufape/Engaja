@@ -53,7 +53,7 @@
       @endhasanyrole
 
       @hasanyrole('administrador|gerente|eq_pedagogica|articulador|SME')
-        @php($operacoesOpen = request()->routeIs('eventos.*') || request()->routeIs('agendamentos.*') || request()->routeIs('atividade-acoes.*'))
+        @php($operacoesOpen = request()->routeIs('eventos.*') || request()->routeIs('agendamentos.*') || request()->routeIs('atividade-acoes.*') || request()->routeIs('presencas.*'))
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingOperacoes">
             <button class="accordion-button admin-accordion-button {{ $operacoesOpen ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarOperacoes" aria-expanded="{{ $operacoesOpen ? 'true' : 'false' }}" aria-controls="sidebarOperacoes">
@@ -72,6 +72,11 @@
                   Ações pedagógicas
                 </a>
               @endhasanyrole
+              @can('presenca.abrir')
+                <a class="admin-nav-link {{ request()->routeIs('presencas.*') ? 'active' : '' }}" href="{{ route('presencas.gerenciamento') }}">
+                  Controle de presenças
+                </a>
+              @endcan
               <a class="admin-nav-link {{ request()->routeIs('agendamentos.*') && !request()->routeIs('agendamentos.efetivacoes.*') ? 'active' : '' }}" href="{{ route('agendamentos.index') }}">
                 Agendamentos
               </a>

@@ -8,7 +8,6 @@ use App\Models\Estado;
 use App\Models\Evento;
 use App\Models\Inscricao;
 use App\Models\Municipio;
-use App\Models\Participante;
 use App\Models\Regiao;
 use App\Models\User;
 use Database\Seeders\RolesPermissionsSeeder;
@@ -51,7 +50,7 @@ class InscricaoImportTodosMomentosTest extends TestCase
         ]);
 
         $pUser = User::factory()->create(['email' => 'import_todos@test.local']);
-        $participante = Participante::create(['user_id' => $pUser->id]);
+        $participante = $pUser->participante;
 
         DB::table('origem_usuario')->insert([
             'evento_id' => $evento->id,
@@ -63,6 +62,8 @@ class InscricaoImportTodosMomentosTest extends TestCase
 
         $sessionKey = "import_preview_evento_{$evento->id}_todos";
         session([$sessionKey => [
+            'evento_id' => $evento->id,
+            'user_id' => $admin->id,
             'modo_todos_momentos' => true,
             'atividade_id' => null,
             'origem' => 'LP',
@@ -126,7 +127,7 @@ class InscricaoImportTodosMomentosTest extends TestCase
         ]);
 
         $pUser = User::factory()->create(['email' => 'import_sem_origem@test.local']);
-        $participante = Participante::create(['user_id' => $pUser->id]);
+        $participante = $pUser->participante;
 
         DB::table('origem_usuario')->insert([
             'evento_id' => $evento->id,
@@ -138,6 +139,8 @@ class InscricaoImportTodosMomentosTest extends TestCase
 
         $sessionKey = "import_preview_evento_{$evento->id}_todos";
         session([$sessionKey => [
+            'evento_id' => $evento->id,
+            'user_id' => $admin->id,
             'modo_todos_momentos' => true,
             'atividade_id' => null,
             'origem' => null,
@@ -201,13 +204,12 @@ class InscricaoImportTodosMomentosTest extends TestCase
         $participanteUser = User::factory()->create([
             'email' => 'participante.sobral@test.local',
         ]);
-        $participante = Participante::create([
-            'user_id' => $participanteUser->id,
-            'municipio_id' => null,
-        ]);
+        $participante = $participanteUser->participante;
 
         $sessionKey = "import_preview_evento_{$evento->id}_todos";
         session([$sessionKey => [
+            'evento_id' => $evento->id,
+            'user_id' => $admin->id,
             'modo_todos_momentos' => true,
             'atividade_id' => null,
             'origem' => null,

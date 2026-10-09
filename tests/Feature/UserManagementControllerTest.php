@@ -25,6 +25,39 @@ class UserManagementControllerTest extends TestCase
         $this->seed(RolesPermissionsSeeder::class);
     }
 
+    public function test_usuario_sem_role_aparece_como_sem_acesso_definido(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->create();
+        $admin->assignRole('administrador');
+        $target = User::factory()->create();
+
+        $this->actingAs($admin)->get(route('usuarios.index'))->assertOk()
+            ->assertSee('&quot;papel&quot;:&quot;Sem acesso definido&quot;', false);
+        $response = $this->get(route('usuarios.edit', $target))->assertOk();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $selected = $xpath->query('//select[@name="role"]/option[@selected]')->item(0);
+        $this->assertSame('', $selected->getAttribute('value'));
+        $this->assertSame('Sem acesso definido', trim($selected->textContent));
+        $this->assertCount(0, $target->fresh()->roles);
+    }
+
+    public function test_novo_cadastro_mantem_participante_como_role_padrao(): void
+    {
+        $this->withoutVite();
+        $admin = User::factory()->create();
+        $admin->assignRole('administrador');
+
+        $response = $this->actingAs($admin)->get(route('usuarios.create'))->assertOk();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $selected = $xpath->query('//select[@name="role"]/option[@selected]')->item(0);
+        $this->assertSame('participante', $selected->getAttribute('value'));
+    }
+
     public function test_index_renderiza_grid_com_usuarios_selecionaveis(): void
     {
         $admin = User::factory()->create();

@@ -145,6 +145,7 @@ class EventoController extends Controller
             'user',
             'atividades' => fn ($q) => $q
                 ->with(['municipios.estado', 'avaliacaoAtividades', 'avaliacoes'])
+                ->withCount('presencas')
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);
