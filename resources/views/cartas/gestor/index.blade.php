@@ -78,7 +78,7 @@
                             <option value="" style="color: #333;">Todos os municípios</option>
                             @foreach($municipios as $mun)
                                 <option value="{{ $mun->id }}" style="color: #111;" @selected($municipioId == $mun->id)>
-                                    {{ $mun->nome }}{{ $mun->estado?->sigla ? ' - '.$mun->estado->sigla : '' }}{{ $mun->isPrioritario() ? ' ★ (Prioritário)' : '' }}
+                                    {{ $mun->nome }}{{ $mun->estado?->sigla ? ' - '.$mun->estado->sigla : '' }}
                                 </option>
                             @endforeach
                         </select>
