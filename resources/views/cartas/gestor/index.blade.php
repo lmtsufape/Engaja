@@ -23,6 +23,11 @@
                 <form id="gestorCartaForm" method="POST" action="{{ route('cartas.cartas.store') }}" enctype="multipart/form-data" class="cpe-manager-form">
                     @csrf
                     <input type="hidden" name="envio_token" value="{{ $errors->has('envio_token') ? (string) \Illuminate\Support\Str::uuid() : old('envio_token', (string) \Illuminate\Support\Str::uuid()) }}">
+                    <label for="gestorCartaFluxo">Forma de envio</label>
+                    <select id="gestorCartaFluxo" name="fluxo" class="cpe-field">
+                        <option value="automatico" @selected(old('fluxo') !== 'manual')>Distribuição automática</option>
+                        <option value="manual" @selected(old('fluxo') === 'manual')>Conversa com voluntário escolhido</option>
+                    </select>
                     <label class="cpe-upload">
                         <input type="file" name="arquivo" required accept=".pdf,application/pdf">
                         <span>
@@ -52,6 +57,23 @@
                             @endforeach
                             <li class="cpe-combobox__empty" data-combobox-empty hidden>Nenhum participante encontrado.</li>
                         </ul>
+                    </div>
+
+                    <div id="gestorConversaCampos" @if(old('fluxo') !== 'manual') hidden @endif>
+                        <label for="gestorVoluntario">Voluntário que responde</label>
+                        <select id="gestorVoluntario" name="voluntario_user_id" class="cpe-field" @if(old('fluxo') !== 'manual') disabled @endif @required(old('fluxo') === 'manual')>
+                            <option value="">Selecione o voluntário</option>
+                            @foreach($voluntarios as $voluntario)
+                                <option value="{{ $voluntario->id }}" @selected((string) old('voluntario_user_id') === (string) $voluntario->id)>{{ $voluntario->nome_com_localidade }}</option>
+                            @endforeach
+                        </select>
+                        <label class="cpe-upload">
+                            <input type="file" name="arquivo_resposta" accept=".pdf,application/pdf" @if(old('fluxo') !== 'manual') disabled @endif>
+                            <span>
+                                <span class="cpe-upload__link">Anexar resposta do voluntário (opcional)</span>
+                                <span class="cpe-upload__hint">PDF (máx. 10MB). Você também pode adicioná-la depois na conversa.</span>
+                            </span>
+                        </label>
                     </div>
 
                     <button type="button" class="cpe-button" id="gestorCartaSubmitBtn">Enviar carta</button>
@@ -236,6 +258,11 @@
             gap: 20px;
             padding-top: 260px;
             padding-bottom: 110px;
+        }
+
+        #gestorConversaCampos:not([hidden]) {
+            display: grid;
+            gap: 14px;
         }
 
         .cpe-manager-form {
@@ -971,6 +998,17 @@
             //logica do modal de confirmação do gestor
             const gestorSubmitBtn = document.getElementById('gestorCartaSubmitBtn');
             const gestorForm = document.getElementById('gestorCartaForm');
+            const fluxoSelect = document.getElementById('gestorCartaFluxo');
+            const conversaCampos = document.getElementById('gestorConversaCampos');
+            const voluntarioSelect = document.getElementById('gestorVoluntario');
+            function atualizarFluxoCarta() {
+                const manual = fluxoSelect.value === 'manual';
+                conversaCampos.hidden = !manual;
+                conversaCampos.querySelectorAll('input, select').forEach(campo => campo.disabled = !manual);
+                voluntarioSelect.required = manual;
+            }
+            fluxoSelect.addEventListener('change', atualizarFluxoCarta);
+            atualizarFluxoCarta();
             const gestorConfirmModal = document.getElementById('gestorConfirmModal');
             const gestorConfirmOk = document.getElementById('gestorConfirmOk');
             const gestorConfirmCancel = document.querySelectorAll('[data-gestor-confirm-close]');
