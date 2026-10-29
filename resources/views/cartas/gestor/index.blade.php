@@ -136,14 +136,16 @@
                     <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; justify-content: flex-start;">
                         <label style="font-size: 13px; font-weight: 600; color: #111; height: 20px; display: flex; align-items: center; white-space: nowrap;">Ações:</label>
                         <div style="display: flex; flex-direction: column; gap: 4px;">
-                            <button type="submit" id="btnDownloadBatch" form="filterForm" formaction="{{ route('cartas.download-batch') }}" style="display: flex; align-items: center; justify-content: center; white-space: nowrap; padding: 0 16px; border-radius: 6px; height: 40px; box-sizing: border-box; text-decoration: none; background-color: var(--cartas-purple, #6a1b9a); color: white; font-weight: 500; font-size: 14px; border: none; cursor: pointer; transition: opacity 0.2s;">
-                                Baixar Cartas PDF
+                            <button type="submit" id="btnDownloadBatch" form="filterForm" formaction="{{ route('cartas.download-batch') }}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px 12px; border-radius: 6px; min-height: 40px; box-sizing: border-box; text-decoration: none; background-color: var(--cartas-purple, #6a1b9a); color: white; font-weight: 500; font-size: 14px; line-height: 1.2; border: none; cursor: pointer; transition: opacity 0.2s;">
+                                <span>Baixar cartas PDF</span>
+                                <small style="font-size: 11px;">(todas as páginas)</small>
                             </button>
                         </div>
                     </div>
                 </form>
             </div>
 
+            @include('cartas.gestor._approval')
             @include('cartas.gestor._table')
 
         </section>
@@ -173,6 +175,46 @@
     @include('cartas.shared._scripts')
 
     <style>
+        .cpe-batch-approval {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 16px 28px;
+        }
+
+        .cpe-batch-approval p {
+            margin: 0 0 4px;
+        }
+
+        #selectedCountBadge {
+            font-size: 13px;
+            color: #666;
+        }
+
+        #batchApprovalFeedback {
+            margin-top: 8px;
+            color: #b42318;
+        }
+
+        .cpe-approval-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .cpe-approval-checkbox:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
+        #btnApproveBatch:disabled,
+        #confirmApproveBatch:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .cpe-manager {
             display: grid;
             grid-template-columns: minmax(320px, 26%) minmax(0, 1fr);
@@ -190,8 +232,9 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 20px;
+            padding-top: 260px;
             padding-bottom: 110px;
         }
 
@@ -588,6 +631,7 @@
             }
 
             .cpe-manager__form-wrap {
+                padding-top: 0;
                 padding-bottom: 0;
             }
         }
@@ -600,44 +644,127 @@
             const municipioSelect = document.getElementById('municipio_id');
             const tableContainer = document.querySelector('.cpe-manager-table');
             const paginationContainer = document.querySelector('.cpe-pagination');
+            const approvalForm = document.getElementById('approveBatchForm');
+            const approveButton = document.getElementById('btnApproveBatch');
+            const approvalModal = document.getElementById('approveBatchModal');
+            const confirmApproval = document.getElementById('confirmApproveBatch');
+            const approvalFeedback = document.getElementById('batchApprovalFeedback');
             let debounceTimer;
+            let resultsRequest = 0;
+            let resultsController;
+            let loadingResults = false;
+            let approving = false;
+
+            function selectedResponses() {
+                return Array.from(tableContainer.querySelectorAll('.carta-checkbox:checked:not(:disabled)'));
+            }
 
             function updateSelectedBadge() {
-                const badge = document.getElementById('selectedCountBadge');
-                if (!badge) return;
-                const checkboxes = document.querySelectorAll('.carta-checkbox');
-                const checked = document.querySelectorAll('.carta-checkbox:checked');
-                badge.textContent = `${checked.length} de ${checkboxes.length} selecionadas`;
+                const eligible = tableContainer.querySelectorAll('.carta-checkbox:not(:disabled)');
+                const count = selectedResponses().length;
+                const selectAll = document.getElementById('selectAllApprovals');
+                document.getElementById('selectedCountBadge').textContent =
+                    count + (count === 1 ? ' resposta selecionada' : ' respostas selecionadas') + ' nesta página';
+                approveButton.textContent = 'Aprovar selecionadas (' + count + ')';
+                approveButton.disabled = approving || loadingResults || count === 0;
+                confirmApproval.disabled = approving || loadingResults || count === 0;
+
+                if (selectAll) {
+                    selectAll.disabled = approving || loadingResults || eligible.length === 0;
+                    selectAll.checked = eligible.length > 0 && count === eligible.length;
+                    selectAll.indeterminate = count > 0 && count < eligible.length;
+                }
             }
 
             document.addEventListener('change', function(e) {
-                if (e.target.classList.contains('carta-checkbox')) {
+                if (e.target.id === 'selectAllApprovals') {
+                    tableContainer.querySelectorAll('.carta-checkbox:not(:disabled)').forEach(function(checkbox) {
+                        checkbox.checked = e.target.checked;
+                    });
+                    updateSelectedBadge();
+                } else if (e.target.classList.contains('carta-checkbox')) {
                     updateSelectedBadge();
                 }
             });
 
+            approveButton.addEventListener('click', function() {
+                const count = selectedResponses().length;
+                if (approving || loadingResults || count === 0) return;
+                document.getElementById('approveBatchDescription').textContent = count === 1
+                    ? 'Você está aprovando 1 resposta. A carta passará para “Respondida”. Deseja continuar?'
+                    : 'Você está aprovando ' + count + ' respostas. As cartas passarão para “Respondida”. Deseja continuar?';
+                approvalModal.classList.add('is-open');
+                confirmApproval.focus();
+            });
+
+            approvalForm.addEventListener('submit', function(e) {
+                if (approving || loadingResults || selectedResponses().length === 0
+                    || !approvalModal.classList.contains('is-open')) {
+                    e.preventDefault();
+                    return;
+                }
+
+                approving = true;
+                confirmApproval.textContent = 'Aprovando...';
+                updateSelectedBadge();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && approvalModal.classList.contains('is-open') && !approving) {
+                    approvalModal.classList.remove('is-open');
+                    approveButton.focus();
+                }
+            });
+
+            updateSelectedBadge();
+
             function fetchResults(url) {
+                if (approving) return;
+                const request = ++resultsRequest;
+                resultsController?.abort();
+                resultsController = new AbortController();
+                loadingResults = true;
+                approvalFeedback.hidden = true;
+                approvalModal.classList.remove('is-open');
+                tableContainer.querySelectorAll('.carta-checkbox').forEach(function(checkbox) {
+                    checkbox.checked = false;
+                });
+                tableContainer.inert = true;
                 tableContainer.style.opacity = '0.5';
+                updateSelectedBadge();
 
                 fetch(url, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    },
+                    signal: resultsController.signal
                 })
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) throw new Error('Falha ao atualizar a listagem');
+                    return response.text();
+                })
                 .then(html => {
+                    if (request !== resultsRequest) return;
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
+                    const table = doc.querySelector('.cpe-manager-table');
+                    const pagination = doc.querySelector('.cpe-pagination');
+                    if (!table || !pagination) throw new Error('Listagem indisponível');
 
-                    tableContainer.innerHTML = doc.querySelector('.cpe-manager-table').innerHTML;
-                    paginationContainer.innerHTML = doc.querySelector('.cpe-pagination').innerHTML;
-
-                    tableContainer.style.opacity = '1';
-                    updateSelectedBadge();
+                    tableContainer.innerHTML = table.innerHTML;
+                    paginationContainer.innerHTML = pagination.innerHTML;
                 })
                 .catch(error => {
-                    console.error('Erro ao buscar dados:', error);
+                    if (error.name === 'AbortError' || request !== resultsRequest) return;
+                    approvalFeedback.textContent = 'Não foi possível atualizar a lista. Tente novamente.';
+                    approvalFeedback.hidden = false;
+                })
+                .finally(() => {
+                    if (request !== resultsRequest) return;
+                    loadingResults = false;
+                    tableContainer.inert = false;
                     tableContainer.style.opacity = '1';
+                    updateSelectedBadge();
                 });
             }
 

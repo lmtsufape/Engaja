@@ -9,6 +9,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Browsershot\Browsershot;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -30,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        Gate::define('cartas.ver-relatorios', fn (User $user): bool => $user->isCartasUser()
+            && $user->hasAnyRole(['cartas_admin', 'cartas_gestao'])
+            && $user->can('cartas.relatorio'));
 
         Event::listen(Verified::class, function (Verified $event) {
             if ($event->user instanceof User && $event->user->isCartasUser()) {

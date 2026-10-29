@@ -22,7 +22,7 @@ class CartaDownloadBatchTest extends CartasBaseTest
         Evento::where('id', '!=', $this->eventoCartas->id)->update(['is_cartas' => false]);
     }
 
-    public function test_gestor_dashboard_without_filters_has_unchecked_checkboxes(): void
+    public function test_gestor_dashboard_without_pending_responses_disables_approval_selection(): void
     {
         $this->criarCartaParaVoluntario();
 
@@ -30,11 +30,11 @@ class CartaDownloadBatchTest extends CartasBaseTest
             ->get(route('cartas.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('1 de 1 selecionadas');
-        $response->assertSee('checked style="width: 18px;', false);
+        $response->assertSee('0 respostas selecionadas nesta página');
+        $response->assertSee('Esta troca não possui resposta aguardando aprovação');
     }
 
-    public function test_gestor_dashboard_with_municipio_filter_checks_boxes_by_default(): void
+    public function test_gestor_dashboard_with_municipio_filter_starts_without_approval_selection(): void
     {
         $regiao = Regiao::firstOrCreate(['nome' => 'Norte']);
         $estado = Estado::factory()->create(['regiao_id' => $regiao->id]);
@@ -49,8 +49,9 @@ class CartaDownloadBatchTest extends CartasBaseTest
             ->get(route('cartas.dashboard', ['municipio_id' => $municipioTarget->id]));
 
         $response->assertOk();
-        $response->assertSee('1 de 1 selecionadas');
-        $response->assertSee('checked', false);
+        $response->assertSee('0 respostas selecionadas nesta página');
+        $response->assertSee('Baixar cartas PDF');
+        $response->assertSee('(todas as páginas)');
     }
 
     public function test_gestor_dashboard_with_status_filter_filters_correctly(): void
@@ -67,7 +68,7 @@ class CartaDownloadBatchTest extends CartasBaseTest
         $response->assertOk();
         $response->assertSee('CARTA_RESP_999');
         $response->assertDontSee('CARTA_ENV_111');
-        $response->assertSee('1 de 1 selecionadas');
+        $response->assertSee('0 respostas selecionadas nesta página');
     }
 
     public function test_gestor_dashboard_combined_filters(): void
@@ -95,7 +96,7 @@ class CartaDownloadBatchTest extends CartasBaseTest
         $response->assertOk();
         $response->assertSee('CARTA_MATCH_777');
         $response->assertDontSee('CARTA_OTHER_333');
-        $response->assertSee('1 de 1 selecionadas');
+        $response->assertSee('0 respostas selecionadas nesta página');
     }
 
     public function test_download_batch_downloads_only_latest_sent_volunteer_message_per_carta(): void
@@ -134,7 +135,7 @@ class CartaDownloadBatchTest extends CartasBaseTest
 
         $cartas = [];
         $conteudosEsperados = [];
-        for ($i = 0; $i < 11; $i++) {
+        for ($i = 0; $i < 17; $i++) {
             $carta = $this->criarCartaParaVoluntario();
             $mensagem = $this->criarRespostaComArquivo($carta);
             $cartas[] = $carta;

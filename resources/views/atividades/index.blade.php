@@ -19,7 +19,7 @@
     <form method="GET" action="{{ route('eventos.atividades.index', $evento) }}" class="row g-2 align-items-end mb-3">
       <div class="col-auto">
         <label for="municipio_id" class="form-label mb-0 small text-muted">Município</label>
-        <select name="municipio_id" id="municipio_id" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select name="municipio_id" id="municipio_id" class="form-select form-select-sm">
           <option value="">Todos</option>
           @if($temAbrangenciaNacional ?? false)
             <option value="brasil" @selected(request('municipio_id') === 'brasil')>Brasil</option>
@@ -31,7 +31,22 @@
           @endforeach
         </select>
       </div>
-      @if(request('municipio_id'))
+      <div class="col-auto">
+        <label for="de" class="form-label mb-0 small text-muted">Data inicial</label>
+        <input type="date" name="de" id="de" class="form-control form-control-sm" value="{{ request('de') }}">
+      </div>
+      <div class="col-auto">
+        <label for="ate" class="form-label mb-0 small text-muted">Data final</label>
+        <input type="date" name="ate" id="ate" class="form-control form-control-sm" value="{{ request('ate') }}">
+      </div>
+      <div class="col-auto">
+        <label for="descricao" class="form-label mb-0 small text-muted">Descrição</label>
+        <input type="search" name="descricao" id="descricao" class="form-control form-control-sm" maxlength="255" value="{{ request('descricao') }}" placeholder="Buscar descrição">
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-engaja">Filtrar</button>
+      </div>
+      @if(request()->hasAny(['municipio_id', 'de', 'ate', 'descricao']))
         <div class="col-auto">
           <a href="{{ route('eventos.atividades.index', $evento) }}" class="btn btn-sm btn-outline-secondary">Limpar filtro</a>
         </div>
@@ -40,7 +55,7 @@
 
     @php
         $columns = [
-            ['field' => 'dia', 'headerName' => 'Dia', 'flex' => 1],
+            ['field' => 'dia', 'headerName' => 'Data', 'flex' => 1],
             ['field' => 'municipios', 'headerName' => 'Municípios', 'flex' => 2],
             ['field' => 'descricao', 'headerName' => 'Descrição', 'flex' => 2],
             ['field' => 'carga_horaria', 'headerName' => 'Carga horária', 'flex' => 1],

@@ -12,6 +12,7 @@ use App\Models\Municipio;
 use App\Models\User;
 use App\Notifications\Cartas\AjusteSolicitadoNotification;
 use App\Notifications\Cartas\CartaRecebidaNotification;
+use App\Services\Cartas\CartaAprovacaoService;
 use App\Services\Cartas\CartaTimbradoService;
 use App\Services\Cartas\CartaViewerLogger;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -29,6 +30,7 @@ class CartaController extends Controller
     public function __construct(
         private CartaTimbradoService $timbrado,
         private CartaViewerLogger $viewerLog,
+        private CartaAprovacaoService $aprovacao,
     ) {}
 
     public function dashboard(Request $request): View
@@ -423,42 +425,48 @@ class CartaController extends Controller
     {
         abort_unless($this->isGestor($request->user()), 403);
 
-        $mensagem->load('carta');
-        abort_unless($mensagem->status === CartaMensagem::STATUS_AGUARDANDO_VERIFICACAO, 422);
-
-        DB::transaction(function () use ($request, $mensagem) {
-            $before = [
-                'mensagem_status' => $mensagem->status,
-                'carta_status' => $mensagem->carta->status,
-            ];
-
-            $mensagem->update([
-                'status' => CartaMensagem::STATUS_APROVADA,
-                'verificada_por' => $request->user()->id,
-                'verificada_em' => now(),
-                'parecer_verificacao' => null,
-                'atualizada_por' => $request->user()->id,
-            ]);
-
-            $mensagem->carta->update([
-                'status' => Carta::STATUS_RESPONDIDA,
-                'atualizada_por' => $request->user()->id,
-            ]);
-
-            CartaEvento::create([
-                'carta_id' => $mensagem->carta_id,
-                'carta_mensagem_id' => $mensagem->id,
-                'user_id' => $request->user()->id,
-                'tipo' => CartaEvento::TIPO_MENSAGEM_VERIFICADA,
-                'dados_antes' => $before,
-                'dados_depois' => [
-                    'mensagem_status' => CartaMensagem::STATUS_APROVADA,
-                    'carta_status' => Carta::STATUS_RESPONDIDA,
-                ],
-            ]);
-        });
+        abort_unless($this->aprovacao->aprovar($mensagem, $request->user()), 422);
 
         return back()->with('status', 'Resposta aprovada.');
+    }
+
+    public function approveBatch(Request $request): RedirectResponse
+    {
+        abort_unless($this->isGestor($request->user()), 403);
+
+        $data = $request->validate([
+            'mensagem_ids' => ['required', 'array', 'min:1', 'max:15'],
+            'mensagem_ids.*' => ['required', 'integer', 'min:1', 'distinct'],
+        ], [
+            'mensagem_ids.required' => 'Selecione pelo menos uma resposta para aprovar.',
+            'mensagem_ids.max' => 'Selecione no máximo 15 respostas por vez.',
+            'mensagem_ids.*.distinct' => 'Cada resposta deve ser selecionada apenas uma vez.',
+        ]);
+
+        $aprovadas = 0;
+        $mensagens = CartaMensagem::query()
+            ->whereIn('id', $data['mensagem_ids'])
+            ->orderBy('carta_id')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($mensagens as $mensagem) {
+            if ($this->aprovacao->aprovar($mensagem, $request->user())) {
+                $aprovadas++;
+            }
+        }
+
+        $ignoradas = count($data['mensagem_ids']) - $aprovadas;
+        $resultado = $aprovadas === 1 ? '1 resposta aprovada.' : "{$aprovadas} respostas aprovadas.";
+
+        if ($ignoradas > 0) {
+            $resultado .= $ignoradas === 1
+                ? ' 1 resposta não foi aprovada porque sua situação mudou ou ela não está mais disponível.'
+                : " {$ignoradas} respostas não foram aprovadas porque sua situação mudou ou elas não estão mais disponíveis.";
+            $resultado .= ' Atualizamos a listagem.';
+        }
+
+        return back()->with('status', $resultado);
     }
 
     public function requestMessageAdjustment(Request $request, CartaMensagem $mensagem): RedirectResponse
@@ -863,7 +871,7 @@ class CartaController extends Controller
                 $this->applyStatusFilter($query, $statusFilter);
             })
             ->latest('updated_at')
-            ->paginate(9)
+            ->paginate(15)
             ->withQueryString();
 
         $hasActiveFilter = filled($municipioId) || filled($statusFilter) || ($search !== '');

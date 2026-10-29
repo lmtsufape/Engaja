@@ -26,6 +26,12 @@ class AtividadeController extends Controller
 
     public function index(Request $request, Evento $evento)
     {
+        $filtros = $request->validate([
+            'municipio_id' => ['nullable', 'string'],
+            'de' => ['nullable', 'date_format:Y-m-d'],
+            'ate' => ['nullable', 'date_format:Y-m-d'],
+            'descricao' => ['nullable', 'string', 'max:255'],
+        ]);
         $userId = auth()->id();
 
         $municipiosDisponiveis = Municipio::whereHas('atividades', fn ($q) => $q->where('evento_id', $evento->id))
@@ -43,11 +49,14 @@ class AtividadeController extends Controller
                 'municipios.estado',
                 'avaliacaoAtividades' => fn ($rel) => $rel->when($userId, fn ($query) => $query->where('user_id', $userId)),
             ])
-            ->when($request->input('municipio_id') === 'brasil', fn ($q) => $q->where('abrangencia_nacional', true))
-            ->when($request->filled('municipio_id') && $request->input('municipio_id') !== 'brasil', fn ($q) => $q->whereHas(
+            ->when(($filtros['municipio_id'] ?? null) === 'brasil', fn ($q) => $q->where('abrangencia_nacional', true))
+            ->when(! empty($filtros['municipio_id']) && $filtros['municipio_id'] !== 'brasil', fn ($q) => $q->whereHas(
                 'municipios',
-                fn ($q2) => $q2->where('municipios.id', $request->municipio_id)
+                fn ($q2) => $q2->where('municipios.id', $filtros['municipio_id'])
             ))
+            ->when(! empty($filtros['de']), fn ($q) => $q->whereDate('dia', '>=', $filtros['de']))
+            ->when(! empty($filtros['ate']), fn ($q) => $q->whereDate('dia', '<=', $filtros['ate']))
+            ->when(! empty($filtros['descricao']), fn ($q) => $q->where('descricao', 'like', '%'.addcslashes($filtros['descricao'], '%_\\').'%'))
             ->orderByDesc('dia')
             ->orderByDesc('hora_inicio')
             ->paginate(12)
