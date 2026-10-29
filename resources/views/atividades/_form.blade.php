@@ -310,6 +310,21 @@
     });
   }
 
+  function restaurarListaSePrioritariosDesmarcados() {
+    if (!somentePrioritarios || MUNICIPIOS.some((m) => m.prioritario && selected.has(m.id))) return;
+
+    somentePrioritarios = false;
+    scopeEstado = null;
+    scopeRegiao = null;
+    buscaInput.value = '';
+    query = '';
+    window.clearTimeout(debounceTimer);
+    sugestoesEl.classList.remove('is-open');
+    sugestoesEl.innerHTML = '';
+    renderFiltrosTags();
+    renderListaCheckboxes();
+  }
+
   function renderResumo() {
     const byId = new Map(MUNICIPIOS.map((m) => [m.id, m]));
     const ids = [...selected].filter((id) => byId.has(id));
@@ -394,6 +409,7 @@
         else selected.delete(m.id);
         syncHiddenInputs();
         renderResumo();
+        if (!cb.checked) restaurarListaSePrioritariosDesmarcados();
       });
       const lab = document.createElement('label');
       lab.className = 'form-check-label small';
@@ -631,6 +647,7 @@
     getFilteredMunicipios().forEach((m) => selected.delete(m.id));
     syncHiddenInputs();
     renderResumo();
+    restaurarListaSePrioritariosDesmarcados();
     renderListaCheckboxes();
   });
 
@@ -641,6 +658,7 @@
     });
     syncHiddenInputs();
     renderResumo();
+    restaurarListaSePrioritariosDesmarcados();
     renderListaCheckboxes();
   });
 
