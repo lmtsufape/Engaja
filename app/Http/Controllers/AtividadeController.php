@@ -329,7 +329,7 @@ class AtividadeController extends Controller
      * Dados dos municípios para o seletor: apenas o nome no município; UF e região por associação.
      *
      * @param  Collection<int, Municipio>  $municipios
-     * @return array<int, array{id: string, nome: string, estado: array{sigla: string, nome: string}, regiao: array{nome: string}}>
+     * @return array<int, array{id: string, nome: string, prioritario: bool, estado: array{sigla: string, nome: string}, regiao: array{nome: string}}>
      */
     private function municipiosParaSelecaoJson($municipios): array
     {
@@ -337,6 +337,7 @@ class AtividadeController extends Controller
             return [
                 'id' => (string) $m->id,
                 'nome' => $m->nome,
+                'prioritario' => $m->isPrioritario(),
                 'estado' => [
                     'sigla' => $m->estado->sigla ?? '',
                     'nome' => $m->estado->nome ?? '',

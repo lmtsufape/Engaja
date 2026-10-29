@@ -133,13 +133,14 @@
 </div>
 
 @php
-  $municipiosSelecionados = collect(old('municipios', isset($atividade) ? $atividade->municipios->pluck('id')->all() : []))
+  $municipiosSelecionados = collect(old('municipios_enviados') ? old('municipios', []) : (isset($atividade) ? $atividade->municipios->pluck('id')->all() : []))
     ->map(fn($v) => (string) $v)
     ->all();
   $abrangenciaNacional = (bool) old('abrangencia_nacional', $atividade->abrangencia_nacional ?? false);
 @endphp
 <div class="mb-3">
   <span class="form-label d-block">Abrangência territorial</span>
+  <input type="hidden" name="municipios_enviados" value="1">
   <input type="hidden" name="abrangencia_nacional" value="0">
   <div class="form-check border rounded p-3 ps-5 mb-3 bg-light">
     <input
@@ -184,6 +185,9 @@
       <div class="d-flex flex-wrap gap-2 mb-2 municipios-filtros-tags" id="municipios-filtros-tags" hidden></div>
 
       <div class="btn-toolbar flex-wrap gap-2 mb-2" role="toolbar" aria-label="Seleção em massa">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="municipios-btn-prioritarios">
+          Selecionar municípios prioritários
+        </button>
         <div class="btn-group btn-group-sm" role="group">
           <button type="button" class="btn btn-outline-primary" id="municipios-btn-selecionar-todos" title="Aplica aos municípios visíveis no filtro atual (ou a todos, sem filtro)">
             Selecionar filtrados
@@ -201,7 +205,7 @@
            class="municipios-checkbox-list @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror"></div>
       <div id="municipios-hidden-inputs" class="d-none" aria-hidden="true"></div>
 
-      <div class="form-text">Selecione um ou mais municípios atendidos por este momento. A busca filtra pelo <strong>nome do município</strong>; as sugestões permitem filtrar por estado ou região.</div>
+      <div class="form-text">Selecione um ou mais municípios atendidos por este momento. A opção de municípios prioritários substitui a seleção atual. A busca filtra pelo <strong>nome do município</strong>; as sugestões permitem filtrar por estado ou região.</div>
       @error('municipios') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
       @error('municipios.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
     </div>
@@ -248,6 +252,7 @@
   const selected = new Set(inicialSelecionados.map(String));
   let scopeEstado = null;
   let scopeRegiao = null;
+  let somentePrioritarios = false;
   let query = buscaInput.value || '';
   let debounceTimer = null;
 
@@ -275,6 +280,9 @@
 
   function getFilteredMunicipios() {
     let list = MUNICIPIOS.slice();
+    if (somentePrioritarios) {
+      list = list.filter((m) => m.prioritario);
+    }
     if (scopeEstado) {
       const uf = String(scopeEstado).trim().toUpperCase();
       list = list.filter((m) => siglaEstado(m).trim().toUpperCase() === uf);
@@ -400,6 +408,25 @@
   function renderFiltrosTags() {
     filtrosTags.innerHTML = '';
     let has = false;
+    if (somentePrioritarios) {
+      has = true;
+      const span = document.createElement('span');
+      span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+      span.appendChild(document.createTextNode('Municípios prioritários '));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-close btn-close-white btn-sm p-0 ms-1';
+      btn.style.fontSize = '0.6rem';
+      btn.setAttribute('aria-label', 'Remover filtro de municípios prioritários');
+      btn.addEventListener('click', () => {
+        somentePrioritarios = false;
+        renderFiltrosTags();
+        renderListaCheckboxes();
+        buildSugestoes();
+      });
+      span.appendChild(btn);
+      filtrosTags.appendChild(span);
+    }
     if (scopeEstado) {
       has = true;
       const span = document.createElement('span');
@@ -451,12 +478,13 @@
     const limEst = 8;
     const limReg = 6;
 
-    const munHits = MUNICIPIOS.filter((m) => norm(m.nome).includes(q))
+    const disponiveis = somentePrioritarios ? MUNICIPIOS.filter((m) => m.prioritario) : MUNICIPIOS;
+    const munHits = disponiveis.filter((m) => norm(m.nome).includes(q))
       .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
       .slice(0, limMun);
 
     const estadosMap = new Map();
-    MUNICIPIOS.forEach((m) => {
+    disponiveis.forEach((m) => {
       const sigla = siglaEstado(m);
       if (sigla && !estadosMap.has(sigla)) {
         estadosMap.set(sigla, nomeEstado(m) || sigla);
@@ -468,7 +496,7 @@
       .sort((a, b) => a.sigla.localeCompare(b.sigla, 'pt-BR'))
       .slice(0, limEst);
 
-    const regSet = new Set(MUNICIPIOS.map((m) => nomeRegiao(m)).filter(Boolean));
+    const regSet = new Set(disponiveis.map((m) => nomeRegiao(m)).filter(Boolean));
     const regHits = [...regSet]
       .filter((nome) => norm(nome).includes(q))
       .sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -576,6 +604,22 @@
     }
   });
 
+  document.getElementById('municipios-btn-prioritarios')?.addEventListener('click', () => {
+    somentePrioritarios = true;
+    scopeEstado = null;
+    scopeRegiao = null;
+    buscaInput.value = '';
+    query = '';
+    sugestoesEl.classList.remove('is-open');
+    sugestoesEl.innerHTML = '';
+    selected.clear();
+    MUNICIPIOS.filter((m) => m.prioritario).forEach((m) => selected.add(m.id));
+    syncHiddenInputs();
+    renderResumo();
+    renderFiltrosTags();
+    renderListaCheckboxes();
+  });
+
   document.getElementById('municipios-btn-selecionar-todos')?.addEventListener('click', () => {
     getFilteredMunicipios().forEach((m) => selected.add(m.id));
     syncHiddenInputs();
@@ -603,6 +647,7 @@
   document.getElementById('municipios-btn-limpar-filtros')?.addEventListener('click', () => {
     scopeEstado = null;
     scopeRegiao = null;
+    somentePrioritarios = false;
     buscaInput.value = '';
     query = '';
     sugestoesEl.classList.remove('is-open');
