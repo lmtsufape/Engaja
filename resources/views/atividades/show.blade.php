@@ -154,31 +154,154 @@
 
         @auth
             {{-- QR Code de presença --}}
+            @php
+                $presencaUrl = route('presenca.confirmar', $atividade);
+                $qrFormatConfig = strtolower(trim((string) config('qrcode.format')));
+                $qrFormat = in_array($qrFormatConfig, ['png', 'svg'], true) ? $qrFormatConfig : 'png';
+                $qrData = QrCode::format($qrFormat)
+                    ->style('round')
+                    ->color(129,18,131)
+                    ->eye('circle')
+                    ->eyeColor(0, 0,156,209,0,156,209)
+                    ->eyeColor(1, 44,181,124,44,181,124)
+                    ->eyeColor(2, 192,12,142,192,12,142)
+                    ->size(200)
+                    ->margin(0)
+                    ->merge(public_path('/images/favicon-eja.png'), 0.3, true)
+                    ->errorCorrection('H')
+                    ->generate($presencaUrl);
+                $qrMime = $qrFormat === 'svg' ? 'image/svg+xml' : 'image/'.$qrFormat;
+                $qrSrc = 'data:'.$qrMime.';base64,'.base64_encode($qrData);
+            @endphp
             <div class="mb-4">
                 <h2 class="h6 fw-bold mb-2">Confirmação de presença (QR)</h2>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="p-2 border rounded bg-white">
-                        @php
-                            $qrFormat = env('QR_CODE_FORMAT', 'png');
-                            $qrData = QrCode::format($qrFormat)
-                                ->style('round')
-                                ->color(129,18,131)
-                                ->eye('circle')
-                                ->eyeColor(0, 0,156,209,0,156,209)
-                                ->eyeColor(1, 44,181,124,44,181,124)
-                                ->eyeColor(2, 192,12,142,192,12,142)
-                                ->size(200)
-                                ->margin(0)
-                                ->merge(public_path('/images/favicon-eja.png'), 0.3, true)
-                                ->errorCorrection('H')
-                                ->generate(route('presenca.confirmar', $atividade));
-                            $qrMime = $qrFormat === 'svg' ? 'image/svg+xml' : 'image/'.$qrFormat;
-                            $qrSrc = 'data:'.$qrMime.';base64,'.base64_encode($qrData);
-                        @endphp
                         <img src="{{ $qrSrc }}" alt="QR Code">
                     </div>
                 </div>
+
+                <div class="mt-3" style="max-width: 36rem;">
+                    <label for="presenca-confirmacao-url" class="form-label fw-semibold mb-1">
+                        Link de confirmação de presença
+                    </label>
+                    <div class="d-flex flex-wrap gap-2 align-items-stretch">
+                        <input
+                            type="url"
+                            id="presenca-confirmacao-url"
+                            class="form-control"
+                            style="flex: 1 1 16rem; min-width: 0;"
+                            value="{{ $presencaUrl }}"
+                            readonly
+                            aria-describedby="presenca-confirmacao-ajuda presenca-confirmacao-feedback"
+                        >
+                        <button
+                            type="button"
+                            id="copiar-link-presenca"
+                            class="btn btn-outline-primary flex-shrink-0"
+                        >
+                            Copiar link
+                        </button>
+                    </div>
+                    <div id="presenca-confirmacao-ajuda" class="form-text">
+                        Use este link para compartilhar a confirmação de presença.
+                    </div>
+                    <div
+                        id="presenca-confirmacao-feedback"
+                        class="small mt-1"
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                    ></div>
+                </div>
             </div>
+
+            @push('scripts')
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const input = document.getElementById('presenca-confirmacao-url');
+                        const button = document.getElementById('copiar-link-presenca');
+                        const feedback = document.getElementById('presenca-confirmacao-feedback');
+
+                        if (!input || !button) {
+                            return;
+                        }
+
+                        const defaultLabel = button.textContent.trim();
+                        let resetTimerId = null;
+                        let attemptId = 0;
+
+                        const clearResetTimer = () => {
+                            if (resetTimerId !== null) {
+                                window.clearTimeout(resetTimerId);
+                                resetTimerId = null;
+                            }
+                        };
+
+                        const selectInputValue = () => {
+                            input.focus();
+                            input.select();
+                            if (typeof input.setSelectionRange === 'function') {
+                                try {
+                                    input.setSelectionRange(0, input.value.length);
+                                } catch (selectionError) {
+                                    // Mantém a seleção via select() caso o navegador restrinja setSelectionRange.
+                                }
+                            }
+                        };
+
+                        const setFeedback = (message, isError = false) => {
+                            if (!feedback) {
+                                return;
+                            }
+                            feedback.textContent = message;
+                            feedback.classList.toggle('text-success', !isError && Boolean(message));
+                            feedback.classList.toggle('text-danger', isError && Boolean(message));
+                        };
+
+                        button.addEventListener('click', async () => {
+                            clearResetTimer();
+                            const currentAttempt = ++attemptId;
+                            const url = input.value;
+                            const canWriteClipboard = Boolean(
+                                navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
+                            );
+
+                            if (!canWriteClipboard) {
+                                button.textContent = defaultLabel;
+                                selectInputValue();
+                                setFeedback('Não foi possível copiar automaticamente. Copie o link selecionado.', true);
+                                return;
+                            }
+
+                            try {
+                                await navigator.clipboard.writeText(url);
+                                if (currentAttempt !== attemptId) {
+                                    return;
+                                }
+
+                                button.textContent = 'Link copiado!';
+                                setFeedback('Link copiado!', false);
+
+                                resetTimerId = window.setTimeout(() => {
+                                    if (currentAttempt === attemptId) {
+                                        button.textContent = defaultLabel;
+                                        resetTimerId = null;
+                                    }
+                                }, 2000);
+                            } catch (error) {
+                                if (currentAttempt !== attemptId) {
+                                    return;
+                                }
+
+                                button.textContent = defaultLabel;
+                                selectInputValue();
+                                setFeedback('Não foi possível copiar automaticamente. Copie o link selecionado.', true);
+                            }
+                        });
+                    });
+                </script>
+            @endpush
         @endauth
 
         @can('presenca.abrir')
