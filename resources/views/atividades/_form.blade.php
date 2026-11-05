@@ -873,6 +873,8 @@
 
         inputAbre.value = formatarDateTime(dia, hIni);
         inputFecha.value = formatarDateTime(dia, hFim);
+        inputAbre.dispatchEvent(new Event('input', { bubbles: true }));
+        inputFecha.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
       btnSugestao?.addEventListener('click', aplicarSugestao);

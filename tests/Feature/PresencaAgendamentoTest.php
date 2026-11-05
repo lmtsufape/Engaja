@@ -529,6 +529,59 @@ class PresencaAgendamentoTest extends TestCase
         $this->assertFalse($atividade->presenca_ativa);
     }
 
+    public function test_bloqueia_salvar_criacao_e_edicao_quando_agendamento_ativo_sem_horarios(): void
+    {
+        foreach (['atividade.criar', 'atividade.editar', 'presenca.abrir'] as $permissao) {
+            Permission::findOrCreate($permissao);
+        }
+
+        $gerente = User::factory()->create();
+        $gerente->givePermissionTo(['atividade.criar', 'atividade.editar', 'presenca.abrir']);
+
+        $abreOriginal = Carbon::parse('2026-10-06 11:00:00', 'UTC');
+        $atividade = $this->criarAtividade(['presenca_abre_em' => $abreOriginal]);
+
+        // 1. Criar momento com "Ativar agendamento de presença" marcado e ambos os horários vazios
+        $resCriar = $this->actingAs($gerente)
+            ->from(route('eventos.atividades.create', $atividade->evento))
+            ->post(route('eventos.atividades.store', $atividade->evento), [
+                'descricao' => 'Momento Bloqueado',
+                'agendamento_presenca_ativo' => '1',
+                'dia' => '2026-10-06',
+                'hora_inicio' => '08:00',
+                'hora_fim' => '12:00',
+                'presenca_abre_em' => '',
+                'presenca_fecha_em' => '',
+            ]);
+
+        $resCriar->assertRedirect(route('eventos.atividades.create', $atividade->evento));
+        $resCriar->assertSessionHasErrors([
+            'presenca_abre_em' => AgendamentoPresenca::MENSAGEM_SEM_HORARIO,
+        ]);
+        $this->assertDatabaseMissing('atividades', ['descricao' => 'Momento Bloqueado']);
+
+        // 2. Editar momento com "Ativar agendamento de presença" marcado e ambos os horários vazios
+        $resEditar = $this->actingAs($gerente)
+            ->from(route('atividades.edit', $atividade))
+            ->put(route('atividades.update', $atividade), [
+                'descricao' => 'Momento Editado Sem Horarios',
+                'agendamento_presenca_ativo' => '1',
+                'dia' => '2026-10-06',
+                'hora_inicio' => '08:00',
+                'hora_fim' => '12:00',
+                'presenca_abre_em' => '',
+                'presenca_fecha_em' => '',
+            ]);
+
+        $resEditar->assertRedirect(route('atividades.edit', $atividade));
+        $resEditar->assertSessionHasErrors([
+            'presenca_abre_em' => AgendamentoPresenca::MENSAGEM_SEM_HORARIO,
+        ]);
+
+        $atividade->refresh();
+        $this->assertEquals($abreOriginal->format('Y-m-d H:i:s'), $atividade->presenca_abre_em->format('Y-m-d H:i:s'));
+    }
+
     public function test_criacao_de_atividade_sem_agendamento_de_abertura_cria_com_presenca_aberta(): void
     {
         Permission::findOrCreate('atividade.criar');

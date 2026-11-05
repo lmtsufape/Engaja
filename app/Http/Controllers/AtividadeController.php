@@ -284,8 +284,9 @@ class AtividadeController extends Controller
             return [];
         }
 
+        $ativo = $request->boolean('agendamento_presenca_ativo');
         $regras = ['agendamento_presenca_ativo' => ['sometimes', 'boolean']];
-        foreach (AgendamentoPresenca::regras() as $campo => $validacoes) {
+        foreach (AgendamentoPresenca::regras(exigirAoMenosUm: $ativo) as $campo => $validacoes) {
             $regras[$campo] = ['exclude_if:agendamento_presenca_ativo,0', ...$validacoes];
         }
 
