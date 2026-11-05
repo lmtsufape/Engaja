@@ -289,10 +289,14 @@
 
         @can('presenca.abrir')
             @php
-                $sugestaoModal = \App\Support\AgendamentoPresenca::sugestao($atividade);
                 $temAgendamentoAtivo = $atividade->presenca_abre_em || $atividade->presenca_fecha_em;
-                $valModalAbre = old('presenca_abre_em', $temAgendamentoAtivo ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em) : ($sugestaoModal['abre'] ?? null));
-                $valModalFecha = old('presenca_fecha_em', $temAgendamentoAtivo ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em) : ($sugestaoModal['fecha'] ?? null));
+                $valModalAbre = old('presenca_abre_em', \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em));
+                $valModalFecha = old('presenca_fecha_em', \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em));
+                $agendamentoAtivo = (bool) old('agendamento_presenca_ativo', $valModalAbre || $valModalFecha);
+                if (! $agendamentoAtivo) {
+                    $valModalAbre = null;
+                    $valModalFecha = null;
+                }
             @endphp
             <div class="modal fade" id="modalAgendamentoPresenca" tabindex="-1" aria-labelledby="modalAgendamentoPresencaLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered">
@@ -309,10 +313,6 @@
                             @csrf
                             @method('PATCH')
                             <div class="modal-body py-3">
-                                <p class="text-muted small mb-3">
-                                    Defina a data e a hora para abertura e/ou fechamento automático da presença neste momento (horário de Brasília).
-                                </p>
-
                                 @if ($errors->agendamentoPresenca->any())
                                     <div class="alert alert-danger py-2 small mb-3">
                                         <ul class="mb-0 ps-3">
@@ -323,6 +323,7 @@
                                     </div>
                                 @endif
 
+                                <x-agendamento-presenca id="modal_agendamento_presenca_ativo" :ativo="$agendamentoAtivo">
                                 <div class="mb-3">
                                     <label for="modal_presenca_abre_em" class="form-label fw-semibold">Abrir presença em</label>
                                     <input type="datetime-local"
@@ -348,6 +349,7 @@
                                     @endif
                                     <div class="form-text">Deixe em branco se desejar fechar manualmente.</div>
                                 </div>
+                                </x-agendamento-presenca>
                             </div>
 
                             <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between">

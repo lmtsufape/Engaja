@@ -47,9 +47,9 @@
                         <i class="bi bi-check-circle-fill fs-4"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">Nesta Listagem (Abertos)</div>
+                        <div class="text-muted small">Total de Momentos Abertos</div>
                         <div class="fs-4 fw-bold text-success" id="kpi-abertas">
-                            {{ $atividades->getCollection()->filter(fn($a) => $a->presencaEstaAberta())->count() }}
+                            {{ $totalAbertas }}
                         </div>
                     </div>
                 </div>
@@ -63,9 +63,9 @@
                         <i class="bi bi-lock-fill fs-4"></i>
                     </div>
                     <div>
-                        <div class="text-muted small">Nesta Listagem (Fechados)</div>
+                        <div class="text-muted small">Total de Momentos Fechados</div>
                         <div class="fs-4 fw-bold text-secondary" id="kpi-fechadas">
-                            {{ $atividades->getCollection()->filter(fn($a) => ! $a->presencaEstaAberta())->count() }}
+                            {{ $totalFechadas }}
                         </div>
                     </div>
                 </div>
@@ -274,10 +274,9 @@
                     . '</div>';
 
                 // 5. Agendamento (formato enxuto)
-                $sugestao = \App\Support\AgendamentoPresenca::sugestao($a);
                 $temAgendamento = (bool) ($a->presenca_abre_em || $a->presenca_fecha_em);
-                $valAbreInput = \App\Support\AgendamentoPresenca::paraInput($a->presenca_abre_em) ?? ($sugestao['abre'] ?? '');
-                $valFechaInput = \App\Support\AgendamentoPresenca::paraInput($a->presenca_fecha_em) ?? ($sugestao['fecha'] ?? '');
+                $valAbreInput = \App\Support\AgendamentoPresenca::paraInput($a->presenca_abre_em) ?? '';
+                $valFechaInput = \App\Support\AgendamentoPresenca::paraInput($a->presenca_fecha_em) ?? '';
 
                 $agendamentoParts = [];
                 if ($a->presenca_abre_em) {

@@ -647,6 +647,23 @@ class PresencaImportTest extends TestCase
         $this->assertSame('presente', Presenca::sole()->status);
     }
 
+    #[DataProvider('formats')]
+    public function test_importa_nascimento_com_ano_de_dois_digitos_em_todos_os_formatos(string $format): void
+    {
+        $workbook = new Spreadsheet;
+        $workbook->getActiveSheet()->fromArray([
+            ['nome', 'email', 'data_nascimento', 'status'],
+            ['Ana', 'ana@example.com', '25/03/90', 'presente'],
+        ]);
+        $response = $this->uploadWorkbook($workbook, $format)->assertSessionHasNoErrors();
+        $key = $this->sessionKey($response);
+        $this->assertSame('1990-03-25', session($key)['rows'][0]['data_nascimento']);
+
+        $this->confirm($key)->assertSessionHasNoErrors();
+        $participant = User::where('email', 'ana@example.com')->firstOrFail()->participante;
+        $this->assertSame('1990-03-25', $participant->data_nascimento->toDateString());
+    }
+
     public function test_aceita_data_real_do_excel_com_ano_curto_e_sexo_ausente(): void
     {
         $workbook = new Spreadsheet;
@@ -680,7 +697,7 @@ class PresencaImportTest extends TestCase
         $this->assertSame('Não preenchido', $user->participante->fresh()->sexo);
     }
 
-    public function test_upload_rejeita_nascimento_vazio_invalido_futuro_ano_curto_e_sexo_invalido(): void
+    public function test_upload_rejeita_nascimento_vazio_invalido_futuro_e_sexo_invalido(): void
     {
         $workbook = new Spreadsheet;
         $workbook->getActiveSheet()->fromArray([
@@ -688,7 +705,7 @@ class PresencaImportTest extends TestCase
             ['Vazio', 'vazio@example.com', '', '', 'presente'],
             ['Inválido', 'invalido@example.com', '31/02/1990', '', 'presente'],
             ['Futuro', 'futuro@example.com', now()->addDay()->toDateString(), '', 'presente'],
-            ['Ano curto', 'curto@example.com', '20/10/26', '', 'presente'],
+            ['Ano curto invalido', 'curto@example.com', '31/02/90', '', 'presente'],
             ['Sexo inválido', 'sexo@example.com', '1990-03-25', 'invalido', 'presente'],
         ]);
         $counts = [User::count(), Participante::count()];
@@ -714,7 +731,7 @@ class PresencaImportTest extends TestCase
             $this->save($key, [0 => $edit])->assertSessionHasErrors();
             $this->assertSame($before, session($key)['rows']);
         }
-        $this->save($key, [0 => ['data_nascimento' => '20/10/1980', 'sexo' => ' masculino ']])->assertSessionHasNoErrors();
+        $this->save($key, [0 => ['data_nascimento' => '20/10/80', 'sexo' => ' masculino ']])->assertSessionHasNoErrors();
         $this->assertSame('1980-10-20', session($key)['rows'][0]['data_nascimento']);
         $this->assertSame('Masculino', session($key)['rows'][0]['sexo']);
         $this->confirm($key)->assertSessionHasNoErrors();

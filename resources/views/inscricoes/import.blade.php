@@ -330,7 +330,8 @@
             </h2>
             <div id="campo-nascimento" class="accordion-collapse collapse" data-bs-parent="#accordionCampos">
               <div class="accordion-body">
-                <p>Informe em todos os registros uma data de nascimento válida, sem data futura. Use ano com quatro dígitos: <code>25/03/1990</code> ou <code>1990-03-25</code>.</p>
+                <p>Informe em todos os registros uma data de nascimento válida, sem data futura. Use <code>DD/MM/AAAA</code>, <code>DD/MM/AA</code> ou <code>AAAA-MM-DD</code>.</p>
+                <p class="text-muted small">Ao utilizar anos com dois dígitos, valores até {{ now()->format('y') }} pertencem ao século atual; os demais, ao anterior. Para pessoas com 100 anos ou mais, é necessário informar o ano com quatro dígitos.</p>
                 <p class="mb-0 text-muted small">Células reconhecidas pelo Excel como data também são aceitas, mesmo quando exibem o ano com dois dígitos.</p>
               </div>
             </div>
