@@ -11,7 +11,7 @@ use Tests\TestCase;
 class ParticipanteImportValidatorTest extends TestCase
 {
     #[DataProvider('validBirthDates')]
-    public function test_normaliza_nascimento_preservando_o_ano_completo(string $validatorClass, string $today, string $value, string $expected): void
+    public function test_normaliza_nascimento_preservando_o_ano_completo(string $validatorClass, string $today, mixed $value, ?string $expected): void
     {
         $this->travelTo($today);
 
@@ -30,6 +30,8 @@ class ParticipanteImportValidatorTest extends TestCase
     {
         foreach ([InscricaoImportValidator::class, PresencaImportValidator::class] as $validatorClass) {
             foreach ([
+                'ausente' => ['2026-11-04', null, null],
+                'vazio' => ['2026-11-04', '', null],
                 'ano 90' => ['2026-11-04', '25/03/90', '1990-03-25'],
                 'ano 05' => ['2026-11-04', '25/03/05', '2005-03-25'],
                 'ano 00 bissexto' => ['2026-11-04', '29/02/00', '2000-02-29'],
@@ -66,8 +68,6 @@ class ParticipanteImportValidatorTest extends TestCase
     {
         foreach ([InscricaoImportValidator::class, PresencaImportValidator::class] as $validatorClass) {
             foreach ([
-                'ausente' => ['2026-11-04', null],
-                'vazio' => ['2026-11-04', ''],
                 'dia inexistente' => ['2026-11-04', '31/02/90'],
                 'ano nao bissexto' => ['2026-11-04', '29/02/26'],
                 'mes inexistente' => ['2026-11-04', '25/13/90'],

@@ -455,7 +455,7 @@ class InscricaoImportTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML($preview->getContent());
         $xpath = new \DOMXPath($dom);
-        $this->assertTrue($xpath->query('//input[@name="rows[0][data_nascimento]"]')->item(0)->hasAttribute('required'));
+        $this->assertFalse($xpath->query('//input[@name="rows[0][data_nascimento]"]')->item(0)->hasAttribute('required'));
         $this->assertSame(4, $xpath->query('//select[@name="rows[0][sexo]"]/option')->length);
 
         $this->confirm($key)->assertSessionHasNoErrors();
@@ -500,7 +500,7 @@ class InscricaoImportTest extends TestCase
         $this->assertSame('Não preenchido', $participant->sexo);
     }
 
-    public function test_coluna_de_nascimento_ausente_bloqueia_importacao_inclusive_para_perfil_existente(): void
+    public function test_coluna_de_nascimento_ausente_permite_importacao_e_preserva_data_existente(): void
     {
         $user = $this->profile('ana@example.com', '12345678901');
         $user->participante->update(['data_nascimento' => '1990-03-25']);
@@ -509,13 +509,13 @@ class InscricaoImportTest extends TestCase
             ['nome', 'email', 'sexo'],
             ['Ana', 'ana@example.com', 'Feminino'],
         ]);
-        $this->uploadWorkbook($workbook)->assertSessionHasErrors('rows.0.data_nascimento');
-        $this->assertStringContainsString('Linha 2', session('errors')->first('rows.0.data_nascimento'));
-        $this->assertSame(0, Inscricao::count());
-        $this->assertSame('Não preenchido', $user->participante->fresh()->sexo);
+        $response = $this->uploadWorkbook($workbook)->assertSessionHasNoErrors();
+        $this->confirm($this->sessionKey($response))->assertSessionHasNoErrors();
+        $this->assertSame(1, Inscricao::count());
+        $this->assertSame('1990-03-25', $user->participante->fresh()->data_nascimento->toDateString());
     }
 
-    public function test_upload_rejeita_nascimento_vazio_invalido_futuro_e_sexo_invalido(): void
+    public function test_upload_rejeita_nascimento_invalido_futuro_e_sexo_invalido(): void
     {
         $workbook = new Spreadsheet;
         $workbook->getActiveSheet()->fromArray([
@@ -528,7 +528,7 @@ class InscricaoImportTest extends TestCase
         ]);
         $counts = [User::count(), Participante::count()];
         $this->uploadWorkbook($workbook)->assertSessionHasErrors([
-            'rows.0.data_nascimento', 'rows.1.data_nascimento', 'rows.2.data_nascimento',
+            'rows.1.data_nascimento', 'rows.2.data_nascimento',
             'rows.3.data_nascimento', 'rows.4.sexo',
         ]);
         $this->assertSame($counts, [User::count(), Participante::count()]);
@@ -539,7 +539,7 @@ class InscricaoImportTest extends TestCase
     {
         $key = $this->preview([$this->row()]);
         $before = session($key)['rows'];
-        foreach ([['data_nascimento' => ''], ['data_nascimento' => '31/02/1990'], ['sexo' => 'invalido']] as $edit) {
+        foreach ([['data_nascimento' => '31/02/1990'], ['sexo' => 'invalido']] as $edit) {
             $this->save($key, [0 => $edit])->assertSessionHasErrors();
             $this->assertSame($before, session($key)['rows']);
         }
@@ -550,14 +550,13 @@ class InscricaoImportTest extends TestCase
         $this->assertDatabaseHas('participantes', ['data_nascimento' => '1980-10-20', 'sexo' => 'Masculino']);
     }
 
-    public function test_confirmacao_exige_nascimento_e_preserva_previa_sem_gravar(): void
+    public function test_confirmacao_aceita_nascimento_nao_informado(): void
     {
         $key = $this->preview([$this->row(), $this->row(['email' => 'segunda@example.com', 'data_nascimento' => null])]);
-        $counts = [User::count(), Participante::count()];
-        $this->confirm($key)->assertSessionHasErrors('rows.1.data_nascimento');
-        $this->assertSame($counts, [User::count(), Participante::count()]);
-        $this->assertSame(0, Inscricao::count());
-        $this->assertNotNull(session($key));
+        $this->confirm($key)->assertSessionHasNoErrors();
+        $this->assertSame(2, Inscricao::count());
+        $this->assertNull(User::where('email', 'segunda@example.com')->firstOrFail()->participante->data_nascimento);
+        $this->assertNull(session($key));
     }
 
     public function test_reimportacao_atualiza_nascimento_preserva_sexo_vazio_e_aceita_nao_preenchido(): void
