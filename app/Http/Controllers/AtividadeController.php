@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrigemAutorizacaoImagem;
 use App\Http\Requests\AgendarPresencaRequest;
 use App\Models\Atividade;
 use App\Models\Evento;
@@ -11,6 +12,7 @@ use App\Models\Participante;
 use App\Models\Presenca;
 use App\Pdf\AutorizacaoDeImagem\ListaAutorizacaoImagem;
 use App\Pdf\ListaDePresenca\ListaPresencaFactory;
+use App\Services\AutorizacaoImagemContexto;
 use App\Support\AgendamentoPresenca;
 use App\Support\CargaHoraria;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -483,12 +485,13 @@ class AtividadeController extends Controller
         }
 
         // 3) Marca presenca (idempotente)
-        Presenca::updateOrCreate(
+        $presenca = Presenca::updateOrCreate(
             ['inscricao_id' => $inscricao->id, 'atividade_id' => $atividade->id],
             ['status' => 'presente', 'justificativa' => null]
         );
 
-        return back()->with('success', 'Presença confirmada com sucesso!');
+        return back()->with('success', 'Presença confirmada com sucesso!')
+            ->with(AutorizacaoImagemContexto::FLASH_KEY, app(AutorizacaoImagemContexto::class)->paraPresenca($presenca, session()->driver(), OrigemAutorizacaoImagem::PresencaAutenticada, $user));
     }
 
     private function listarAtividadesCopiaveis(?Atividade $ignorar = null)

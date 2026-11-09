@@ -12,7 +12,10 @@
             <button type="button" class="btn btn-engaja" data-bs-toggle="modal" data-bs-target="#modalExportarUsuarios">
                 Baixar planilha de usuários
             </button>
-            <a href="{{ route('usuarios.autorizacoes.import') }}" class="btn btn-engaja">Importar Autorizações de Imagem</a>
+            @can('viewAny', \App\Models\AutorizacaoImagem::class)
+            <a href="{{ route('autorizacoes-imagem.index') }}" class="btn btn-engaja">Autorizações por ação</a>
+            @endcan
+            <a href="{{ route('usuarios.autorizacoes.import') }}" class="btn btn-outline-secondary">Importar autorizações globais (legado)</a>
             @role('administrador')
             <a href="{{ route('usuarios.notificacoes-agendamento.index') }}" class="btn btn-engaja">Notificações de Agendamento</a>
             @endrole

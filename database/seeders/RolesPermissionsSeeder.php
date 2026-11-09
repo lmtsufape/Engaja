@@ -128,6 +128,8 @@ class RolesPermissionsSeeder extends Seeder
             'certificado.baixar',
         ]);
 
+        $this->call(AutorizacaoImagemPermissionsSeeder::class);
+
         // PARTICIPANTE
         $participante->givePermissionTo([
             'inscricao.ver', 'inscricao.criar',

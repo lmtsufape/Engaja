@@ -7,9 +7,12 @@ use App\Notifications\Cartas\CadastroRealizadoComSucessoNotification;
 use App\Support\SistemaContext;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Browsershot\Browsershot;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -31,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        RateLimiter::for('autorizacao-imagem-publica', fn (Request $request) => [
+            Limit::perMinute(30)->by('imagem-sessao:'.$request->session()->getId()),
+            Limit::perMinute(120)->by('imagem-ip:'.$request->ip()),
+        ]);
 
         Gate::define('cartas.ver-relatorios', fn (User $user): bool => $user->isCartasUser()
             && $user->hasAnyRole(['cartas_admin', 'cartas_gestao'])

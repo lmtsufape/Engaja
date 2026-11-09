@@ -8,6 +8,7 @@ use App\Http\Controllers\AtividadeAcaoController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AtualizacaoCadastralController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\AutorizacaoImagemController;
 use App\Http\Controllers\AutorizacaoImagemImportController;
 use App\Http\Controllers\AvaliacaoAtividadeController;
 use App\Http\Controllers\AvaliacaoConsolidadaController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\ModeloCertificadoController;
 use App\Http\Controllers\MunicipioController;
 use App\Http\Controllers\PainelGerencialController;
 use App\Http\Controllers\ParticipantesExclusivosController;
+use App\Http\Controllers\PresencaAutorizacaoImagemController;
 use App\Http\Controllers\PresencaController;
 use App\Http\Controllers\PresencaGerenciamentoController;
 use App\Http\Controllers\PresencaImportController;
@@ -435,6 +437,19 @@ Route::resource('eventos.atividades', AtividadeController::class)
 Route::get('/eventos/{evento_id}/{atividade_id}/cadastro-e-inscricao', [EventoController::class, 'cadastro_inscricao'])->name('evento.cadastro_inscricao');
 Route::post('/eventos/cadastro-e-inscricao/store', [EventoController::class, 'store_cadastro_inscricao'])->name('evento.store_cadastro_inscricao');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/minhas-autorizacoes-imagem', [AutorizacaoImagemController::class, 'minhas'])->name('profile.autorizacoes-imagem');
+    Route::post('/minhas-autorizacoes-imagem/{evento}', [AutorizacaoImagemController::class, 'salvarMinha'])->name('profile.autorizacoes-imagem.salvar');
+
+    Route::get('/autorizacoes-imagem', [AutorizacaoImagemController::class, 'index'])->name('autorizacoes-imagem.index');
+    Route::get('/autorizacoes-imagem/exportar', [AutorizacaoImagemController::class, 'exportar'])->name('autorizacoes-imagem.export');
+    Route::post('/eventos/{evento}/participantes/{participante}/autorizacao-imagem', [AutorizacaoImagemController::class, 'registrar'])->name('autorizacoes-imagem.registrar');
+});
+Route::post('/presenca/{atividade}/autorizacao-imagem', [PresencaAutorizacaoImagemController::class, 'store'])
+    ->middleware('throttle:autorizacao-imagem-publica')->name('presenca.autorizacao-imagem');
+
+Route::post('/presenca/{atividade}/identificar', [PresencaController::class, 'identificar'])
+    ->middleware('throttle:autorizacao-imagem-publica')->name('presenca.identificar');
 Route::get('/presenca/{atividade}/confirmar', [PresencaController::class, 'confirmarPresenca'])->name('presenca.confirmar');
 Route::post('/presenca/{atividade}/confirmar', [PresencaController::class, 'store'])->name('presenca.store');
 Route::post('/presenca/{atividade}/demograficos', [PresencaController::class, 'salvarDemograficosEConfirmar'])->name('presenca.demograficos');
