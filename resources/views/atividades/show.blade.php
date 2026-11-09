@@ -389,6 +389,8 @@
                                 <label for="tipoTemplate" class="form-label fw-semibold">Modelo da Lista</label>
                                 <select name="tipo" id="tipoTemplate" class="form-select form-select-lg" style="border-radius: 0.6rem; font-size: 0.95rem;">
                                     <option value="assessoria">Assessoria e Formação</option>
+                                    <option value="escuta_territorial">Escuta Territorial</option>
+                                    <option value="feira_pedagogica">Feira Pedagógica</option>
                                     <option value="oficina">Oficina de Leitura e Escrita</option>
                                 </select>
                             </div>

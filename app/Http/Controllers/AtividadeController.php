@@ -563,8 +563,10 @@ class AtividadeController extends Controller
     {
         $this->authorize('presenca.abrir');
 
-        // o default para evitar erros é assessoria
-        $tipoTemplate = $request->query('tipo', 'assessoria');
+        $dados = $request->validate([
+            'tipo' => 'sometimes|string|in:assessoria,oficina,escuta_territorial,feira_pedagogica',
+        ]);
+        $tipoTemplate = $dados['tipo'] ?? 'assessoria';
 
         // puxa os dados
         $inscritos = $atividade->inscricoes()->with([
