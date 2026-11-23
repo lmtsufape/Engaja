@@ -22,8 +22,8 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
         <div>
             <p class="text-uppercase small text-muted mb-1">Dashboards</p>
-            <h1 class="h4 mb-0">Presenças e inscrições</h1>
-            <p class="text-muted small mb-0">Visual completo das ações pedagógicas com expansão de presenças e exportação.</p>
+            <h1 class="h4 mb-0">Inscrições, Presenças e Ausências</h1>
+            <p class="text-muted small mb-0">Visual completo das ações pedagógicas com expansão de presenças e exportação em PDF.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Hub de dashboards</a>
@@ -31,7 +31,6 @@
             <a href="{{ route('dashboards.avaliacoes') }}" class="btn btn-outline-primary btn-sm">Dashboard de respostas</a>
         </div>
     </div>
-    @can('evento.criar')
     <div class="card shadow-sm">
         <div class="card-header bg-white">
             <form method="GET" class="row g-2 align-items-end">
@@ -93,123 +92,78 @@
                     class="btn btn-outline-primary btn-sm"
                     data-bs-toggle="modal"
                     data-bs-target="#exportPdfModal">
-                    Baixar PDF
+                    Baixar Listas (PDF)
+                </button>
+                <button type="button"
+                    class="btn btn-outline-success btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#exportExcelModal">
+                    <i class="fas fa-file-excel me-1"></i>Matriz de Presença (Excel)
                 </button>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered align-middle mb-0">
-                    <thead class="table-light">
-                        @php
-                        function sort_link($label,$key){
-                        $curr = request('sort','dia');
-                        $dir = request('dir','desc') === 'asc' ? 'asc' : 'desc';
-                        $next = ($curr===$key && $dir==='asc') ? 'desc' : 'asc';
-                        $params = array_merge(request()->except('page'), ['sort'=>$key,'dir'=>$next]);
-                        $url = request()->url().'?'.http_build_query($params);
-                        $is = $curr===$key;
-                        $arrow = $is ? ($dir==='asc' ? '↑' : '↓') : '';
-                        return '<a href="'.$url.'" class="text-decoration-none">'.$label.' <span class="text-muted">'.$arrow.'</span></a>';
-                        }
-                        @endphp
-                        <tr>
-                            <th style="width: 40px;"></th>
-                            <th style="min-width:110px;">{!! sort_link('Data','dia') !!}</th>
-                            <th style="min-width:80px;">{!! sort_link('Hora','hora') !!}</th>
-                            <th>{!! sort_link('Momento','momento') !!}</th>
-                            <th>{!! sort_link('Município','municipio') !!}</th>
-                            <th>{!! sort_link('Ação pedagógica','acao') !!}</th>
-                            <th class="text-end" style="min-width:90px;">{!! sort_link('Inscritos','inscritos') !!}</th>
-                            <th class="text-end" style="min-width:90px;">{!! sort_link('Presentes','presentes') !!}</th>
-                            <th class="text-end" style="min-width:90px;">{!! sort_link('Ausentes','ausentes') !!}</th>
-                            <th class="text-center" style="width: 130px;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($atividades as $a)
-                        @php
-                        $data = \Carbon\Carbon::parse($a->dia)->format('d/m/Y');
-                        $hora = \Illuminate\Support\Str::of($a->hora_inicio)->substr(0,5);
-                        $collapseId = 'pres-' . $a->id;
-                        $inscritosCount = $a->inscritos_count ?? 0;
-                        $presentesCount = $a->presentes_count ?? 0;
-                        $ausentesCount = max($inscritosCount - $presentesCount, 0);
-                        @endphp
+            @php
+                function sort_link($label,$key){
+                    $curr = request('sort','dia');
+                    $dir = request('dir','desc') === 'asc' ? 'asc' : 'desc';
+                    $next = ($curr===$key && $dir==='asc') ? 'desc' : 'asc';
+                    $params = array_merge(request()->except('page'), ['sort'=>$key,'dir'=>$next]);
+                    $url = request()->url().'?'.http_build_query($params);
+                    $is = $curr===$key;
+                    $arrow = $is ? ($dir==='asc' ? '↑' : '↓') : '';
+                    return '<a href="'.$url.'" class="text-decoration-none">'.$label.' <span class="text-muted">'.$arrow.'</span></a>';
+                }
 
-                        <tr>
-                            <td class="text-center">
-                                <a class="text-muted d-block"
-                                   data-bs-toggle="collapse"
-                                   href="#{{ $collapseId }}"
-                                   role="button"
-                                   aria-expanded="false"
-                                   aria-controls="{{ $collapseId }}">
-                                    <i class="fas fa-chevron-right transition-icon"></i>
-                                </a>
-                            </td>
-                            <td>{{ $data }}</td>
-                            <td>{{ $hora }}</td>
-                            <td>{{ $a->descricao ?? 'Momento' }}</td>
-                            <td>{{ $a->municipio?->nome_com_estado ?? '-' }}</td>
-                            <td>{{ $a->evento_nome ?? $a->evento->nome ?? '-' }}</td>
-                            <td class="text-end fw-semibold">{{ $inscritosCount }}</td>
-                            {{-- Gatilho do accordion na coluna Presentes --}}
-                            <td class="text-end">
-                                <a class="badge bg-success text-decoration-none"
-                                    data-bs-toggle="collapse"
-                                    href="#{{ $collapseId }}"
-                                    role="button"
-                                    data-focus-target="#{{ $collapseId }}-presentes"
-                                    aria-expanded="false"
-                                    aria-controls="{{ $collapseId }}">
-                                    {{ $presentesCount }}
-                                </a>
-                            </td>
-                            <td class="text-end">
-                                @if($ausentesCount > 0)
-                                    <a class="badge bg-warning text-dark text-decoration-none"
-                                        data-bs-toggle="collapse"
-                                        href="#{{ $collapseId }}"
-                                        role="button"
-                                        data-focus-target="#{{ $collapseId }}-ausentes"
-                                        aria-expanded="false"
-                                        aria-controls="{{ $collapseId }}">
-                                        {{ $ausentesCount }}
-                                    </a>
-                                @else
-                                    <span class="text-muted">0</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-engaja-outline"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#{{ $collapseId }}"
-                                        aria-expanded="false"
-                                        aria-controls="{{ $collapseId }}">
-                                    <i class="fas fa-users me-1"></i> Ver lista
-                                </button>
-                            </td>
-                        </tr>
-                        {{-- Linha de detalhes: carregada sob demanda (lazy) ao expandir --}}
-                        <tr>
-                            <td colspan="10" class="bg-light p-0">
-                                <div id="{{ $collapseId }}" class="collapse presentes-collapse"
-                                     data-detail-url="{{ route('dashboards.presencas.detalhes', $a->id) }}">
-                                    <div class="js-detail-placeholder d-flex align-items-center justify-content-center gap-2 p-3 text-muted small">
-                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                        Carregando detalhes...
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="10" class="text-center text-muted p-4">Nenhuma atividade encontrada.</td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                $columns = [
+                    ['field' => 'toggle', 'headerName' => '', 'width' => 44, 'resizable' => false, 'html' => true, 'align' => 'center'],
+                    ['field' => 'data', 'headerHtml' => sort_link('Data', 'dia'), 'minWidth' => 110, 'flex' => 1],
+                    ['field' => 'hora', 'headerHtml' => sort_link('Hora', 'hora'), 'minWidth' => 80, 'flex' => 1],
+                    ['field' => 'momento', 'headerHtml' => sort_link('Momento', 'momento'), 'flex' => 2],
+                    ['field' => 'municipio', 'headerHtml' => sort_link('Município', 'municipio'), 'flex' => 2],
+                    ['field' => 'acao', 'headerHtml' => sort_link('Ação pedagógica', 'acao'), 'flex' => 2],
+                    ['field' => 'inscritos', 'headerHtml' => sort_link('Inscritos', 'inscritos'), 'flex' => 1, 'align' => 'end'],
+                    ['field' => 'presentes', 'headerHtml' => sort_link('Presentes', 'presentes'), 'flex' => 1, 'html' => true, 'align' => 'end'],
+                    ['field' => 'ausentes', 'headerHtml' => sort_link('Ausentes', 'ausentes'), 'flex' => 1, 'html' => true, 'align' => 'end'],
+                    ['field' => 'acoes', 'headerName' => 'Ações', 'width' => 130, 'html' => true, 'align' => 'center'],
+                ];
+
+                $rows = $atividades->map(function ($a) {
+                    $data = \Carbon\Carbon::parse($a->dia)->format('d/m/Y');
+                    $hora = \Illuminate\Support\Str::of($a->hora_inicio)->substr(0, 5);
+                    $inscritosCount = $a->inscritos_count ?? 0;
+                    $presentesCount = $a->presentes_count ?? 0;
+                    $ausentesCount = max($inscritosCount - $presentesCount, 0);
+                    $focusTarget = 'pres-' . $a->id . '-participantes';
+
+                    $ausentesHtml = $ausentesCount > 0
+                        ? '<a class="badge bg-warning text-dark text-decoration-none" href="#" data-toggle-detail="' . $a->id . '" data-focus-target="' . $focusTarget . '">' . $ausentesCount . '</a>'
+                        : '<span class="text-muted">0</span>';
+
+                    return [
+                        'id' => $a->id,
+                        'detailUrl' => route('dashboards.presencas.detalhes', $a->id),
+                        'toggle' => '<button type="button" class="btn btn-sm btn-link text-muted p-0" data-toggle-detail="' . $a->id . '" aria-expanded="false"><i class="fas fa-chevron-right transition-icon"></i></button>',
+                        'data' => $data,
+                        'hora' => $hora,
+                        'momento' => $a->descricao ?? 'Momento',
+                        'municipio' => $a->municipio?->nome_com_estado ?? '-',
+                        'acao' => $a->evento_nome ?? $a->evento->nome ?? '-',
+                        'inscritos' => $inscritosCount,
+                        'presentes' => '<a class="badge bg-success text-decoration-none" href="#" data-toggle-detail="' . $a->id . '" data-focus-target="' . $focusTarget . '">' . $presentesCount . '</a>',
+                        'ausentes' => $ausentesHtml,
+                        'acoes' => '<button type="button" class="btn btn-sm btn-engaja-outline" data-toggle-detail="' . $a->id . '"><i class="fas fa-users me-1"></i> Ver lista</button>',
+                    ];
+                })->values();
+            @endphp
+
+            <x-data-table
+                id="grid-dashboard-presencas"
+                :columns="$columns"
+                :rows="$rows"
+                :pagination="false"
+                detail-row-field="_isDetailRow"
+                :detail-row-height="420"
+            />
         </div>
 
         @if($atividades->hasPages())
@@ -221,7 +175,36 @@
         </div>
         @endif
     </div>
-    @endcan
+</div>
+
+<div class="modal fade" id="exportExcelModal" tabindex="-1" aria-labelledby="exportExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="{{ route('dashboard.export.excel') }}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold" id="exportExcelModalLabel">Baixar Excel (Matriz de Frequência)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label mb-1">Ação pedagógica <span class="text-danger">*</span></label>
+                        <select name="evento_id" class="form-select" required>
+                            <option value="">Selecione a ação...</option>
+                            @foreach($eventos as $id => $nome)
+                                <option value="{{ $id }}">{{ $nome }}</option>
+                            @endforeach
+                        </select>
+                        <div class="form-text">O arquivo Excel será gerado em formato de Matriz de Presença agrupando as listas da Ação pedagógica selecionada por município.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" name="formato" value="docx" class="btn btn-outline-primary"><i class="bi bi-file-earmark-word"></i> Word</button>
+                    <button type="submit" class="btn btn-success">Gerar Planilha</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="exportPdfModal" tabindex="-1" aria-labelledby="exportPdfModalLabel" aria-hidden="true">
@@ -275,6 +258,7 @@
                     <div class="d-flex gap-2">
                         <button type="reset" class="btn btn-light btn-sm">Limpar</button>
                         <button type="submit" class="btn btn-primary btn-sm">Gerar PDF</button>
+                        <button type="submit" name="formato" value="docx" class="btn btn-outline-primary btn-sm"><i class="bi bi-file-earmark-word"></i> Word</button>
                     </div>
                 </div>
                 <input type="hidden" name="sort" value="{{ request('sort', 'dia') }}">
@@ -284,79 +268,113 @@
     </div>
 </div>
 
-{{-- Script para expandir/recolher todos e lazy loading de detalhes --}}
+{{-- Script para expandir/recolher e lazy loading de detalhes via linhas full-width do AG Grid --}}
 <script>
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.js-toggle-all');
-        if (!btn) return;
+    document.addEventListener('DOMContentLoaded', () => {
+        const gridEl = document.getElementById('grid-dashboard-presencas');
+        if (!gridEl) return;
 
-        const action = btn.dataset.action; // 'show' | 'hide'
-        const items = document.querySelectorAll('.presentes-collapse');
-        const hasBootstrap = window.bootstrap && bootstrap.Collapse;
+        const detailRowId = (atividadeId) => 'detail-' + atividadeId;
+        const loadingHtml = '<div class="d-flex align-items-center justify-content-center gap-2 p-3 text-muted small"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Carregando detalhes...</div>';
+        const errorHtml = '<div class="p-3 text-danger small">Erro ao carregar detalhes. Tente expandir novamente.</div>';
 
-        items.forEach(function(el) {
-            if (hasBootstrap) {
-                const instance = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
-                if (action === 'show') instance.show();
-                else instance.hide();
-            } else {
-                if (action === 'show') el.classList.add('show');
-                else el.classList.remove('show');
-            }
-        });
-    });
+        const setToggleExpanded = (api, atividadeId, expanded) => {
+            const node = api.getRowNode(String(atividadeId));
+            if (!node) return;
+            node.data.toggle = '<button type="button" class="btn btn-sm btn-link text-muted p-0" data-toggle-detail="' + atividadeId + '" aria-expanded="' + expanded + '"><i class="fas fa-chevron-' + (expanded ? 'down' : 'right') + ' transition-icon"></i></button>';
+            api.refreshCells({ force: true, rowNodes: [node], columns: ['toggle'] });
+        };
 
-    document.addEventListener('click', function(e) {
-        const focusLink = e.target.closest('[data-focus-target]');
-        if (!focusLink) return;
+        const collapseRow = (atividadeId) => {
+            const api = gridEl._agGridApi;
+            const node = api.getRowNode(detailRowId(atividadeId));
+            if (!node) return;
+            api.applyTransaction({ remove: [node.data] });
+            setToggleExpanded(api, atividadeId, false);
+        };
 
-        const collapseSelector = focusLink.getAttribute('href');
-        if (!collapseSelector || !collapseSelector.startsWith('#')) return;
+        // Mede a altura natural do conteúdo já renderizado e ajusta a altura
+        // real da linha, respeitando o teto (data-detail-row-height) — acima
+        // dele o .dt-detail-row passa a rolar internamente (overflow-y: auto).
+        const fitRowHeight = (atividadeId) => {
+            const api = gridEl._agGridApi;
+            const node = api.getRowNode(detailRowId(atividadeId));
+            if (!node) return;
 
-        const collapseEl = document.querySelector(collapseSelector);
-        if (!collapseEl) return;
-
-        collapseEl.dataset.focusTarget = focusLink.dataset.focusTarget || '';
-    });
-
-    // Lazy loading: carrega detalhes ao expandir pela primeira vez
-    document.addEventListener('show.bs.collapse', function (event) {
-        const collapseEl = event.target;
-        if (!collapseEl.classList.contains('presentes-collapse')) return;
-
-        const placeholder = collapseEl.querySelector('.js-detail-placeholder');
-        if (!placeholder) return; // já carregado
-
-        const url = collapseEl.dataset.detailUrl;
-        if (!url) return;
-
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function(r) { return r.ok ? r.text() : Promise.reject(r.status); })
-            .then(function(html) {
-                collapseEl.innerHTML = html;
-                const focusSel = collapseEl.dataset.focusTarget;
-                if (focusSel) {
-                    const focusEl = collapseEl.querySelector(focusSel);
-                    if (focusEl) focusEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    delete collapseEl.dataset.focusTarget;
-                }
-            })
-            .catch(function() {
-                collapseEl.innerHTML = '<div class="p-3 text-danger small">Erro ao carregar detalhes. Tente expandir novamente.</div>';
+            requestAnimationFrame(() => {
+                const rowEl = gridEl.querySelector('[row-id="' + detailRowId(atividadeId) + '"] .dt-detail-row');
+                if (!rowEl) return;
+                const maxHeight = Number(gridEl.dataset.detailRowHeight || 420);
+                node.setRowHeight(Math.min(rowEl.scrollHeight, maxHeight));
+                api.onRowHeightChanged();
             });
-    });
+        };
 
-    // Scroll para seção focada após animação (quando já carregado)
-    if (window.bootstrap && bootstrap.Collapse) {
-        document.addEventListener('shown.bs.collapse', function (event) {
-            const collapseEl = event.target;
-            const focusSel = collapseEl.dataset.focusTarget;
-            if (!focusSel) return;
-            const focusEl = collapseEl.querySelector(focusSel);
-            if (focusEl) focusEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            delete collapseEl.dataset.focusTarget;
+        const expandRow = (atividadeId, focusTarget) => {
+            const api = gridEl._agGridApi;
+            if (api.getRowNode(detailRowId(atividadeId))) return; // já expandida
+
+            const masterNode = api.getRowNode(String(atividadeId));
+            if (!masterNode) return;
+
+            api.applyTransaction({
+                add: [{ id: detailRowId(atividadeId), _isDetailRow: true, detailHtml: loadingHtml }],
+                addIndex: masterNode.rowIndex + 1,
+            });
+            setToggleExpanded(api, atividadeId, true);
+
+            fetch(masterNode.data.detailUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then((r) => (r.ok ? r.text() : Promise.reject(r.status)))
+                .then((html) => {
+                    const node = api.getRowNode(detailRowId(atividadeId));
+                    if (!node) return; // foi recolhida antes do fetch terminar
+                    node.updateData({ ...node.data, detailHtml: html });
+                    api.redrawRows({ rowNodes: [node] });
+                    fitRowHeight(atividadeId);
+
+                    if (focusTarget) {
+                        requestAnimationFrame(() => {
+                            const focusEl = gridEl.querySelector('#' + focusTarget);
+                            if (focusEl) focusEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                    }
+                })
+                .catch(() => {
+                    const node = api.getRowNode(detailRowId(atividadeId));
+                    if (!node) return;
+                    node.updateData({ ...node.data, detailHtml: errorHtml });
+                    api.redrawRows({ rowNodes: [node] });
+                    fitRowHeight(atividadeId);
+                });
+        };
+
+        const toggleRow = (atividadeId, focusTarget) => {
+            const api = gridEl._agGridApi;
+            if (api.getRowNode(detailRowId(atividadeId))) {
+                collapseRow(atividadeId);
+            } else {
+                expandRow(atividadeId, focusTarget);
+            }
+        };
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-toggle-detail]');
+            if (!trigger || !gridEl.contains(trigger)) return;
+            event.preventDefault();
+            toggleRow(trigger.dataset.toggleDetail, trigger.dataset.focusTarget || null);
         });
-    }
+
+        document.querySelectorAll('.js-toggle-all').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const api = gridEl._agGridApi;
+                const masterIds = [];
+                api.forEachNode((node) => {
+                    if (!node.data._isDetailRow) masterIds.push(node.data.id);
+                });
+                masterIds.forEach((id) => (btn.dataset.action === 'show' ? expandRow(id) : collapseRow(id)));
+            });
+        });
+    });
 </script>
 
 @endsection

@@ -1,12 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-@php
-    $munLabel = function ($m) {
-        $uf = $m->estado->sigla ?? null;
-        return $uf ? "{$m->nome} — {$uf}" : $m->nome;
-    };
-@endphp
 <div class="container py-5">
     <div class="row">
         <div class="col-md-8 offset-md-2">
@@ -143,18 +137,28 @@
                                         @enderror
                                     </div>
 
+                                    @include('auth.partials.municipio-select')
+
                                     <div class="col-md-6">
-                                        <label for="municipio_id" class="form-label">Município</label>
-                                        <select id="municipio_id" name="municipio_id"
-                                                class="form-select @error('municipio_id') is-invalid @enderror">
-                                            <option value="">— Nenhum —</option>
-                                            @foreach($municipios as $m)
-                                                <option value="{{ $m->id }}" @selected((string) old('municipio_id') === (string) $m->id)>
-                                                    {{ $munLabel($m) }}
-                                                </option>
+                                        <label for="sexo" class="form-label">Sexo</label>
+                                        <select id="sexo" name="sexo" class="form-select @error('sexo') is-invalid @enderror">
+                                            <option value="">Selecione...</option>
+                                            @foreach(\App\Models\Participante::SEXOS as $opcaoSexo)
+                                                <option value="{{ $opcaoSexo }}" @selected(old('sexo', 'Não preenchido') === $opcaoSexo)>{{ $opcaoSexo }}</option>
                                             @endforeach
                                         </select>
-                                        @error('municipio_id')
+                                        @error('sexo')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="data_nascimento" class="form-label">Data de nascimento</label>
+                                        <input type="date" id="data_nascimento" name="data_nascimento"
+                                               max="{{ date('Y-m-d') }}"
+                                               value="{{ old('data_nascimento') }}"
+                                               class="form-control @error('data_nascimento') is-invalid @enderror">
+                                        @error('data_nascimento')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>

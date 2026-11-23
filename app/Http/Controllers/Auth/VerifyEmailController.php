@@ -3,25 +3,42 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Support\SistemaContext;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
+/**
+ * Confirma o e-mail a partir da URL assinada, atendendo tanto a rota do Cartas
+ * (cartas.verification.verify) quanto a legada do Engaja (verification.verify).
+ *
+ * Não usa EmailVerificationRequest porque a rota é aberta a visitantes: o link
+ * chega por e-mail e costuma ser aberto sem sessão. A identidade é provada pela
+ * assinatura da URL (middleware 'signed', com expiração) somada ao hash do
+ * e-mail — os mesmos fatores que o Laravel valida no fluxo autenticado.
+ */
 class VerifyEmailController extends Controller
 {
-    /**
-     * Mark the authenticated user's email address as verified.
-     */
-    public function __invoke(EmailVerificationRequest $request): RedirectResponse
+    public function __invoke(string $id, string $hash): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->intended('/?verified=1');
+        $user = User::findOrFail($id);
+
+        abort_unless(
+            hash_equals(sha1($user->getEmailForVerification()), $hash),
+            403
+        );
+
+        if (! $user->hasVerifiedEmail() && $user->markEmailAsVerified()) {
+            event(new Verified($user));
         }
 
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
+        if (Auth::id() === $user->getKey()) {
+            return redirect()->intended(SistemaContext::verifiedRoute($user));
         }
 
-        return redirect()->intended('/?verified=1');
+        return redirect()
+            ->to(SistemaContext::loginRouteFor($user))
+            ->with('status', 'E-mail confirmado! Faça login para continuar.');
     }
 }

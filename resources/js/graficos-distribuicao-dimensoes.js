@@ -20,8 +20,8 @@ const obterPaletaEngaja = () => {
     ];
 
     const vars = [
-        "--engaja-purple",
         "--engaja-blue",
+        "--engaja-dark-blue",
         "--engaja-yellow",
         "--engaja-pink",
         "--engaja-green",

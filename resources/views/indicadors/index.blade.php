@@ -24,9 +24,6 @@
         </select>
       </div>
       <div class="col-3 d-flex gap-2">
-        <input type="hidden" name="sort" value="{{ request('sort', 'descricao') }}">
-        <input type="hidden" name="dir"
-          value="{{ strtolower(request('dir', request('direction', 'asc'))) === 'desc' ? 'desc' : 'asc' }}">
         <button type="submit" class="btn btn-engaja">Aplicar</button>
         <a href="{{ route('indicadors.index') }}" class="btn btn-outline-secondary">Limpar</a>
       </div>
@@ -34,60 +31,49 @@
   </div>
 </form>
 
-<div class="card shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        @php
-          function indicador_sort_link($label, $key) {
-            $currentSort = request('sort', 'descricao');
-            $dirParam = request('dir', request('direction', 'asc'));
-            $currentDir = strtolower((string) $dirParam) === 'desc' ? 'desc' : 'asc';
-            $nextDir = ($currentSort === $key && $currentDir === 'asc') ? 'desc' : 'asc';
-            $params = array_merge(request()->except('page'), ['sort' => $key, 'dir' => $nextDir]);
-            $url = request()->url() . '?' . http_build_query($params);
-            $isActive = $currentSort === $key;
-            $arrow = $isActive ? ($currentDir === 'asc' ? '↑' : '↓') : '';
-            return '<a href="' . $url . '" class="text-decoration-none text-nowrap">' . e($label) . ' <span class="text-muted">' . $arrow . '</span></a>';
-          }
-        @endphp
-        <tr>
-          <th>{!! indicador_sort_link('Descrição', 'descricao') !!}</th>
-          <th>{!! indicador_sort_link('Dimensão', 'dimensao') !!}</th>
-          <th class="text-center">{!! indicador_sort_link('Qtd. questões', 'questoes') !!}</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($indicadors as $indicador)
-        <tr>
-          <td class="fw-semibold">{{ $indicador->descricao }}</td>
-          <td>{{ $indicador->dimensao->descricao ?? '—' }}</td>
-          <td class="text-center">{{ $indicador->questoes_count }}</td>
-          <td class="text-end">
-            <a href="{{ route('indicadors.show', $indicador) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-            <a href="{{ route('indicadors.edit', $indicador) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-            @hasanyrole('administrador|gerente|eq_pedagogica')
-            <form action="{{ route('indicadors.destroy', $indicador) }}" method="POST" class="d-inline">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="btn btn-sm btn-outline-danger"
-                onclick="return confirm('Tem certeza que deseja excluir este indicador?')">Excluir</button>
-            </form>
-            @endhasanyrole
-          </td>
-        </tr>
-        @empty
-        <tr>
-          <td colspan="4" class="text-center text-muted py-4">Nenhum indicador cadastrado.</td>
-        </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-</div>
+@php
+    $columns = [
+        ['field' => 'descricao', 'headerName' => 'Descrição', 'flex' => 3],
+        ['field' => 'dimensao', 'headerName' => 'Dimensão', 'flex' => 2],
+        ['field' => 'questoes', 'headerName' => 'Qtd. questões', 'flex' => 1],
+        ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+    ];
 
-<div class="mt-3">
-  {{ $indicadors->links() }}
+    $podeExcluir = auth()->user()?->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica']);
+
+    $rows = $indicadors->map(function ($indicador) use ($podeExcluir) {
+        $acoesHtml = '<div class="dropdown">'
+            . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Gerenciar</button>'
+            . '<ul class="dropdown-menu dropdown-menu-end">'
+            . '<li><a class="dropdown-item" href="' . route('indicadors.show', $indicador) . '">Ver</a></li>'
+            . '<li><a class="dropdown-item" href="' . route('indicadors.edit', $indicador) . '">Editar</a></li>';
+
+        if ($podeExcluir) {
+            $acoesHtml .= '<li>'
+                . '<form method="POST" action="' . route('indicadors.destroy', $indicador) . '" data-confirm="Tem certeza que deseja excluir este indicador?">'
+                . csrf_field() . method_field('DELETE')
+                . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                . '</form>'
+                . '</li>';
+        }
+
+        $acoesHtml .= '</ul></div>';
+
+        return [
+            'descricao' => $indicador->descricao,
+            'dimensao' => $indicador->dimensao->descricao ?? '—',
+            'questoes' => $indicador->questoes_count,
+            'acoes' => $acoesHtml,
+        ];
+    })->values();
+@endphp
+
+<div class="card shadow-sm">
+    <x-data-table
+        id="grid-indicadores"
+        :columns="$columns"
+        :rows="$rows"
+        :page-size="15"
+    />
 </div>
 @endsection

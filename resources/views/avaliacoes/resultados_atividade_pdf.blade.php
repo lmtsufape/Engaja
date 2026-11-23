@@ -15,9 +15,6 @@
 
 @section('styles')
     body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 12px 0 24px; }
-    .doc-header { margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #421944; }
-    .doc-title { font-size: 16px; font-weight: bold; color: #421944; margin: 0 0 4px 0; }
-    .doc-meta { font-size: 10px; color: #555; }
     .intro-box { border: 1px solid #e8dff0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; background: #fff; }
     .intro-box p { margin: 0 0 4px 0; }
     .intro-box strong { color: #421944; }
@@ -43,10 +40,10 @@
 @endsection
 
 @section('content')
-    <div class="doc-header">
-        <h1 class="doc-title">Avaliação — {{ $atividade->descricao }}</h1>
-        <div class="doc-meta">Relatório de respostas · Avaliação anónima &nbsp;·&nbsp; Gerado em {{ $geradoEm->format('d/m/Y H:i') }}</div>
-    </div>
+    <x-pdf.header
+        :title="'Avaliação — ' . $atividade->descricao"
+        subtitle="Relatório de respostas · Avaliação anónima"
+    />
 
     <div class="intro-box">
         <p><strong>Ação pedagógica:</strong> {{ $eventoNome }}</p>

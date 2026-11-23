@@ -38,102 +38,104 @@
             </div>
         </form>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 36px;"><input type="checkbox" id="check-all"></th>
-                        <th>Nome</th>
-                        <th>Sub-Ação</th>
-                        <th>Tipo</th>
-                        <th>Período</th>
-                        <th>Criado por</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($eventos as $ev)
-                        <tr>
-                            <td><input type="checkbox" class="form-check-input evento-check" value="{{ $ev->id }}"></td>
-                            <td class="fw-semibold">
-                                <div class="d-flex flex-column align-items-start gap-1">
-                                    <span>{{ $ev->nome }}</span>
-                                    @php
-                                        // Só exibe para registros criados com o novo formulário (não-null)
-                                        $checklistSalvo   = $ev->checklist_planejamento;
-                                        $checklistsMarcados = is_array($checklistSalvo) ? count($checklistSalvo) : null;
-                                        $isPlanejamentoIncompleto = $checklistsMarcados !== null && $checklistsMarcados < 13;
-                                    @endphp
-                                    @if($isPlanejamentoIncompleto)
-                                        <a href="{{ route('eventos.edit', $ev) }}#checklist"
-                                           class="badge bg-warning text-dark border-0 fw-normal text-decoration-none"
-                                           style="font-size: 0.75rem;"
-                                           title="Clique para retomar e concluir o checklist de planejamento ({{ $checklistsMarcados }}/13 itens marcados).">
-                                            ⚠️ Planejamento incompleto
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
-                            <td>
-                                @if ($ev->subacao)
-                                    <span class="badge bg-secondary-subtle text-secondary border fw-normal text-wrap text-start" style="max-width: 250px;" title="{{ $ev->subacao }}">
-                                        {{ \Illuminate\Support\Str::limit($ev->subacao, 45) }}
-                                    </span>
-                                @elseif ($ev->acao_geral)
-                                    <small class="text-muted">Ação Geral {{ $ev->acao_geral }}</small>
-                                @else
-                                    <span class="text-muted">-</span>
-                                @endif
-                            </td>
-                            <td>{{ $ev->tipo ?? '-' }}</td>
-                            <td>
-                                @php
-                                    $inicio = $ev->data_inicio ? \Carbon\Carbon::parse($ev->data_inicio)->format('d/m/Y') : null;
-                                    $fim = $ev->data_fim ? \Carbon\Carbon::parse($ev->data_fim)->format('d/m/Y') : null;
-                                    $mostrarFim = $fim && (!$inicio || $fim !== $inicio);
-                                @endphp
-                                @if($inicio || $fim)
-                                    {{ $inicio ?? '-' }} @if($mostrarFim)<br><small class="text-muted">até {{ $fim }}</small>@endif
-                                @else
-                                    -
-                                @endif
-                            </td>
-                            <td>{{ $ev->user->name ?? '-' }}</td>
-                            <td class="text-end text-nowrap">
-                                <div class="d-inline-flex gap-2 align-items-center">
-                                    <a href="{{ route('eventos.show', $ev) }}" class="btn btn-sm btn-outline-primary">
-                                        Ver
-                                    </a>
+        @php
+            if (!function_exists('evento_sort_link')) {
+                function evento_sort_link($label, $key) {
+                    $currentSort = request('sort', 'id');
+                    $currentDir = strtolower((string) request('dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+                    $nextDir = ($currentSort === $key && $currentDir === 'asc') ? 'desc' : 'asc';
+                    $params = array_merge(request()->except('page'), ['sort' => $key, 'dir' => $nextDir]);
+                    $url = request()->url() . '?' . http_build_query($params);
+                    $isActive = $currentSort === $key;
+                    $arrow = $isActive ? ($currentDir === 'asc' ? '↑' : '↓') : '';
 
-                                    <a href="{{ route('eventos.planejamento.pdf', $ev) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-danger" title="Ver Planejamento da Ação">Ver Planejamento da Ação</a>
+                    return '<a href="' . $url . '" class="text-decoration-none text-nowrap">' . e($label) . ' <span class="text-muted">' . $arrow . '</span></a>';
+                }
+            }
 
-                                    @can('update', $ev)
-                                        @hasanyrole('administrador|gerente|eq_pedagogica')
-                                        <a href="{{ route('eventos.edit', $ev) }}" class="btn btn-sm btn-outline-secondary">
-                                            Editar
-                                        </a>
-                                        @role('administrador')
-                                        <form action="{{ route('eventos.destroy', $ev) }}" method="POST" class="d-inline m-0 p-0"
-                                            data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">
-                                            @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                                        </form>
-                                        @endrole
-                                        @endhasanyrole
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-4">Nenhuma ação pedagógica encontrada.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+            $columns = [
+                ['field' => 'nome', 'headerHtml' => evento_sort_link('Nome', 'nome'), 'flex' => 1, 'minWidth' => 300, 'html' => true],
+                ['field' => 'periodo', 'headerHtml' => evento_sort_link('Período', 'periodo'), 'width' => 90, 'minWidth' => 75, 'html' => true],
+                ['field' => 'criado_por', 'headerHtml' => evento_sort_link('Criado por', 'criado_por'), 'width' => 90, 'minWidth' => 75],
+                ['field' => 'acoes', 'headerName' => 'Ações', 'width' => 95, 'minWidth' => 85, 'html' => true, 'overflow' => 'visible'],
+            ];
+
+            $rows = $eventos->map(function ($ev) {
+                $checklistSalvo = $ev->checklist_planejamento;
+                $checklistsMarcados = is_array($checklistSalvo) ? count($checklistSalvo) : null;
+                $isPlanejamentoIncompleto = $checklistsMarcados !== null && $checklistsMarcados < 13;
+
+                $nomeHtml = '<div style="min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' . e($ev->nome) . '">'
+                    . '<span class="fw-semibold text-truncate d-block mw-100" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' . e($ev->nome) . '</span>';
+                if ($isPlanejamentoIncompleto) {
+                    $nomeHtml .= '<a href="' . route('eventos.edit', $ev) . '#checklist" class="badge bg-warning text-dark border-0 fw-normal text-decoration-none text-truncate d-inline-block mw-100" style="font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="Clique para retomar e concluir o checklist de planejamento (' . $checklistsMarcados . '/13 itens marcados).">⚠️ Planejamento incompleto</a>';
+                }
+                $nomeHtml .= '</div>';
+
+                $inicio = $ev->data_inicio ? \Carbon\Carbon::parse($ev->data_inicio)->format('d/m/Y') : null;
+                $fim = $ev->data_fim ? \Carbon\Carbon::parse($ev->data_fim)->format('d/m/Y') : null;
+                $mostrarFim = $fim && (!$inicio || $fim !== $inicio);
+                if ($inicio || $fim) {
+                    $periodoHtml = e($inicio ?? '-') . ($mostrarFim ? '<br><span style="color: inherit; padding-left: 0.25rem;">até ' . e($fim) . '</span>' : '');
+                } else {
+                    $periodoHtml = '-';
+                }
+
+                $acoesHtml = '<div class="dropdown">'
+                    . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Gerenciar</button>'
+                    . '<ul class="dropdown-menu dropdown-menu-end">'
+                    . '<li><a class="dropdown-item" href="' . route('eventos.show', $ev) . '">Ver</a></li>'
+                    . '<li><a class="dropdown-item" href="' . route('eventos.planejamento.pdf', $ev) . '" target="_blank" rel="noopener noreferrer">Ver planejamento da ação</a></li>';
+
+                if (auth()->user()->can('update', $ev) && auth()->user()->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica'])) {
+                    $acoesHtml .= '<li><a class="dropdown-item" href="' . route('eventos.edit', $ev) . '">Editar</a></li>';
+
+                    $acoesHtml .= '<li><hr class="dropdown-divider"></li>'
+                        . '<li>'
+                        . '<form method="POST" action="' . route('eventos.duplicate', $ev) . '" data-confirm="Deseja duplicar esta ação pedagógica? Uma cópia será criada com os mesmos dados de edição e momentos, sem inscritos e presenças.">'
+                        . csrf_field()
+                        . '<button type="submit" class="dropdown-item">'
+                        . ' Duplicar ação'
+                        . '</button>'
+                        . '</form>'
+                        . '</li>';
+
+                    if (auth()->user()->hasRole('administrador')) {
+                        $acoesHtml .= '<li><hr class="dropdown-divider"></li>'
+                            . '<li>'
+                            . '<form method="POST" action="' . route('eventos.destroy', $ev) . '" data-confirm="Tem certeza que deseja excluir esta ação pedagógica?">'
+                            . csrf_field() . method_field('DELETE')
+                            . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                            . '</form>'
+                            . '</li>';
+                    }
+                }
+
+                $acoesHtml .= '</ul></div>';
+
+                return [
+                    'id' => $ev->id,
+                    'nome' => $nomeHtml,
+                    'periodo' => $periodoHtml,
+                    'criado_por' => $ev->user->name ?? '-',
+                    'acoes' => $acoesHtml,
+                ];
+            })->values();
+        @endphp
+
+        <div class="card shadow-sm">
+            <x-data-table
+                id="grid-eventos"
+                :columns="$columns"
+                :rows="$rows"
+                :pagination="false"
+                row-selection="multiple"
+            />
         </div>
 
-        {{ $eventos->withQueryString()->links() }}
+        <div class="mt-3">
+            {{ $eventos->withQueryString()->links() }}
+        </div>
     </div>
 
     @hasanyrole('administrador|gerente')
@@ -190,9 +192,7 @@
 
             let selectedSet = new Set(JSON.parse(sessionStorage.getItem(STORAGE_KEY)) || []);
 
-            //captura dos elementos html
-            const checkAll = document.getElementById('check-all');
-            const checks = Array.from(document.querySelectorAll('.evento-check'));
+            const gridEl = document.getElementById('grid-eventos');
             const inputEventos = document.getElementById('eventosSelecionados');
             const btnEmitir = document.getElementById('btn-emitir-certificados');
             const btnConfirmar = document.getElementById('btn-confirmar-emissao');
@@ -215,41 +215,44 @@
                 const enableModalBtns = hasSel && hasModelo;
                 if (btnConfirmar) btnConfirmar.disabled = !enableModalBtns;
                 if (btnPreview) btnPreview.disabled = !enableModalBtns;
-
-                //se todos os checkboxes visíveis nesta pagina estiverem marcados, marca o "checkAll"
-                if (checkAll && checks.length > 0) {
-                    checkAll.checked = checks.every(c => c.checked);
-                }
             };
 
-            checks.forEach(c => {
-                if (selectedSet.has(c.value)) {
-                    c.checked = true;
-                }
+            //o grid eh recriado a cada carregamento de pagina (paginacao server-side),
+            //entao so guardamos os ids desta pagina para sincronizar com a selecao global
+            const setupGridSelection = () => {
+                const api = gridEl._agGridApi;
+                if (!api) return;
 
-                c.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        selectedSet.add(e.target.value);
-                    } else {
-                        selectedSet.delete(e.target.value);
+                const pageIds = [];
+                api.forEachNode((node) => {
+                    const id = String(node.data.id);
+                    pageIds.push(id);
+                    if (selectedSet.has(id)) {
+                        node.setSelected(true);
                     }
-                    syncGlobalState();
                 });
-            });
 
-            if (checkAll) {
-                checkAll.addEventListener('change', (e) => {
-                    const isChecked = e.target.checked;
-                    checks.forEach(c => {
-                        c.checked = isChecked;
-                        if (isChecked) {
-                            selectedSet.add(c.value);
+                syncGlobalState();
+
+                gridEl.addEventListener('datatable:selection-changed', (event) => {
+                    const selectedNow = new Set(event.detail.rows.map((row) => String(row.id)));
+                    pageIds.forEach((id) => {
+                        if (selectedNow.has(id)) {
+                            selectedSet.add(id);
                         } else {
-                            selectedSet.delete(c.value);
+                            selectedSet.delete(id);
                         }
                     });
                     syncGlobalState();
                 });
+            };
+
+            if (gridEl) {
+                if (gridEl.dataset.agGridInitialized === 'true') {
+                    setupGridSelection();
+                } else {
+                    gridEl.addEventListener('datatable:ready', setupGridSelection, { once: true });
+                }
             }
 
             //eventos do modal
@@ -284,5 +287,6 @@
             syncGlobalState();
         });
     </script>
+
 @endpush
 @endsection

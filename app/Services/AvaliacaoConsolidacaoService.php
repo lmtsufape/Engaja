@@ -12,7 +12,7 @@ class AvaliacaoConsolidacaoService
 
     public function build(Evento $evento, string $agrupamento = 'geral'): array
     {
-        $agrupamento = $agrupamento === 'regiao' ? 'regiao' : 'geral';
+        $agrupamento = in_array($agrupamento, ['regiao', 'municipio'], true) ? $agrupamento : 'geral';
 
         $respostas = RespostaAvaliacao::query()
             ->select([
@@ -27,6 +27,7 @@ class AvaliacaoConsolidacaoService
                 'avaliacaoQuestao.escala',
                 'avaliacaoQuestao.indicador.dimensao',
                 'avaliacao.templateAvaliacao',
+                'submissaoAvaliacao.presenca.inscricao.participante.municipio.estado.regiao',
                 'avaliacao.atividade.municipio.estado.regiao',
                 'avaliacao.atividade.municipios.estado.regiao',
             ])
@@ -54,7 +55,7 @@ class AvaliacaoConsolidacaoService
 
         $groups = collect($grouped)->map(function (array $templates, string $groupName) use ($templateNames) {
             $templatesPayload = collect($templates)->map(function (array $items, int $templateId) use ($templateNames) {
-                $collection = collect($items);
+                $collection = $this->normalizarPerguntasRepetidas(collect($items));
                 $perguntas = $this->dashboard->montarPerguntasFromRespostas($collection)
                     ->map(fn (array $pergunta) => $this->enrichPerguntaResumo($pergunta))
                     ->values();
@@ -64,6 +65,9 @@ class AvaliacaoConsolidacaoService
                     'template_nome' => $templateNames[$templateId] ?? 'Modelo sem nome',
                     'submissoes' => $collection->pluck('submissao_avaliacao_id')->filter()->unique()->count(),
                     'respostas' => $collection->count(),
+                    'media_geral' => $this->calcularMediaGeral($perguntas),
+                    'perguntas_com_media' => $perguntas->whereNotNull('media')->count(),
+                    'respostas_com_media' => $perguntas->whereNotNull('media')->sum('total'),
                     'perguntas' => $perguntas->all(),
                 ];
             })->sortBy('template_nome')->values()->all();
@@ -79,26 +83,77 @@ class AvaliacaoConsolidacaoService
 
     private function resolveGroupKeys(RespostaAvaliacao $resposta, string $agrupamento): array
     {
-        if ($agrupamento !== 'regiao') {
+        if ($agrupamento === 'geral') {
             return ['Todos os municípios'];
         }
 
-        $atividade = $resposta->avaliacao?->atividade;
-        if (! $atividade) {
-            return ['Sem região'];
+        // 1. Prioridade: Município do usuário (participante) que respondeu
+        $municipio = $resposta->submissaoAvaliacao?->presenca?->inscricao?->participante?->municipio;
+
+        // 2. Fallback: Se não tem participante atrelado, pega o município da atividade
+        // (Apenas se a atividade tiver EXATAMENTE UM município para evitar duplicação de respostas)
+        if (! $municipio) {
+            $atividade = $resposta->avaliacao?->atividade;
+            if ($atividade) {
+                if ($atividade->municipios->count() === 1) {
+                    $municipio = $atividade->municipios->first();
+                } elseif ($atividade->municipios->isEmpty() && $atividade->municipio) {
+                    $municipio = $atividade->municipio;
+                }
+            }
         }
 
-        $municipios = $atividade->municipios->isNotEmpty()
-            ? $atividade->municipios
-            : collect([$atividade->municipio])->filter();
+        if ($agrupamento === 'regiao') {
+            $nomeRegiao = $municipio?->estado?->regiao?->nome;
+            return [$nomeRegiao ?: 'Sem região'];
+        }
 
-        $regioes = $municipios
-            ->map(fn ($municipio) => $municipio?->estado?->regiao?->nome)
+        // Agrupamento por município
+        $nomeMunicipio = $municipio?->nome;
+        return [$nomeMunicipio ?: 'Município não cadastrado'];
+    }
+
+    private function normalizarPerguntasRepetidas(Collection $respostas): Collection
+    {
+        $canonicalIds = [];
+
+        return $respostas->map(function (RespostaAvaliacao $resposta) use (&$canonicalIds, $respostas) {
+            $questao = $resposta->avaliacaoQuestao;
+            if (! $questao) {
+                return $resposta;
+            }
+
+            $signature = $this->questionSignature($questao);
+            $canonicalIds[$signature] ??= $questao->id;
+
+            if ($canonicalIds[$signature] === $questao->id) {
+                return $resposta;
+            }
+
+            $clone = clone $resposta;
+            $clone->avaliacao_questao_id = $canonicalIds[$signature];
+            $clone->setRelation('avaliacaoQuestao', $respostas
+                ->first(fn (RespostaAvaliacao $item) => $item->avaliacaoQuestao?->id === $canonicalIds[$signature])
+                ?->avaliacaoQuestao ?? $questao);
+
+            return $clone;
+        });
+    }
+
+    private function questionSignature($questao): string
+    {
+        $opcoes = collect($questao->opcoes_resposta ?? [])
+            ->map(fn ($opcao) => mb_strtolower(trim((string) $opcao)))
             ->filter()
-            ->unique()
-            ->values();
+            ->values()
+            ->all();
 
-        return $regioes->isNotEmpty() ? $regioes->all() : ['Sem região'];
+        return implode('|', [
+            mb_strtolower(trim((string) $questao->texto)),
+            (string) ($questao->tipo ?? 'texto'),
+            (string) ($questao->escala_id ?? ''),
+            json_encode($opcoes),
+        ]);
     }
 
     private function enrichPerguntaResumo(array $pergunta): array
@@ -148,14 +203,40 @@ class AvaliacaoConsolidacaoService
         return $pergunta;
     }
 
+    private function calcularMediaGeral(Collection $perguntas): ?float
+    {
+        $totalPonderado = 0.0;
+        $totalRespostas = 0;
+
+        foreach ($perguntas as $pergunta) {
+            $media = $pergunta['media'] ?? null;
+            $total = (int) ($pergunta['total'] ?? 0);
+
+            if ($media === null || $total === 0) {
+                continue;
+            }
+
+            $totalPonderado += (float) $media * $total;
+            $totalRespostas += $total;
+        }
+
+        if ($totalRespostas === 0) {
+            return null;
+        }
+
+        return round($totalPonderado / $totalRespostas, 2);
+    }
+
     private function sortGroups(Collection $groups, string $agrupamento): Collection
     {
-        if ($agrupamento !== 'regiao') {
+        if (! in_array($agrupamento, ['regiao', 'municipio'], true)) {
             return $groups;
         }
 
         return $groups->sortBy(function (array $group) {
-            return $group['nome'] === 'Sem região' ? 'zzzzzz' : mb_strtolower((string) $group['nome']);
+            return in_array($group['nome'], ['Sem região', 'Município não cadastrado'], true)
+                ? 'zzzzzz'
+                : mb_strtolower((string) $group['nome']);
         })->values();
     }
 }

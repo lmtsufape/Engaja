@@ -69,6 +69,9 @@
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{{ route('usuarios.index') }}">Usuários</a></li>
+            @can('presenca.abrir')
+            <li><a class="dropdown-item" href="{{ route('presencas.gerenciamento') }}">Controle de Presenças</a></li>
+            @endcan
             @role('administrador')
             <li><a class="dropdown-item" href="{{ route('regioes.index') }}">Regiões</a></li>
             <li><a class="dropdown-item" href="{{ route('estados.index') }}">Estados</a></li>
@@ -87,8 +90,10 @@
             <li><a class="dropdown-item" href="{{ route('profile.certificados') }}">Meus certificados</a></li>
             @hasanyrole('administrador|gerente')
               <li><a class="dropdown-item" href="{{ route('certificados.modelos.index') }}">Modelos de certificados</a></li>
-              <li><a class="dropdown-item" href="{{ route('certificados.emitidos') }}">Certificados emitidos</a></li>
             @endhasanyrole
+            @can('certificado.baixar')
+              <li><a class="dropdown-item" href="{{ route('certificados.emitidos') }}">Certificados emitidos</a></li>
+            @endcan
           </ul>
         </li>
 

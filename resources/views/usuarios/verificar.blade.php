@@ -75,8 +75,14 @@
 
         <form method="GET" action="{{ route('usuarios.verificar.exportar', ['format' => 'xlsx']) }}" class="d-flex gap-2 align-items-center">
           <input type="hidden" name="session_key" value="{{ $sessionKey }}">
-          <input type="hidden" name="modelo" value="nao_cadastrados" class="js-modelo-hidden-xlsx">
+          <input type="hidden" name="modelo" value="nao_cadastrados" class="js-modelo-hidden-xlsx js-modelo-hidden">
           <button type="submit" class="btn btn-primary btn-sm" style="min-width: 110px;">Exportar XLSX</button>
+        </form>
+
+        <form method="GET" action="{{ route('usuarios.verificar.exportar', ['format' => 'docx']) }}" class="d-flex gap-2 align-items-center">
+          <input type="hidden" name="session_key" value="{{ $sessionKey }}">
+          <input type="hidden" name="modelo" value="nao_cadastrados" class="js-modelo-hidden">
+          <button type="submit" class="btn btn-outline-primary btn-sm" style="min-width: 110px;"><i class="bi bi-file-earmark-word"></i> Word</button>
         </form>
       </div>
     </div>
@@ -126,11 +132,11 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const csvSelect = document.querySelector('select[name="modelo"]');
-    const xlsxModelo = document.querySelector('.js-modelo-hidden-xlsx');
-    if (!csvSelect || !xlsxModelo) return;
+    const hiddenModelos = document.querySelectorAll('.js-modelo-hidden');
+    if (!csvSelect || hiddenModelos.length === 0) return;
 
     const syncModelo = () => {
-      xlsxModelo.value = csvSelect.value;
+      hiddenModelos.forEach((el) => { el.value = csvSelect.value; });
     };
 
     csvSelect.addEventListener('change', syncModelo);

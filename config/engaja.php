@@ -32,5 +32,80 @@ return [
     'participante_tags' => [
         'Rede de Ensino',
         'Movimento Social',
+        'Como Alfabetizar com Paulo Freire',
+    ],
+
+    'demograficos' => [
+        'identidade_genero' => [
+            'opcoes' => [
+                'Mulher Cisgênero',
+                'Mulher Transsexual',
+                'Homem Cisgênero',
+                'Homem Transsexual',
+                'Travesti',
+                'Não binárie',
+                'Prefiro não responder',
+                'Outro',
+            ],
+            'campo_outro' => 'identidade_genero_outro',
+            'valor_outro' => 'Outro',
+        ],
+        'raca_cor' => [
+            'opcoes' => [
+                'Preta',
+                'Parda',
+                'Branca',
+                'Amarela',
+                'Indígena',
+                'Prefere não declarar',
+            ],
+            'campo_outro' => null,
+        ],
+        'comunidade_tradicional' => [
+            'opcoes' => [
+                'Não',
+                'Povos indígenas',
+                'Comunidades Quilombolas',
+                'Povos Ciganos',
+                'Ribeirinhos',
+                'Extrativistas',
+                'Outro',
+            ],
+            'campo_outro' => 'comunidade_tradicional_outro',
+            'valor_outro' => 'Outro',
+        ],
+        'faixa_etaria' => [
+            'opcoes' => [
+                'Primeira infância (0 a 6 anos)',
+                'Criança (7 a 11 anos)',
+                'Adolescente (12 a 17 anos)',
+                'Adulto (18 a 59 anos)',
+                'Idoso (a partir dos 60 anos)',
+            ],
+            'campo_outro' => null,
+        ],
+        'pcd' => [
+            'opcoes' => [
+                'Não',
+                'Física',
+                'Auditiva',
+                'Visual',
+                'Intelectual',
+                'Múltipla',
+            ],
+            'campo_outro' => null,
+        ],
+        'orientacao_sexual' => [
+            'opcoes' => [
+                'Lésbica',
+                'Gay',
+                'Bissexual',
+                'Heterossexual',
+                'Prefere não declarar',
+                'Outra',
+            ],
+            'campo_outro' => 'orientacao_sexual_outra',
+            'valor_outro' => 'Outra',
+        ],
     ],
 ];

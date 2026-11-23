@@ -11,40 +11,35 @@
     <button class="btn btn-engaja btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateMunicipio">Novo município</button>
   </div>
 
-  <div class="table-responsive shadow-sm rounded-3 bg-white">
-    <table class="table align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Estado</th>
-          <th>Região</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($municipios as $municipio)
-          <tr>
-            <td>{{ $municipio->nome }}</td>
-            <td>{{ $municipio->estado?->nome }} ({{ $municipio->estado?->sigla }})</td>
-            <td>{{ $municipio->estado?->regiao?->nome ?? '-' }}</td>
-            <td class="text-end">
-              <button
-                class="btn btn-outline-secondary btn-sm btn-edit-municipio"
-                data-id="{{ $municipio->id }}"
-                data-nome="{{ $municipio->nome }}"
-                data-estado="{{ $municipio->estado_id }}"
-                data-action="{{ route('municipios.update', $municipio) }}"
-                data-delete="{{ route('municipios.destroy', $municipio) }}"
-                data-bs-toggle="modal"
-                data-bs-target="#modalEditMunicipio"
-              >Editar</button>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="4" class="text-center text-muted py-4">Nenhum município cadastrado.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+          ['field' => 'estado', 'headerName' => 'Estado', 'flex' => 1],
+          ['field' => 'regiao', 'headerName' => 'Região', 'flex' => 1],
+          ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+      ];
+
+      $rows = $municipios->map(fn ($municipio) => [
+          'nome' => $municipio->nome,
+          'estado' => trim(($municipio->estado?->nome ?? '') . ' (' . ($municipio->estado?->sigla ?? '') . ')'),
+          'regiao' => $municipio->estado?->regiao?->nome ?? '-',
+          'acoes' => '<button class="btn btn-outline-secondary btn-sm btn-edit-municipio"'
+              . ' data-id="' . $municipio->id . '"'
+              . ' data-nome="' . e($municipio->nome) . '"'
+              . ' data-estado="' . $municipio->estado_id . '"'
+              . ' data-action="' . route('municipios.update', $municipio) . '"'
+              . ' data-delete="' . route('municipios.destroy', $municipio) . '"'
+              . ' data-bs-toggle="modal" data-bs-target="#modalEditMunicipio">Editar</button>',
+      ])->values();
+  @endphp
+
+  <div class="card shadow-sm">
+      <x-data-table
+          id="grid-municipios"
+          :columns="$columns"
+          :rows="$rows"
+          :page-size="15"
+      />
   </div>
 </div>
 
@@ -131,19 +126,21 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const editBtns = document.querySelectorAll('.btn-edit-municipio');
   const formEdit = document.getElementById('formEditMunicipio');
   const formDelete = document.getElementById('formDeleteMunicipio');
   const inputNome = document.getElementById('editMunicipioNome');
   const selectEstado = document.getElementById('editMunicipioEstado');
 
-  editBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      formEdit.setAttribute('action', btn.dataset.action);
-      formDelete.setAttribute('action', btn.dataset.delete);
-      inputNome.value = btn.dataset.nome || '';
-      if (selectEstado) selectEstado.value = btn.dataset.estado || '';
-    });
+  // Delegação de evento: os botões .btn-edit-municipio são renderizados pelo
+  // AG Grid de forma assíncrona (depois do DOMContentLoaded).
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('.btn-edit-municipio');
+    if (!btn) return;
+
+    formEdit.setAttribute('action', btn.dataset.action);
+    formDelete.setAttribute('action', btn.dataset.delete);
+    inputNome.value = btn.dataset.nome || '';
+    if (selectEstado) selectEstado.value = btn.dataset.estado || '';
   });
 
   const btnDelete = document.getElementById('btnDeleteMunicipio');

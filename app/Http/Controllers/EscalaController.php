@@ -11,16 +11,16 @@ class EscalaController extends Controller
     public function index(Request $request)
     {
         $optionsCountExpression = '(CASE WHEN opcao1 IS NOT NULL THEN 1 ELSE 0 END'
-            . ' + CASE WHEN opcao2 IS NOT NULL THEN 1 ELSE 0 END'
-            . ' + CASE WHEN opcao3 IS NOT NULL THEN 1 ELSE 0 END'
-            . ' + CASE WHEN opcao4 IS NOT NULL THEN 1 ELSE 0 END'
-            . ' + CASE WHEN opcao5 IS NOT NULL THEN 1 ELSE 0 END)';
+            .' + CASE WHEN opcao2 IS NOT NULL THEN 1 ELSE 0 END'
+            .' + CASE WHEN opcao3 IS NOT NULL THEN 1 ELSE 0 END'
+            .' + CASE WHEN opcao4 IS NOT NULL THEN 1 ELSE 0 END'
+            .' + CASE WHEN opcao5 IS NOT NULL THEN 1 ELSE 0 END)';
 
         $query = Escala::query();
 
         $searchTerm = trim((string) $request->query('search', ''));
         if ($searchTerm !== '') {
-            $query->where('descricao', 'like', '%' . $searchTerm . '%');
+            $query->where('descricao', 'like', '%'.$searchTerm.'%');
         }
 
         $hasOptions = $request->query('has_options');
@@ -45,14 +45,14 @@ class EscalaController extends Controller
         $direction = Str::lower((string) $directionParam) === 'desc' ? 'desc' : 'asc';
 
         if ($sort === 'options') {
-            $query->orderByRaw($optionsCountExpression . ' ' . $direction);
+            $query->orderByRaw($optionsCountExpression.' '.$direction);
         } elseif ($sort === 'created_at') {
             $query->orderBy('created_at', $direction);
         } else {
             $query->orderBy('descricao', $direction);
         }
 
-        $escalas = $query->paginate(15)->appends($request->query());
+        $escalas = $query->get();
 
         return view('escalas.index', compact('escalas'));
     }
@@ -66,11 +66,11 @@ class EscalaController extends Controller
     {
         $dados = $request->validate([
             'descricao' => 'required|string|max:255',
-            'opcao1'    => 'nullable|string|max:255',
-            'opcao2'    => 'nullable|string|max:255',
-            'opcao3'    => 'nullable|string|max:255',
-            'opcao4'    => 'nullable|string|max:255',
-            'opcao5'    => 'nullable|string|max:255',
+            'opcao1' => 'nullable|string|max:255',
+            'opcao2' => 'nullable|string|max:255',
+            'opcao3' => 'nullable|string|max:255',
+            'opcao4' => 'nullable|string|max:255',
+            'opcao5' => 'nullable|string|max:255',
         ]);
 
         Escala::create($dados);
@@ -94,11 +94,11 @@ class EscalaController extends Controller
     {
         $dados = $request->validate([
             'descricao' => 'required|string|max:255',
-            'opcao1'    => 'nullable|string|max:255',
-            'opcao2'    => 'nullable|string|max:255',
-            'opcao3'    => 'nullable|string|max:255',
-            'opcao4'    => 'nullable|string|max:255',
-            'opcao5'    => 'nullable|string|max:255',
+            'opcao1' => 'nullable|string|max:255',
+            'opcao2' => 'nullable|string|max:255',
+            'opcao3' => 'nullable|string|max:255',
+            'opcao4' => 'nullable|string|max:255',
+            'opcao5' => 'nullable|string|max:255',
         ]);
 
         $escala->update($dados);

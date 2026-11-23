@@ -32,47 +32,37 @@
           </div>
         </div>
 
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th class="ps-3" style="width: 48px;"></th>
-                <th>Ação pedagógica</th>
-                <th class="text-center" style="width: 130px;">Momentos</th>
-                <th style="width: 170px;">Período</th>
-              </tr>
-            </thead>
-            <tbody>
-              @forelse($eventos as $evento)
-                @php
-                  $periodo = $evento->data_inicio || $evento->data_fim
+        <div id="eventos-hidden-inputs"></div>
+
+        @php
+            $columns = [
+                ['field' => 'nome', 'headerName' => 'Ação pedagógica', 'flex' => 3],
+                ['field' => 'momentos', 'headerName' => 'Momentos', 'flex' => 1],
+                ['field' => 'periodo', 'headerName' => 'Período', 'flex' => 1],
+            ];
+
+            $rows = $eventos->map(function ($evento) {
+                $periodo = $evento->data_inicio || $evento->data_fim
                     ? trim(($evento->data_inicio ? \Illuminate\Support\Carbon::parse($evento->data_inicio)->format('d/m/Y') : '') . ' - ' . ($evento->data_fim ? \Illuminate\Support\Carbon::parse($evento->data_fim)->format('d/m/Y') : ''), ' -')
                     : ($evento->data_horario ? \Illuminate\Support\Carbon::parse($evento->data_horario)->format('d/m/Y') : '-');
-                @endphp
-                <tr>
-                  <td class="ps-3">
-                    <input
-                      type="checkbox"
-                      name="eventos[]"
-                      value="{{ $evento->id }}"
-                      id="evento-{{ $evento->id }}"
-                      class="form-check-input js-evento-checkbox"
-                      @checked(in_array($evento->id, $selecionados, true))>
-                  </td>
-                  <td>
-                    <label class="fw-semibold mb-0 d-block" for="evento-{{ $evento->id }}">{{ $evento->nome }}</label>
-                  </td>
-                  <td class="text-center">{{ $evento->atividades_count }}</td>
-                  <td>{{ $periodo }}</td>
-                </tr>
-              @empty
-                <tr>
-                  <td colspan="4" class="text-center text-muted py-4">Nenhuma ação pedagógica cadastrada.</td>
-                </tr>
-              @endforelse
-            </tbody>
-          </table>
-        </div>
+
+                return [
+                    'id' => $evento->id,
+                    'nome' => $evento->nome,
+                    'momentos' => $evento->atividades_count,
+                    'periodo' => $periodo,
+                ];
+            })->values();
+        @endphp
+
+        <x-data-table
+            id="grid-participantes-exclusivos"
+            :columns="$columns"
+            :rows="$rows"
+            :pagination="false"
+            row-selection="multiple"
+            :selected-ids="$selecionados"
+        />
       </form>
     </div>
   </div>
@@ -82,12 +72,26 @@
 @push('scripts')
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const checks = Array.from(document.querySelectorAll('.js-evento-checkbox'));
+    const gridEl = document.getElementById('grid-participantes-exclusivos');
+    const hiddenInputs = document.getElementById('eventos-hidden-inputs');
     const selecionarTodas = document.getElementById('selecionar-todas-acoes');
     const limpar = document.getElementById('limpar-acoes');
 
-    selecionarTodas?.addEventListener('click', () => checks.forEach(check => check.checked = true));
-    limpar?.addEventListener('click', () => checks.forEach(check => check.checked = false));
+    if (!gridEl) return;
+
+    gridEl.addEventListener('datatable:selection-changed', (event) => {
+      hiddenInputs.innerHTML = '';
+      event.detail.rows.forEach((row) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'eventos[]';
+        input.value = row.id;
+        hiddenInputs.appendChild(input);
+      });
+    });
+
+    selecionarTodas?.addEventListener('click', () => gridEl._agGridApi?.selectAll());
+    limpar?.addEventListener('click', () => gridEl._agGridApi?.deselectAll());
   });
 </script>
 @endpush

@@ -11,61 +11,60 @@
   </div>
 </div>
 
-<div class="card shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Data e horário</th>
-          <th>Atividade/Ação</th>
-          <th>Turma</th>
-          <th>Público participante</th>
-          <th>Local da ação</th>
-          <th>Participantes</th>
-          <th>Status</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($agendamentos as $agendamento)
-          <tr>
-            <td>{{ optional($agendamento->data_horario)->format('d/m/Y H:i') }}</td>
-            <td>{{ $agendamento->atividadeAcao?->nome ?? '—' }}</td>
-            <td>{{ $agendamento->turma ?: '—' }}</td>
-            <td>{{ $agendamento->publico_participante }}</td>
-            <td>{{ $agendamento->local_acao }}</td>
-            <td>{{ $agendamento->participantes_clonados_count ?? 0 }}</td>
-            <td>
-              @if($agendamento->efetivado)
-                <span class="badge bg-success">Efetivado</span>
-              @else
-                <span class="badge bg-warning text-dark">Pendente</span>
-              @endif
-            </td>
-            <td class="text-end">
-              <a href="{{ route('agendamentos.show', $agendamento) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-              <a href="{{ route('agendamentos.participantes.index', $agendamento) }}" class="btn btn-sm btn-outline-dark">Participantes</a>
-              @unless($agendamento->efetivado)
-                <a href="{{ route('agendamentos.edit', $agendamento) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                <form action="{{ route('agendamentos.destroy', $agendamento) }}" method="POST" class="d-inline">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este agendamento?')">Excluir</button>
-                </form>
-              @endunless
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="8" class="text-center text-muted py-4">Nenhum agendamento cadastrado.</td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-</div>
+@php
+    $columns = [
+        ['field' => 'data_horario', 'headerName' => 'Data e horário', 'flex' => 1],
+        ['field' => 'atividade_acao', 'headerName' => 'Atividade/Ação', 'flex' => 2],
+        ['field' => 'turma', 'headerName' => 'Turma', 'flex' => 1],
+        ['field' => 'publico_participante', 'headerName' => 'Público participante', 'flex' => 1],
+        ['field' => 'local_acao', 'headerName' => 'Local da ação', 'flex' => 1],
+        ['field' => 'participantes', 'headerName' => 'Participantes', 'flex' => 1],
+        ['field' => 'status', 'headerName' => 'Status', 'flex' => 1, 'html' => true],
+        ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+    ];
 
-<div class="mt-3">
-  {{ $agendamentos->links() }}
+    $rows = $agendamentos->map(function ($agendamento) {
+        $statusHtml = $agendamento->efetivado
+            ? '<span class="badge bg-success">Efetivado</span>'
+            : '<span class="badge bg-warning text-dark">Pendente</span>';
+
+        $acoesHtml = '<div class="dropdown">'
+            . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Gerenciar</button>'
+            . '<ul class="dropdown-menu dropdown-menu-end">'
+            . '<li><a class="dropdown-item" href="' . route('agendamentos.show', $agendamento) . '">Ver</a></li>'
+            . '<li><a class="dropdown-item" href="' . route('agendamentos.participantes.index', $agendamento) . '">Participantes</a></li>';
+
+        if (! $agendamento->efetivado) {
+            $acoesHtml .= '<li><a class="dropdown-item" href="' . route('agendamentos.edit', $agendamento) . '">Editar</a></li>'
+                . '<li>'
+                . '<form method="POST" action="' . route('agendamentos.destroy', $agendamento) . '" data-confirm="Tem certeza que deseja excluir este agendamento?">'
+                . csrf_field() . method_field('DELETE')
+                . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                . '</form>'
+                . '</li>';
+        }
+
+        $acoesHtml .= '</ul></div>';
+
+        return [
+            'data_horario' => optional($agendamento->data_horario)->format('d/m/Y H:i') ?? '—',
+            'atividade_acao' => $agendamento->atividadeAcao?->nome ?? '—',
+            'turma' => $agendamento->turma ?: '—',
+            'publico_participante' => $agendamento->publico_participante,
+            'local_acao' => $agendamento->local_acao,
+            'participantes' => $agendamento->participantes_clonados_count ?? 0,
+            'status' => $statusHtml,
+            'acoes' => $acoesHtml,
+        ];
+    })->values();
+@endphp
+
+<div class="card shadow-sm">
+    <x-data-table
+        id="grid-agendamentos"
+        :columns="$columns"
+        :rows="$rows"
+        :page-size="15"
+    />
 </div>
 @endsection

@@ -48,53 +48,47 @@
     </div>
   </form>
 
-  <div class="table-responsive">
-    <table class="table table-sm align-middle table-bordered bg-white">
-      <thead class="table-light text-center">
-        <tr>
-          <th>Nome</th>
-          <th>CPF</th>
-          <th>E-mail</th>
-          <th>Nascimento</th>
-          <th>Telefone</th>
-          <th>Vínculo</th>
-          <th>Turma</th>
-          <th>Origem</th>
-          @unless($agendamento->efetivado)
-            <th class="text-center">Ações</th>
-          @endunless
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($participantes as $participante)
-          <tr>
-            <td>{{ $participante->nome }}</td>
-            <td>{{ $participante->cpf ?: '—' }}</td>
-            <td>{{ $participante->email ?: '—' }}</td>
-            <td>{{ $participante->data_nascimento ? \Illuminate\Support\Carbon::parse($participante->data_nascimento)->format('d/m/Y') : '—' }}</td>
-            <td>{{ $participante->telefone ?: '—' }}</td>
-            <td>{{ $participante->vinculo ?: '—' }}</td>
-            <td>{{ $participante->turma ?: '—' }}</td>
-            <td>{{ $participante->origem }}</td>
-            @unless($agendamento->efetivado)
-              <td class="text-center">
-                <a href="{{ route('agendamentos.participantes.edit', [$agendamento, $participante]) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                <form method="POST" action="{{ route('agendamentos.participantes.destroy', [$agendamento, $participante]) }}" class="d-inline">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este participante?')">Excluir</button>
-                </form>
-              </td>
-            @endunless
-          </tr>
-        @empty
-          <tr>
-            <td colspan="{{ $agendamento->efetivado ? 8 : 9 }}" class="text-center text-muted py-4">Nenhum participante cadastrado para este agendamento.</td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+          ['field' => 'cpf', 'headerName' => 'CPF', 'flex' => 1],
+          ['field' => 'email', 'headerName' => 'E-mail', 'flex' => 2],
+          ['field' => 'nascimento', 'headerName' => 'Nascimento', 'flex' => 1],
+          ['field' => 'telefone', 'headerName' => 'Telefone', 'flex' => 1],
+          ['field' => 'vinculo', 'headerName' => 'Vínculo', 'flex' => 1],
+          ['field' => 'turma', 'headerName' => 'Turma', 'flex' => 1],
+          ['field' => 'origem', 'headerName' => 'Origem', 'flex' => 1],
+      ];
+
+      if (! $agendamento->efetivado) {
+          $columns[] = ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true, 'align' => 'center'];
+      }
+
+      $rows = $participantes->map(function ($participante) use ($agendamento) {
+          $row = [
+              'nome' => $participante->nome,
+              'cpf' => $participante->cpf ?: '—',
+              'email' => $participante->email ?: '—',
+              'nascimento' => $participante->data_nascimento ? \Illuminate\Support\Carbon::parse($participante->data_nascimento)->format('d/m/Y') : '—',
+              'telefone' => $participante->telefone ?: '—',
+              'vinculo' => $participante->vinculo ?: '—',
+              'turma' => $participante->turma ?: '—',
+              'origem' => $participante->origem,
+          ];
+
+          if (! $agendamento->efetivado) {
+              $row['acoes'] = '<a href="' . route('agendamentos.participantes.edit', [$agendamento, $participante]) . '" class="btn btn-sm btn-outline-secondary">Editar</a> '
+                  . '<form method="POST" action="' . route('agendamentos.participantes.destroy', [$agendamento, $participante]) . '" class="d-inline" data-confirm="Tem certeza que deseja excluir este participante?">'
+                  . csrf_field() . method_field('DELETE')
+                  . '<button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>'
+                  . '</form>';
+          }
+
+          return $row;
+      })->values();
+  @endphp
+
+  <x-data-table id="grid-agendamento-participantes" :columns="$columns" :rows="$rows" :pagination="false" class="bg-white" />
 
   <div class="d-flex justify-content-between align-items-center mt-2">
     <div class="small text-muted">Total: {{ $participantes->total() }}</div>

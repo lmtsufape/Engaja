@@ -14,7 +14,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Spatie\Browsershot\Browsershot;
 use Spatie\LaravelPdf\Facades\Pdf;
+use Spatie\LaravelPdf\PdfBuilder;
+use ZipArchive;
 
 class CertificadoController extends Controller
 {
@@ -111,7 +114,7 @@ class CertificadoController extends Controller
                     '%participante%' => $participante->user->name,
                     '%acao%' => $eventoNomeFormatado,
                     '%carga_horaria%' => CargaHoraria::formatMinutos($cargaTotal),
-                    '%cpf%' => $participante->cpf ?? '',
+                    '%cpf%' => $this->formatarCpf($participante->cpf),
                 ];
 
                 $textoFrente = $this->renderPlaceholders($modelo->texto_frente ?? '', $map);
@@ -120,7 +123,6 @@ class CertificadoController extends Controller
                 $cert = Certificado::create([
                     'modelo_certificado_id' => $modelo->id,
                     'participante_id' => $participante->id,
-                    'evento_id' => null, // Como é unificado, não pertence a 1 só.
                     'evento_nome' => $eventoNomeFormatado,
                     'codigo_validacao' => Str::uuid()->toString(),
                     'ano' => (int) date('Y'),
@@ -129,6 +131,9 @@ class CertificadoController extends Controller
                     'carga_horaria' => $cargaTotal,
                 ]);
 
+                $eventosIdsDoParticipante = $presencas->map(fn ($p) => $p->evento_pai->id)->unique()->values()->toArray();
+                $cert->eventos()->attach($eventosIdsDoParticipante);
+
                 if (! empty($participante->user?->email)) {
                     $paraNotificar[] = [$participante->user->email, $participante->user->name, $eventoNomeFormatado, $cert->id];
                 }
@@ -136,7 +141,7 @@ class CertificadoController extends Controller
                 foreach ($presencas as $presenca) {
                     $presenca->certificado_emitido = true;
 
-                    //remove o atributo dinamico para nao ter loop de JSON no eloquent
+                    // remove o atributo dinamico para nao ter loop de JSON no eloquent
                     unset($presenca->evento_pai);
 
                     $presenca->save();
@@ -188,7 +193,7 @@ class CertificadoController extends Controller
                         '%participante%' => $participante->user->name,
                         '%acao%' => $evento->nome,
                         '%carga_horaria%' => CargaHoraria::formatMinutos($cargaTotal),
-                        '%cpf%' => $participante->cpf ?? '',
+                        '%cpf%' => $this->formatarCpf($participante->cpf),
                     ];
 
                     $textoFrente = $this->renderPlaceholders($modelo->texto_frente ?? '', $map);
@@ -197,7 +202,6 @@ class CertificadoController extends Controller
                     $cert = Certificado::create([
                         'modelo_certificado_id' => $modelo->id,
                         'participante_id' => $participante->id,
-                        'evento_id' => $evento->id,
                         'evento_nome' => $evento->nome,
                         'codigo_validacao' => Str::uuid()->toString(),
                         'ano' => (int) ($evento->data_inicio ? date('Y', strtotime($evento->data_inicio)) : date('Y')),
@@ -205,6 +209,8 @@ class CertificadoController extends Controller
                         'texto_verso' => $textoVerso,
                         'carga_horaria' => $cargaTotal,
                     ]);
+                    $cert->eventos()->attach([$evento->id]);
+
                     if (! empty($participante->user?->email)) {
                         $paraNotificar[] = [$participante->user->email, $participante->user->name, $evento->nome, $cert->id];
                     }
@@ -220,7 +226,7 @@ class CertificadoController extends Controller
             }
         }
 
-        $this->notificarLote($paraNotificar);
+        //$this->notificarLote($paraNotificar);
 
         $message = "{$created} certificado(s) emitidos com sucesso.";
         if ($skippedZeroWorkload > 0) {
@@ -471,7 +477,7 @@ class CertificadoController extends Controller
                     '%participante%' => $participante->user->name,
                     '%acao%' => $evento->nome,
                     '%carga_horaria%' => CargaHoraria::formatMinutos($cargaTotal),
-                    '%cpf%' => $participante->cpf ?? '',
+                    '%cpf%' => $this->formatarCpf($participante->cpf),
                 ];
 
                 $textoFrente = $this->renderPlaceholders($modelo->texto_frente ?? '', $map);
@@ -480,7 +486,6 @@ class CertificadoController extends Controller
                 $cert = Certificado::create([
                     'modelo_certificado_id' => $modelo->id,
                     'participante_id' => $participante->id,
-                    'evento_id' => $evento->id,
                     'evento_nome' => $evento->nome,
                     'codigo_validacao' => Str::uuid()->toString(),
                     'ano' => (int) ($evento->data_inicio ? date('Y', strtotime($evento->data_inicio)) : date('Y')),
@@ -488,6 +493,8 @@ class CertificadoController extends Controller
                     'texto_verso' => $textoVerso,
                     'carga_horaria' => $cargaTotal,
                 ]);
+                $cert->eventos()->attach([$evento->id]);
+
                 if (! empty($participante->user?->email)) {
                     $paraNotificar[] = [$participante->user->email, $participante->user->name, $evento->nome, $cert->id];
                 }
@@ -501,7 +508,7 @@ class CertificadoController extends Controller
             }
         }
 
-        // $this->notificarLote($paraNotificar);
+        //$this->notificarLote($paraNotificar);
 
         $message = "{$created} certificado(s) emitidos com sucesso.";
         if ($skippedZeroWorkload > 0) {
@@ -518,14 +525,27 @@ class CertificadoController extends Controller
         return strtr($texto, $map);
     }
 
+    private function formatarCpf(?string $cpf): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $cpf);
+
+        if (strlen($digits) !== 11) {
+            return $cpf ?? '';
+        }
+
+        return (string) preg_replace(
+            '/^(\d{3})(\d{3})(\d{3})(\d{2})$/',
+            '$1.$2.$3-$4',
+            $digits
+        );
+    }
+
     public function show(Certificado $certificado)
     {
-        $user = auth()->user();
-        $isOwner = $certificado->participante_id === optional($user->participante)->id;
-        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
-        if (! $isOwner && ! $isAdmin) {
+        if (! $this->usuarioPodeBaixarCertificado($certificado)) {
             abort(403);
         }
+
         $certificado->load('modelo');
 
         return view('certificados.show', compact('certificado'));
@@ -542,21 +562,69 @@ class CertificadoController extends Controller
 
     public function download(Certificado $certificado)
     {
-        $user = auth()->user();
-        $isOwner = $certificado->participante_id === optional($user->participante)->id;
-        $isAdmin = $user->hasAnyRole(['administrador', 'gestor']);
-        if (! $isOwner && ! $isAdmin) {
+        if (! $this->usuarioPodeBaixarCertificado($certificado)) {
             abort(403);
         }
 
         $certificado->load('modelo');
         $fileName = 'certificado-'.$certificado->id.'.pdf';
 
+        return $this->certificadoPdf($certificado)->download($fileName);
+    }
+
+    /**
+     * Monta o PdfBuilder do certificado com a configuração de página compartilhada
+     * pelos pontos de download/zip/preview.
+     *
+     * `preferCSSPageSize` alinha a folha do PDF ao `@page` do CSS (A4 paisagem,
+     * 297x210mm). Sem isso o Puppeteer gera a folha alguns décimos de mm maior que
+     * a área pintada, deixando uma faixa branca fina nas bordas do certificado.
+     */
+    private function certificadoPdf(Certificado $certificado): PdfBuilder
+    {
         return Pdf::view('certificados.pdf', ['certificado' => $certificado])
             ->format('a4')
             ->landscape()
             ->margins(0, 0, 0, 0)
-            ->download($fileName);
+            ->withBrowsershot(fn (Browsershot $browsershot) => $browsershot->setOption('preferCSSPageSize', true));
+    }
+
+    private function usuarioPodeBaixarCertificado(Certificado $certificado): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        $isOwner = $certificado->participante_id === optional($user->participante)->id;
+        if ($isOwner) {
+            return true;
+        }
+
+        if ($user->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica'])) {
+            return true;
+        }
+
+        if (! $user->hasRole('articulador')) {
+            return false;
+        }
+
+        return $this->aplicarEscopoCertificadosDoUsuario(Certificado::query(), $user)
+            ->whereKey($certificado->id)
+            ->exists();
+    }
+
+    public function downloadZipEmitidos(Request $request)
+    {
+        $certificados = $this->certificadosEmitidosQuery($request)
+            ->latest()
+            ->get();
+
+        if ($certificados->isEmpty()) {
+            return back()->with('error', 'Nenhum certificado encontrado para baixar com os filtros atuais.');
+        }
+
+        return $this->downloadZipCertificados($certificados, 'certificados-emitidos-'.now()->format('Ymd_His').'.zip');
     }
 
     public function emitidos(Request $request)
@@ -595,16 +663,8 @@ class CertificadoController extends Controller
         }
 
         if ($filtroEventoId) {
-            $eventoFiltro = Evento::find((int) $filtroEventoId);
-            $query->where(function ($q) use ($filtroEventoId, $eventoFiltro) {
-                $q->where('evento_id', (int) $filtroEventoId);
-
-                if ($eventoFiltro) {
-                    $q->orWhere(function ($sub) use ($eventoFiltro) {
-                        $sub->whereNull('evento_id')
-                            ->where('evento_nome', $eventoFiltro->nome);
-                    });
-                }
+            $query->whereHas('eventos', function ($q) use ($filtroEventoId) {
+                $q->where('eventos.id', (int) $filtroEventoId);
             });
         }
 
@@ -612,7 +672,20 @@ class CertificadoController extends Controller
             $query->where('evento_nome', 'ilike', "%{$filtroAcao}%");
         }
 
+        $this->aplicarEscopoCertificadosDoUsuario($query, auth()->user());
+
         $acoesCertificado = Evento::query()
+            ->when(auth()->user()?->hasRole('articulador'), function ($query) {
+                $municipioId = optional(auth()->user()?->participante)->municipio_id;
+                if (! $municipioId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                $query->whereHas('atividades', function ($atividadeQuery) use ($municipioId) {
+                    $atividadeQuery->where('municipio_id', $municipioId)
+                        ->orWhereHas('municipios', fn ($municipioQuery) => $municipioQuery->whereKey($municipioId));
+                });
+            })
             ->orderBy('nome')
             ->get(['id', 'nome']);
 
@@ -626,6 +699,148 @@ class CertificadoController extends Controller
             ]);
 
         return view('certificados.emitidos', compact('certificados', 'filtroParticipante', 'filtroAcao', 'filtroEventoId', 'contextoEvento', 'acoesCertificado'));
+    }
+
+    private function certificadosEmitidosQuery(Request $request)
+    {
+        $query = Certificado::with(['participante.user', 'modelo']);
+
+        $filtroParticipante = trim($request->query('participante', ''));
+        $filtroAcao = trim($request->query('acao', ''));
+        $filtroEventoId = $request->query('evento_id');
+
+        if ($filtroParticipante) {
+            $termoParticipante = $this->normalizarBuscaTexto($filtroParticipante);
+            $cpfParticipante = preg_replace('/\D+/', '', $filtroParticipante);
+
+            $query->whereHas('participante', function ($q) use ($termoParticipante, $cpfParticipante) {
+                $q->where(function ($participanteQuery) use ($termoParticipante, $cpfParticipante) {
+                    if ($termoParticipante !== '') {
+                        $participanteQuery->whereHas('user', function ($userQuery) use ($termoParticipante) {
+                            $userQuery->whereRaw(
+                                "translate(lower(name), 'Ã¡Ã Ã¢Ã£Ã¤Ã¥Ã©Ã¨ÃªÃ«Ã­Ã¬Ã®Ã¯Ã³Ã²Ã´ÃµÃ¶ÃºÃ¹Ã»Ã¼Ã§Ã±', 'aaaaaaeeeeiiiiooooouuuucn') like ?",
+                                ['%'.$termoParticipante.'%']
+                            );
+                        });
+                    }
+
+                    if ($cpfParticipante !== '') {
+                        $method = $termoParticipante !== '' ? 'orWhereRaw' : 'whereRaw';
+                        $participanteQuery->{$method}(
+                            "regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') like ?",
+                            ['%'.$cpfParticipante.'%']
+                        );
+                    }
+                });
+            });
+        }
+
+        if ($filtroEventoId) {
+            $query->whereHas('eventos', function ($q) use ($filtroEventoId) {
+                $q->where('eventos.id', (int) $filtroEventoId);
+            });
+        }
+
+        if ($filtroAcao) {
+            $query->where('evento_nome', 'ilike', "%{$filtroAcao}%");
+        }
+
+        return $this->aplicarEscopoCertificadosDoUsuario($query, auth()->user());
+    }
+
+    private function aplicarEscopoCertificadosDoUsuario($query, $user)
+    {
+        if (! $user || ! $user->hasRole('articulador')) {
+            return $query;
+        }
+
+        $municipioId = optional($user->participante)->municipio_id;
+        if (! $municipioId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereExists(function ($subQuery) use ($municipioId) {
+            $subQuery->selectRaw('1')
+                ->from('presencas')
+                ->join('inscricaos', 'inscricaos.id', '=', 'presencas.inscricao_id')
+                ->join('atividades', 'atividades.id', '=', 'presencas.atividade_id')
+                ->join('eventos', 'eventos.id', '=', 'atividades.evento_id')
+                ->join('certificado_evento', 'certificado_evento.evento_id', '=', 'eventos.id')
+                ->leftJoin('atividade_municipio', 'atividade_municipio.atividade_id', '=', 'atividades.id')
+                ->whereColumn('inscricaos.participante_id', 'certificados.participante_id')
+                ->whereColumn('certificado_evento.certificado_id', 'certificados.id')
+                ->where('presencas.status', 'presente')
+                ->whereNull('presencas.deleted_at')
+                ->whereNull('inscricaos.deleted_at')
+                ->whereNull('atividades.deleted_at')
+                ->where(function ($cidadeQuery) use ($municipioId) {
+                    $cidadeQuery->where('atividades.municipio_id', $municipioId)
+                        ->orWhere('atividade_municipio.municipio_id', $municipioId);
+                });
+        });
+    }
+
+    private function downloadZipCertificados($certificados, string $nomeZip)
+    {
+        if (! class_exists(ZipArchive::class)) {
+            return back()->with('error', 'A extensao ZIP do PHP nao esta habilitada neste ambiente.');
+        }
+
+        $zipPath = tempnam(storage_path('app'), 'certificados-');
+        if ($zipPath === false) {
+            return back()->with('error', 'Nao foi possivel preparar o arquivo ZIP.');
+        }
+
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($zipPath);
+
+            return back()->with('error', 'Nao foi possivel criar o arquivo ZIP.');
+        }
+
+        $nomesUsados = [];
+        foreach ($certificados as $certificado) {
+            $pdfConteudo = base64_decode(
+                $this->certificadoPdf($certificado)->base64(),
+                true
+            );
+
+            if ($pdfConteudo === false) {
+                continue;
+            }
+
+            $zip->addFromString($this->nomeArquivoCertificado($certificado, $nomesUsados), $pdfConteudo);
+        }
+
+        $totalArquivos = $zip->numFiles;
+        $zip->close();
+
+        if ($totalArquivos === 0) {
+            @unlink($zipPath);
+
+            return back()->with('error', 'Nao foi possivel gerar os PDFs dos certificados.');
+        }
+
+        return response()->download($zipPath, $nomeZip, [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function nomeArquivoCertificado(Certificado $certificado, array &$nomesUsados): string
+    {
+        $participante = Str::slug($certificado->participante?->user?->name ?: 'participante');
+        $base = 'certificado-'.$participante.'-'.$certificado->id;
+        $nome = $base.'.pdf';
+        $contador = 2;
+
+        while (isset($nomesUsados[$nome])) {
+            $nome = $base.'-'.$contador.'.pdf';
+            $contador++;
+        }
+
+        $nomesUsados[$nome] = true;
+
+        return $nome;
     }
 
     private function normalizarBuscaTexto(string $valor): string
@@ -643,7 +858,7 @@ class CertificadoController extends Controller
     public function edit(Certificado $certificado)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['administrador', 'gestor'])) {
+        if (! $user->hasAnyRole(['administrador', 'gerente'])) {
             abort(403);
         }
 
@@ -655,7 +870,7 @@ class CertificadoController extends Controller
     public function update(Request $request, Certificado $certificado)
     {
         $user = auth()->user();
-        if (! $user->hasAnyRole(['administrador', 'gestor'])) {
+        if (! $user->hasAnyRole(['administrador', 'gerente'])) {
             abort(403);
         }
 
@@ -707,16 +922,11 @@ class CertificadoController extends Controller
         $certificado->modelo = $modelo;
         $certificado->texto_frente = strtr($modelo->texto_frente ?? '', $map);
         $certificado->texto_verso = strtr($modelo->texto_verso ?? '', $map);
-        $certificado->evento_id = isset($evento) ? $evento->id : null;
         $certificado->evento_nome = $eventoNome;
         $certificado->codigo_validacao = Str::uuid()->toString();
         $certificado->carga_horaria = 600;
 
-        return Pdf::view('certificados.pdf', ['certificado' => $certificado])
-            ->format('a4')
-            ->landscape()
-            ->margins(0, 0, 0, 0)
-            ->inline('certificado-preview.pdf');
+        return $this->certificadoPdf($certificado)->inline('certificado-preview.pdf');
     }
 
     private function formatarListaNomes(array $nomes): string

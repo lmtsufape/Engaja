@@ -196,8 +196,7 @@
 </div>
 
 @push('scripts')
-{{-- Carrega Fabric somente nesta tela de modelo de certificado --}}
-<script src="https://unpkg.com/fabric@5.3.0/dist/fabric.min.js"></script>
+{{-- Fabric é carregado pelo bundle (resources/js/app.js) somente nesta tela, via import dinâmico --}}
 <script>
   function simplePreview(inputId, previewWrapperId) {
     const input = document.getElementById(inputId);
@@ -218,10 +217,7 @@
       cb();
       return;
     }
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/fabric@5.3.0/dist/fabric.min.js';
-    script.onload = cb;
-    document.head.appendChild(script);
+    document.addEventListener('fabric:ready', cb, { once: true });
   }
 
   function initFabricPreview(opts) {
@@ -288,7 +284,7 @@
       const g = [
         new fabric.Line([w / 2, 0, w / 2, h], { stroke: '#cbd5e1', strokeDashArray: [5, 5], selectable: false, evented: false }),
         new fabric.Line([0, h / 2, w, h / 2], { stroke: '#cbd5e1', strokeDashArray: [5, 5], selectable: false, evented: false }),
-        new fabric.Rect({ left: w * 0.05, top: h * 0.05, width: w * 0.9, height: h * 0.9, stroke: '#e2e8f0', strokeDashArray: [4, 6], fill: 'rgba(0,0,0,0)', selectable: false, evented: false })
+        new fabric.Rect({ left: w * 0.05, top: h * 0.05, originX: 'left', originY: 'top', width: w * 0.9, height: h * 0.9, stroke: '#e2e8f0', strokeDashArray: [4, 6], fill: 'rgba(0,0,0,0)', selectable: false, evented: false })
       ];
       g.forEach(line => canvas.add(line));
       guides = g;
@@ -297,8 +293,7 @@
     const setInitialSize = () => {
       const w = container?.clientWidth || 960;
       const h = 400;
-      canvas.setWidth(w);
-      canvas.setHeight(h);
+      canvas.setDimensions({ width: w, height: h });
       drawGuides();
       canvas.renderAll();
     };
@@ -348,6 +343,8 @@
       textObj = new fabric.Textbox(textArea.value || 'Texto', {
         left: parseFloat(xInput.value) || 40,
         top: parseFloat(yInput.value) || 40,
+        originX: 'left',
+        originY: 'top',
         width: parseFloat(wInput.value) || 300,
         height: parseFloat(hInput.value) || undefined,
         fill: textColorInput ? textColorInput.value : '#111111',
@@ -405,6 +402,8 @@
       qrObj = new fabric.Rect({
         left: qx,
         top: qy,
+        originX: 'left',
+        originY: 'top',
         width: qs,
         height: qs,
         fill: 'rgba(34,197,94,0.18)',
@@ -429,8 +428,8 @@
         updateHidden();
       });
       canvas.add(qrObj);
-      qrObj.bringToFront();
-      textObj && textObj.bringToFront();
+      canvas.bringObjectToFront(qrObj);
+      textObj && canvas.bringObjectToFront(textObj);
       updateHidden();
       canvas.renderAll();
     };
@@ -444,6 +443,8 @@
       dateObj = new fabric.Textbox(defaultDateText, {
         left: dx,
         top: dy,
+        originX: 'left',
+        originY: 'top',
         width: parseFloat(dateWInput.value) || 320,
         height: parseFloat(dateHInput.value) || undefined,
         fill: textColorInput ? textColorInput.value : '#111111',
@@ -471,8 +472,8 @@
       dateObj.on('scaled', () => { lockDateScale(); updateHidden(); });
       dateObj.on('scaling', () => { lockDateScale(); updateHidden(); });
       canvas.add(dateObj);
-      textObj && textObj.bringToFront();
-      dateObj.bringToFront();
+      textObj && canvas.bringObjectToFront(textObj);
+      canvas.bringObjectToFront(dateObj);
       updateHidden();
       canvas.renderAll();
     };
@@ -487,8 +488,7 @@
       const fallbackSize = () => {
         const targetW = (container?.clientWidth ?? 960) - 24;
         const targetH = Math.round(targetW * 0.6);
-        canvas.setWidth(targetW);
-        canvas.setHeight(targetH);
+        canvas.setDimensions({ width: targetW, height: targetH });
         canvasEl.style.width = `${targetW}px`;
         canvasEl.style.height = `${targetH}px`;
         if (container) container.style.height = `${targetH}px`;
@@ -502,7 +502,7 @@
         return;
       }
 
-      const absoluteUrl = url.startsWith('http') ? url : `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+      const absoluteUrl = (url.startsWith('http') || url.startsWith('blob:')) ? url : `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
       const imgEl = new Image();
       imgEl.crossOrigin = 'anonymous';
       imgEl.onload = () => {
@@ -511,8 +511,7 @@
         const imgW = imgEl.naturalWidth * scale;
         const imgH = imgEl.naturalHeight * scale;
 
-        canvas.setWidth(imgW);
-        canvas.setHeight(imgH);
+        canvas.setDimensions({ width: imgW, height: imgH });
         canvasEl.style.width = `${imgW}px`;
         canvasEl.style.height = `${imgH}px`;
         if (canvasWInput) canvasWInput.value = Math.round(imgW);
@@ -530,12 +529,8 @@
           scaleY: scale,
         });
 
-        canvas.setBackgroundImage(fabricImg, canvas.renderAll.bind(canvas), {
-          originX: 'left',
-          originY: 'top',
-          left: 0,
-          top: 0,
-        });
+        canvas.backgroundImage = fabricImg;
+        canvas.renderAll();
         drawGuides();
         if (textObj) {
           textObj.text = textArea.value || 'Texto';

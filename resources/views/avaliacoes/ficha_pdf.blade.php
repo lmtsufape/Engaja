@@ -23,10 +23,7 @@
 @section('styles')
     body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 12px 0 24px; }
 
-    .doc-header { margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #421944; }
-    .doc-title { font-size: 15px; font-weight: bold; color: #421944; margin: 0 0 3px 0; }
-    .doc-meta { font-size: 9px; color: #666; }
-    .anonima-badge { display: inline-block; background: #f0e8f8; border: 1px solid #d0bfe0; border-radius: 3px; padding: 2px 7px; font-size: 9px; color: #421944; font-weight: bold; margin-top: 4px; }
+    .anonima-badge { display: inline-block; background: #f0e8f8; border: 1px solid #d0bfe0; border-radius: 3px; padding: 2px 7px; font-size: 9px; color: #421944; font-weight: bold; margin-bottom: 14px; }
 
     .id-box { border: 1px solid #d0bfe0; border-radius: 6px; padding: 10px 14px 6px; margin-bottom: 14px; background: #faf7fd; }
     .id-box-title { font-size: 10px; font-weight: bold; color: #421944; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
@@ -72,13 +69,11 @@
 @endsection
 
 @section('content')
-    <div class="doc-header">
-        <div class="doc-title">{{ $titulo }}</div>
-        <div class="doc-meta">Ficha para preenchimento &nbsp;·&nbsp; Gerado em {{ now()->format('d/m/Y H:i') }}</div>
-        @if ($avaliacao->anonima)
-            <div><span class="anonima-badge">Avaliação anônima — não é necessário se identificar</span></div>
-        @endif
-    </div>
+    <x-pdf.header :title="$titulo" subtitle="Ficha para preenchimento" />
+
+    @if ($avaliacao->anonima)
+        <div><span class="anonima-badge">Avaliação anônima — não é necessário se identificar</span></div>
+    @endif
 
     {{-- Identificação (somente para avaliações não anônimas) --}}
     @if (!$avaliacao->anonima)

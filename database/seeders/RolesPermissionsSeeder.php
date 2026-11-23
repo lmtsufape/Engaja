@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RolesPermissionsSeeder extends Seeder
 {
@@ -15,25 +14,28 @@ class RolesPermissionsSeeder extends Seeder
     public function run(): void
     {
         $permissoes = [
-            'user.ver','user.criar','user.editar','user.excluir',
-            'participante.ver','participante.criar','participante.editar','participante.excluir',
-            'evento.ver','evento.criar','evento.editar','evento.excluir',
-            'atividade.ver','atividade.criar','atividade.editar','atividade.excluir',
-            'inscricao.ver','inscricao.criar','inscricao.editar','inscricao.excluir',
+            'user.ver', 'user.criar', 'user.editar', 'user.excluir',
+            'participante.ver', 'participante.criar', 'participante.editar', 'participante.excluir',
+            'evento.ver', 'evento.criar', 'evento.editar', 'evento.excluir',
+            'atividade.ver', 'atividade.criar', 'atividade.editar', 'atividade.excluir',
+            'inscricao.ver', 'inscricao.criar', 'inscricao.editar', 'inscricao.excluir',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
-            'regiao.criar','regiao.editar','regiao.excluir',
-            'estado.criar','estado.editar','estado.excluir',
-            'municipio.criar','municipio.editar','municipio.excluir',
-            'dimensao.ver','dimensao.criar','dimensao.editar','dimensao.excluir',
-            'indicador.ver','indicador.criar','indicador.editar','indicador.excluir',
-            'evidencia.ver','evidencia.criar','evidencia.editar','evidencia.excluir',
-            'escala.ver','escala.criar','escala.editar','escala.excluir',
-            'templateAvaliacao.ver','templateAvaliacao.criar','templateAvaliacao.editar','templateAvaliacao.excluir',
-            'avaliacao.ver','avaliacao.criar','avaliacao.editar','avaliacao.excluir',
-            'questao.ver','questao.criar','questao.editar','questao.excluir',
-            'certificado.emitir','certificado.editar', 'certificado.baixar',
-            'modeloCertificado.criar','modeloCertificado.editar','modeloCertificado.excluir',
-            'agendamento.criar','agendamento.editar','agentamento.ver','agendamento.excluir',
+            'regiao.criar', 'regiao.editar', 'regiao.excluir',
+            'estado.criar', 'estado.editar', 'estado.excluir',
+            'municipio.criar', 'municipio.editar', 'municipio.excluir',
+            'dimensao.ver', 'dimensao.criar', 'dimensao.editar', 'dimensao.excluir',
+            'indicador.ver', 'indicador.criar', 'indicador.editar', 'indicador.excluir',
+            'evidencia.ver', 'evidencia.criar', 'evidencia.editar', 'evidencia.excluir',
+            'escala.ver', 'escala.criar', 'escala.editar', 'escala.excluir',
+            'templateAvaliacao.ver', 'templateAvaliacao.criar', 'templateAvaliacao.editar', 'templateAvaliacao.excluir',
+            'avaliacao.ver', 'avaliacao.criar', 'avaliacao.editar', 'avaliacao.excluir',
+            'questao.ver', 'questao.criar', 'questao.editar', 'questao.excluir',
+            'certificado.emitir', 'certificado.editar', 'certificado.baixar',
+            'modeloCertificado.criar', 'modeloCertificado.editar', 'modeloCertificado.excluir',
+            'agendamento.criar', 'agendamento.editar', 'agentamento.ver', 'agendamento.excluir', 'agendamento.notificar',
+            'cartas.ver', 'cartas.criar', 'cartas.editar', 'cartas.excluir',
+            'cartas.distribuir', 'cartas.responder', 'cartas.verificar',
+            'cartas.editar-enviada', 'cartas.exportar',
         ];
 
         foreach ($permissoes as $p) {
@@ -46,91 +48,113 @@ class RolesPermissionsSeeder extends Seeder
         $articulador = Role::firstOrCreate(['name' => 'articulador', 'guard_name' => 'web']);
         $participante = Role::firstOrCreate(['name' => 'participante', 'guard_name' => 'web']);
         $SME = Role::firstOrCreate(['name' => 'SME', 'guard_name' => 'web']);
+        $cartasAdmin = Role::firstOrCreate(['name' => 'cartas_admin', 'guard_name' => 'web']);
+        $cartasGestao = Role::firstOrCreate(['name' => 'cartas_gestao', 'guard_name' => 'web']);
+        $cartasVoluntario = Role::firstOrCreate(['name' => 'cartas_voluntario', 'guard_name' => 'web']);
 
         $admin->givePermissionTo([
-            'user.ver','user.criar','user.editar','user.excluir',
-            'participante.ver','participante.criar','participante.editar','participante.excluir',
-            'evento.ver','evento.criar','evento.editar','evento.excluir',
-            'atividade.ver','atividade.criar','atividade.editar','atividade.excluir',
-            'inscricao.ver','inscricao.criar','inscricao.editar','inscricao.excluir',
+            'user.ver', 'user.criar', 'user.editar', 'user.excluir',
+            'participante.ver', 'participante.criar', 'participante.editar', 'participante.excluir',
+            'evento.ver', 'evento.criar', 'evento.editar', 'evento.excluir',
+            'atividade.ver', 'atividade.criar', 'atividade.editar', 'atividade.excluir',
+            'inscricao.ver', 'inscricao.criar', 'inscricao.editar', 'inscricao.excluir',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
-            'regiao.criar','regiao.editar','regiao.excluir',
-            'estado.criar','estado.editar','estado.excluir',
-            'municipio.criar','municipio.editar','municipio.excluir',
-            'dimensao.ver','dimensao.criar','dimensao.editar','dimensao.excluir',
-            'indicador.ver','indicador.criar','indicador.editar','indicador.excluir',
-            'evidencia.ver','evidencia.criar','evidencia.editar','evidencia.excluir',
-            'escala.ver','escala.criar','escala.editar','escala.excluir',
-            'templateAvaliacao.ver','templateAvaliacao.criar','templateAvaliacao.editar','templateAvaliacao.excluir',
-            'avaliacao.ver','avaliacao.criar','avaliacao.editar','avaliacao.excluir',
-            'questao.ver','questao.criar','questao.editar','questao.excluir',
-            'certificado.emitir','certificado.editar', 'certificado.baixar',
-            'modeloCertificado.criar','modeloCertificado.editar','modeloCertificado.excluir',
+            'regiao.criar', 'regiao.editar', 'regiao.excluir',
+            'estado.criar', 'estado.editar', 'estado.excluir',
+            'municipio.criar', 'municipio.editar', 'municipio.excluir',
+            'dimensao.ver', 'dimensao.criar', 'dimensao.editar', 'dimensao.excluir',
+            'indicador.ver', 'indicador.criar', 'indicador.editar', 'indicador.excluir',
+            'evidencia.ver', 'evidencia.criar', 'evidencia.editar', 'evidencia.excluir',
+            'escala.ver', 'escala.criar', 'escala.editar', 'escala.excluir',
+            'templateAvaliacao.ver', 'templateAvaliacao.criar', 'templateAvaliacao.editar', 'templateAvaliacao.excluir',
+            'avaliacao.ver', 'avaliacao.criar', 'avaliacao.editar', 'avaliacao.excluir',
+            'questao.ver', 'questao.criar', 'questao.editar', 'questao.excluir',
+            'certificado.emitir', 'certificado.editar', 'certificado.baixar',
+            'modeloCertificado.criar', 'modeloCertificado.editar', 'modeloCertificado.excluir',
         ]);
 
         // GERENTE DE PROJETO
         $gerente->givePermissionTo([
-            'user.ver','user.criar','user.editar',
-            'participante.ver','participante.criar','participante.editar','participante.excluir',
-            'evento.ver','evento.criar','evento.editar',
-            'atividade.ver','atividade.criar','atividade.editar','atividade.excluir',
-            'inscricao.ver','inscricao.criar','inscricao.editar',
+            'user.ver', 'user.criar', 'user.editar', 'user.excluir',
+            'participante.ver', 'participante.criar', 'participante.editar', 'participante.excluir',
+            'evento.ver', 'evento.criar', 'evento.editar',
+            'atividade.ver', 'atividade.criar', 'atividade.editar', 'atividade.excluir',
+            'inscricao.ver', 'inscricao.criar', 'inscricao.editar',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
-            'dimensao.ver','dimensao.criar','dimensao.editar','dimensao.excluir',
-            'indicador.ver','indicador.criar','indicador.editar','indicador.excluir',
-            'evidencia.ver','evidencia.criar','evidencia.editar','evidencia.excluir',
-            'escala.ver','escala.criar','escala.editar','escala.excluir',
-            'templateAvaliacao.ver','templateAvaliacao.criar','templateAvaliacao.editar','templateAvaliacao.excluir',
-            'avaliacao.ver','avaliacao.criar','avaliacao.editar','avaliacao.excluir',
-            'questao.ver','questao.criar','questao.editar','questao.excluir',
-            'certificado.emitir','certificado.editar', 'certificado.baixar',
-            'modeloCertificado.criar','modeloCertificado.editar'
+            'dimensao.ver', 'dimensao.criar', 'dimensao.editar', 'dimensao.excluir',
+            'indicador.ver', 'indicador.criar', 'indicador.editar', 'indicador.excluir',
+            'evidencia.ver', 'evidencia.criar', 'evidencia.editar', 'evidencia.excluir',
+            'escala.ver', 'escala.criar', 'escala.editar', 'escala.excluir',
+            'templateAvaliacao.ver', 'templateAvaliacao.criar', 'templateAvaliacao.editar', 'templateAvaliacao.excluir',
+            'avaliacao.ver', 'avaliacao.criar', 'avaliacao.editar', 'avaliacao.excluir',
+            'questao.ver', 'questao.criar', 'questao.editar', 'questao.excluir',
+            'certificado.emitir', 'certificado.editar', 'certificado.baixar',
+            'modeloCertificado.criar', 'modeloCertificado.editar',
         ]);
 
         // EQUIPE PEDAGOGICA
         $eq_pedagogica->givePermissionTo([
-            'user.ver','user.criar','user.editar',
-            'participante.ver','participante.criar',
-            'evento.ver','evento.criar','evento.editar',
-            'atividade.ver','atividade.criar','atividade.editar',
-            'inscricao.ver','inscricao.criar','inscricao.editar',
+            'user.ver', 'user.criar', 'user.editar',
+            'participante.ver', 'participante.criar',
+            'evento.ver', 'evento.criar', 'evento.editar',
+            'atividade.ver', 'atividade.criar', 'atividade.editar',
+            'inscricao.ver', 'inscricao.criar', 'inscricao.editar',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
-            'dimensao.ver','dimensao.criar','dimensao.editar','dimensao.excluir',
-            'indicador.ver','indicador.criar','indicador.editar','indicador.excluir',
-            'evidencia.ver','evidencia.criar','evidencia.editar','evidencia.excluir',
-            'escala.ver','escala.criar','escala.editar','escala.excluir',
-            'templateAvaliacao.ver','templateAvaliacao.criar','templateAvaliacao.editar','templateAvaliacao.excluir',
-            'avaliacao.ver','avaliacao.criar','avaliacao.editar','avaliacao.excluir',
-            'questao.ver','questao.criar','questao.editar','questao.excluir',
+            'dimensao.ver', 'dimensao.criar', 'dimensao.editar', 'dimensao.excluir',
+            'indicador.ver', 'indicador.criar', 'indicador.editar', 'indicador.excluir',
+            'evidencia.ver', 'evidencia.criar', 'evidencia.editar', 'evidencia.excluir',
+            'escala.ver', 'escala.criar', 'escala.editar', 'escala.excluir',
+            'templateAvaliacao.ver', 'templateAvaliacao.criar', 'templateAvaliacao.editar', 'templateAvaliacao.excluir',
+            'avaliacao.ver', 'avaliacao.criar', 'avaliacao.editar', 'avaliacao.excluir',
+            'questao.ver', 'questao.criar', 'questao.editar', 'questao.excluir',
             'certificado.baixar',
         ]);
 
         // ARTICULADOR
         $articulador->givePermissionTo([
-            'user.ver','user.criar','user.editar',
-            'participante.ver','participante.criar',
+            'user.ver', 'user.criar', 'user.editar',
+            'participante.ver', 'participante.criar',
             'evento.ver',
             'atividade.ver',
-            'inscricao.ver','inscricao.criar',
+            'inscricao.ver', 'inscricao.criar',
             'presenca.registrar', 'relatorio.ver', 'presenca.import', 'presenca.abrir',
-            'dimensao.ver','dimensao.criar','dimensao.editar',
-            'indicador.ver','indicador.criar','indicador.editar',
-            'evidencia.ver','evidencia.criar','evidencia.editar',
-            'escala.ver','escala.criar','escala.editar',
-            'templateAvaliacao.ver','templateAvaliacao.criar','templateAvaliacao.editar',
-            'avaliacao.ver','avaliacao.criar','avaliacao.editar',
-            'questao.ver','questao.criar','questao.editar',
+            'dimensao.ver', 'dimensao.criar', 'dimensao.editar',
+            'indicador.ver', 'indicador.criar', 'indicador.editar',
+            'evidencia.ver', 'evidencia.criar', 'evidencia.editar',
+            'escala.ver', 'escala.criar', 'escala.editar',
+            'templateAvaliacao.ver', 'templateAvaliacao.criar', 'templateAvaliacao.editar',
+            'avaliacao.ver', 'avaliacao.criar', 'avaliacao.editar',
+            'questao.ver', 'questao.criar', 'questao.editar',
             'certificado.baixar',
         ]);
 
+        $this->call(AutorizacaoImagemPermissionsSeeder::class);
+
         // PARTICIPANTE
         $participante->givePermissionTo([
-            'inscricao.ver','inscricao.criar',
+            'inscricao.ver', 'inscricao.criar',
         ]);
 
         // SME
         $SME->givePermissionTo([
-            'agendamento.criar','agendamento.editar', 'agentamento.ver', 'agendamento.excluir',
+            'agendamento.criar', 'agendamento.editar', 'agentamento.ver', 'agendamento.excluir',
         ]);
+
+        $cartasAdmin->givePermissionTo([
+            'cartas.ver', 'cartas.criar', 'cartas.editar', 'cartas.excluir',
+            'cartas.distribuir', 'cartas.responder', 'cartas.verificar',
+            'cartas.editar-enviada', 'cartas.exportar',
+        ]);
+
+        $cartasGestao->givePermissionTo([
+            'cartas.ver', 'cartas.criar', 'cartas.editar',
+            'cartas.verificar', 'cartas.exportar',
+        ]);
+
+        $cartasVoluntario->givePermissionTo([
+            'cartas.ver', 'cartas.responder',
+        ]);
+
+        $this->call(CartasRelatoriosPermissionsSeeder::class);
     }
 }

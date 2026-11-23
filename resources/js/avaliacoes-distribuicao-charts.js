@@ -23,6 +23,23 @@ function cleanText(value) {
     return text.replace(/\s+/g, " ").trim();
 }
 
+function wrapText(text, maxLength = 40) {
+    if (!text || text.length <= maxLength) return text;
+    const words = text.split(" ");
+    const lines = [];
+    let current = "";
+    words.forEach((word) => {
+        if ((current + word).length > maxLength) {
+            if (current.trim() !== "") lines.push(current.trim());
+            current = word + " ";
+        } else {
+            current += word + " ";
+        }
+    });
+    if (current.trim() !== "") lines.push(current.trim());
+    return lines;
+}
+
 function normalizeValues(pergunta) {
     const raw = pergunta.values;
     if (!raw) return [];
@@ -300,7 +317,7 @@ function bootFetch(root) {
                 body.appendChild(canvas);
 
                 const labels = (pergunta.labels || []).map((label) =>
-                    cleanText(label === "Nao" ? "Não" : label)
+                    wrapText(cleanText(label === "Nao" ? "Não" : label))
                 );
                 const values = normalizeValues(pergunta);
                 const bg = labels.map((_, idx) => palette[idx % palette.length]);
@@ -343,7 +360,17 @@ function bootFetch(root) {
                 const autoHorizontal = !userPref && baseChartType === "bar" && labels.length > 4 && !defaultHorizontalMode;
                 const chartOptions = {
                     responsive: true,
-                    plugins: { legend: { display: false } },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    if (!context.length) return '';
+                                    return context[0].chart.data.labels[context[0].dataIndex];
+                                }
+                            }
+                        }
+                    },
                     scales: {
                         x: { ticks: { color: "#64748b" } },
                         y: { ticks: { color: "#64748b", precision: 0 } },
@@ -352,8 +379,19 @@ function bootFetch(root) {
                 if (baseChartType === "doughnut" || baseChartType === "polarArea") {
                     delete chartOptions.scales;
                 }
-                if (baseChartType === "bar" && (chartType === "bar-horizontal" || autoHorizontal)) {
+                const isHorizontal = baseChartType === "bar" && (chartType === "bar-horizontal" || autoHorizontal);
+                if (isHorizontal) {
                     chartOptions.indexAxis = "y";
+                } else if (chartOptions.scales) {
+                    chartOptions.scales.x.ticks.maxRotation = 45;
+                    chartOptions.scales.x.ticks.minRotation = 0;
+                    chartOptions.scales.x.ticks.callback = function(value, index) {
+                        const label = this.chart.data.labels[index];
+                        if (!label) return value;
+                        const labelStr = Array.isArray(label) ? label.join(' ') : String(label);
+                        if (labelStr.length > 20) return labelStr.substring(0, 20) + '...';
+                        return labelStr;
+                    };
                 }
                 const chart = new window.Chart(canvas, {
                     type: baseChartType,
@@ -536,7 +574,7 @@ function renderChartsInner(opts) {
             body.appendChild(canvas);
 
             const labels = (pergunta.labels || []).map((label) =>
-                cleanText(label === "Nao" ? "Não" : label),
+                wrapText(cleanText(label === "Nao" ? "Não" : label))
             );
             const values = normalizeValues(pergunta);
             const bg = labels.map((_, idx) => palette[idx % palette.length]);
@@ -598,7 +636,17 @@ function renderChartsInner(opts) {
 
             const options = {
                 responsive: true,
-                plugins: { legend: { display: false } },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                if (!context.length) return '';
+                                return context[0].chart.data.labels[context[0].dataIndex];
+                            }
+                        }
+                    }
+                },
                 scales: {
                     x: { ticks: { color: "#64748b" } },
                     y: { ticks: { color: "#64748b", precision: 0 } },
@@ -614,11 +662,20 @@ function renderChartsInner(opts) {
                 baseChartType === "bar" &&
                 labels.length > 4 &&
                 !defaultHorizontalMode;
-            if (
-                baseChartType === "bar" &&
-                (chartType === "bar-horizontal" || autoHorizontal)
-            ) {
+            
+            const isHorizontal = baseChartType === "bar" && (chartType === "bar-horizontal" || autoHorizontal);
+            if (isHorizontal) {
                 options.indexAxis = "y";
+            } else if (options.scales) {
+                options.scales.x.ticks.maxRotation = 45;
+                options.scales.x.ticks.minRotation = 0;
+                options.scales.x.ticks.callback = function(value, index) {
+                    const label = this.chart.data.labels[index];
+                    if (!label) return value;
+                    const labelStr = Array.isArray(label) ? label.join(' ') : String(label);
+                    if (labelStr.length > 20) return labelStr.substring(0, 20) + '...';
+                    return labelStr;
+                };
             }
 
             const chart = new window.Chart(canvas, {
@@ -643,7 +700,9 @@ function renderChartsInner(opts) {
 }
 
 function bootInline(root) {
-    const jsonEl = document.getElementById("avaliacoes-perguntas-json");
+    const jsonEl = root.querySelector(
+        'script[type="application/json"][data-avaliacoes-perguntas], #avaliacoes-perguntas-json',
+    );
     let perguntas = [];
     try {
         perguntas = jsonEl ? JSON.parse(jsonEl.textContent || "[]") : [];
@@ -651,12 +710,15 @@ function bootInline(root) {
         perguntas = [];
     }
 
-    const cardsQuestoes = root.querySelector("#cards-questoes-momento");
+    const cardsQuestoes = root.querySelector(
+        "[data-cards-questoes], #cards-questoes-momento",
+    );
     if (!cardsQuestoes || typeof window.Chart === "undefined") return;
 
     const chartInstances = new Map();
     const chartPreferences = new Map();
-    const textModalEl = document.getElementById("textAnswersModalMomento");
+    const modalId = root.dataset.textModalId || "textAnswersModalMomento";
+    const textModalEl = document.getElementById(modalId);
     const textModalTitle = textModalEl?.querySelector(".js-text-modal-title");
     const textModalList = textModalEl?.querySelector(".js-text-modal-list");
     const textModalCount = textModalEl?.querySelector(".js-text-modal-count");
@@ -746,6 +808,9 @@ function boot() {
     if (inlineRoot) {
         bootInline(inlineRoot);
     }
+    document.querySelectorAll("[data-avaliacoes-inline-root]").forEach((root) => {
+        bootInline(root);
+    });
 }
 
 if (document.readyState === "loading") {

@@ -16,7 +16,7 @@ const obterCorPadrao = (corBruta) => {
     const cor = String(corBruta ?? "").trim();
 
     if (!cor) {
-        return css.getPropertyValue("--engaja-purple").trim() || fallback;
+        return css.getPropertyValue("--engaja-blue").trim() || fallback;
     }
 
     if (cor.startsWith("--")) {

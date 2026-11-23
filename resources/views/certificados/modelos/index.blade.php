@@ -13,46 +13,49 @@
 @if ($modelos->isEmpty())
   <div class="alert alert-info">Nenhum modelo cadastrado.</div>
 @else
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 1],
+          ['field' => 'descricao', 'headerName' => 'Descrição', 'flex' => 2],
+          ['field' => 'eixo', 'headerName' => 'Eixo', 'flex' => 1],
+          ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+      ];
+
+      $podeExcluir = auth()->user()?->hasRole('administrador');
+
+      $rows = $modelos->map(function ($modelo) use ($podeExcluir) {
+          $acoesHtml = '<div class="dropdown">'
+              . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Gerenciar</button>'
+              . '<ul class="dropdown-menu dropdown-menu-end">'
+              . '<li><a class="dropdown-item" href="' . route('certificados.modelos.edit', $modelo) . '">Editar</a></li>';
+
+          if ($podeExcluir) {
+              $acoesHtml .= '<li>'
+                  . '<form method="POST" action="' . route('certificados.modelos.destroy', $modelo) . '" data-confirm="Remover este modelo?">'
+                  . csrf_field() . method_field('DELETE')
+                  . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                  . '</form>'
+                  . '</li>';
+          }
+
+          $acoesHtml .= '</ul></div>';
+
+          return [
+              'nome' => $modelo->nome,
+              'descricao' => $modelo->descricao ?: '—',
+              'eixo' => $modelo->eixo->nome ?? '—',
+              'acoes' => $acoesHtml,
+          ];
+      })->values();
+  @endphp
+
   <div class="card shadow-sm">
-    <div class="table-responsive">
-      <table class="table align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th class="ps-4">Nome</th>
-            <th>Eixo</th>
-            <th class="text-end pe-4">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          @foreach ($modelos as $m)
-            <tr>
-              <td class="ps-4">
-                <div class="fw-semibold">{{ $m->nome }}</div>
-                @if($m->descricao)
-                  <div class="text-muted small">{{ \Illuminate\Support\Str::limit($m->descricao, 80) }}</div>
-                @endif
-              </td>
-              <td>{{ $m->eixo->nome ?? '—' }}</td>
-              <td class="text-end pe-4">
-                <div class="d-inline-flex gap-2">
-                  <a href="{{ route('certificados.modelos.edit', $m) }}" class="btn btn-sm btn-engaja">Editar</a>
-                  @role('administrador')
-                  <form action="{{ route('certificados.modelos.destroy', $m) }}" method="POST" onsubmit="return confirm('Remover este modelo?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
-                  </form>
-                  @endrole
-                </div>
-              </td>
-            </tr>
-          @endforeach
-        </tbody>
-      </table>
-    </div>
-    <div class="card-footer bg-white">
-      {{ $modelos->links() }}
-    </div>
+      <x-data-table
+          id="grid-certificados-modelos"
+          :columns="$columns"
+          :rows="$rows"
+          :page-size="15"
+      />
   </div>
 @endif
 @endsection

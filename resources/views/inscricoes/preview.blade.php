@@ -5,6 +5,7 @@
 @php
   $modoTodosMomentos = $modoTodosMomentos ?? false;
   $atividadesEscopo = $atividadesEscopo ?? collect();
+  $identityErrors = $identityErrors ?? [];
 @endphp
 <div class="container py-4">
   <h1 class="h4 mb-3">Pré-visualização da Importação - {{ $evento->nome }}</h1>
@@ -39,18 +40,25 @@
     <strong>{{ $usuariosNovosCount }}</strong> novo(s) cadastro(s)
     |
     <strong>{{ $usuariosExistentesCount }}</strong> usuário(s) já existente(s) (dados serão atualizados).
+    @if($origemImportacao !== '')
+      <br>
+      Origem:
+      <strong>{{ $origemImportacao }}</strong>
+    @endif
   </div>
 
-  @if ($errors->any())
+  @if ($errors->any() || $identityErrors !== [])
   <div class="alert alert-danger">
     <strong>Corrija os erros antes de confirmar:</strong>
     <ul class="mb-0">
-      @foreach ($errors->all() as $error)
+      @foreach (array_merge($errors->all(), $identityErrors) as $error)
       <li>{{ $error }}</li>
       @endforeach
     </ul>
   </div>
   @endif
+
+  <p class="text-muted"><strong>Nome é obrigatório. Informe e-mail ou CPF em cada registro. Salve as alterações da página antes de confirmar.</strong> </p>
 
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div class="text-muted">
@@ -89,18 +97,35 @@
     @endunless
 
     <div class="table-responsive">
-      @php $tagOptions = $participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS); @endphp
+      @php
+        $tagOptions = $participanteTags ?? config('engaja.participante_tags', \App\Models\Participante::TAGS);
+        $demograficosConfig = $demograficos ?? config('engaja.demograficos', []);
+        $demograficoLabels = [
+            'identidade_genero'      => 'Id. Gênero',
+            'raca_cor'               => 'Raça/Cor',
+            'comunidade_tradicional' => 'Comunidade',
+            'faixa_etaria'           => 'Faixa Etária',
+            'pcd'                    => 'PcD',
+            'orientacao_sexual'      => 'Orient. Sexual',
+        ];
+      @endphp
       <table class="table table-sm align-middle table-bordered bg-white">
         <thead class="table-light">
           <tr>
             <th style="min-width:220px;">Nome *</th>
-            <th style="min-width:240px;">Email *</th>
+            <th style="min-width:240px;">Email</th>
             <th style="min-width:140px;">CPF</th>
             <th style="min-width:140px;">Telefone</th>
             <th style="min-width:260px;">Município</th>
+            <th style="min-width:130px;">Estado/UF</th>
             <th style="min-width:220px;">Tipo de Organização</th>
             <th style="min-width:220px;">Organização</th>
             <th style="min-width:200px;">Tag</th>
+            <th style="min-width:180px;">Data de nascimento</th>
+            <th style="min-width:180px;">Sexo</th>
+            @foreach($demograficoLabels as $campoDemo => $labelDemo)
+            <th style="min-width:180px;">{{ $labelDemo }}</th>
+            @endforeach
             <!-- <th style="min-width:140px;">Data de entrada</th> -->
           </tr>
         </thead>
@@ -108,20 +133,52 @@
           @foreach($rows as $i => $r)
           @php $idx = $globalOffset + $loop->index; @endphp
           <tr>
-            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required></td>
-            <td><input type="email" class="form-control form-control-sm" name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}" required></td>
-            <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}"></td>
+            <td>
+              <input class="form-control form-control-sm @error("rows.$idx.nome") is-invalid @enderror"
+                name="rows[{{ $idx }}][nome]" value="{{ old("rows.$idx.nome", $r['nome']) }}" required>
+              @error("rows.$idx.nome") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+            <td>
+              <input type="email"
+                class="form-control form-control-sm {{ $errors->has("rows.$idx.email") || $errors->has("rows.$idx.identificacao") ? 'is-invalid' : '' }}"
+                name="rows[{{ $idx }}][email]" value="{{ old("rows.$idx.email", $r['email']) }}">
+              @if($errors->has("rows.$idx.email") || $errors->has("rows.$idx.identificacao"))
+              <div class="invalid-feedback">{{ $errors->first("rows.$idx.email") ?: $errors->first("rows.$idx.identificacao") }}</div>
+              @endif
+            </td>
+            <td>
+              <input class="form-control form-control-sm {{ $errors->has("rows.$idx.cpf") || $errors->has("rows.$idx.identificacao") ? 'is-invalid' : '' }}"
+                name="rows[{{ $idx }}][cpf]" value="{{ old("rows.$idx.cpf", $r['cpf']) }}">
+              @if($errors->has("rows.$idx.cpf") || $errors->has("rows.$idx.identificacao"))
+              <div class="invalid-feedback">{{ $errors->first("rows.$idx.cpf") ?: $errors->first("rows.$idx.identificacao") }}</div>
+              @endif
+            </td>
             <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][telefone]" value="{{ old("rows.$idx.telefone", $r['telefone']) }}"></td>
 
             <td>
               <select class="form-select form-select-sm" name="rows[{{ $idx }}][municipio_id]">
-                <option value="">-- Nenhum --</option>
+                <option value="">
+                  @if(empty($r['municipio_id']) && !empty($r['municipio']))
+                    {{ $r['municipio'] }} (criação automática)
+                  @else
+                    -- Nenhum --
+                  @endif
+                </option>
                 @foreach($municipios as $m)
                 <option value="{{ $m->id }}" @selected(old("rows.$idx.municipio_id", $r['municipio_id'])==$m->id)>
                   {{ $m->nome_com_estado }}
                 </option>
                 @endforeach
               </select>
+            </td>
+
+            <td>
+              <input
+                class="form-control form-control-sm"
+                name="rows[{{ $idx }}][estado]"
+                value="{{ old("rows.$idx.estado", $r['estado'] ?? '') }}"
+                maxlength="255"
+                placeholder="Ex.: CE">
             </td>
 
             <td>
@@ -164,6 +221,64 @@
               <div class="invalid-feedback">Selecione uma tag válida.</div>
               @endif
             </td>
+
+            <td>
+              <input type="date"
+                class="form-control form-control-sm @error("rows.$idx.data_nascimento") is-invalid @enderror"
+                name="rows[{{ $idx }}][data_nascimento]"
+                value="{{ old("rows.$idx.data_nascimento", $r['data_nascimento'] ?? '') }}"
+                max="{{ now()->toDateString() }}">
+              @error("rows.$idx.data_nascimento") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+            <td>
+              <select class="form-select form-select-sm @error("rows.$idx.sexo") is-invalid @enderror"
+                name="rows[{{ $idx }}][sexo]">
+                <option value="">Selecione...</option>
+                @foreach(\App\Models\Participante::SEXOS as $sexo)
+                <option value="{{ $sexo }}" @selected(old("rows.$idx.sexo", $r['sexo'] ?? null) === $sexo)>{{ $sexo }}</option>
+                @endforeach
+              </select>
+              @error("rows.$idx.sexo") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+
+            {{-- Campos demográficos --}}
+            @foreach($demograficosConfig as $campoDemo => $defDemo)
+              @php
+                $valorDemo = old("rows.$idx.$campoDemo", $r[$campoDemo] ?? null);
+                $okDemo = $r[$campoDemo . '_ok'] ?? true;
+                $temOutro = !empty($defDemo['campo_outro']);
+                $campoOutroName = $defDemo['campo_outro'] ?? null;
+                $valorOutro = $defDemo['valor_outro'] ?? null;
+                $valorCampoOutro = old("rows.$idx.$campoOutroName", $r[$campoOutroName] ?? null);
+                $outroId = "demo_{$campoDemo}_{$idx}";
+              @endphp
+              <td>
+                <select
+                  name="rows[{{ $idx }}][{{ $campoDemo }}]"
+                  class="form-select form-select-sm {{ (!empty($r[$campoDemo]) && !$okDemo) ? 'is-invalid' : '' }}"
+                  @if($temOutro) onchange="document.getElementById('{{ $outroId }}').style.display = this.value === '{{ $valorOutro }}' ? 'block' : 'none'" @endif>
+                  <option value="">Selecione...</option>
+                  @foreach($defDemo['opcoes'] as $opcaoDemo)
+                  <option value="{{ $opcaoDemo }}" @selected($valorDemo === $opcaoDemo)>{{ $opcaoDemo }}</option>
+                  @endforeach
+                </select>
+
+                @if(!empty($r[$campoDemo]) && !$okDemo)
+                <div class="invalid-feedback">Valor não reconhecido.</div>
+                @endif
+
+                @if($temOutro)
+                <input
+                  type="text"
+                  id="{{ $outroId }}"
+                  name="rows[{{ $idx }}][{{ $campoOutroName }}]"
+                  value="{{ $valorCampoOutro }}"
+                  class="form-control form-control-sm mt-1"
+                  placeholder="Especifique..."
+                  style="display: {{ $valorDemo === $valorOutro ? 'block' : 'none' }}">
+                @endif
+              </td>
+            @endforeach
 
             <!-- <td><input class="form-control form-control-sm" name="rows[{{ $idx }}][data_entrada]" value="{{ old("rows.$idx.data_entrada", $r['data_entrada']) }}" placeholder="YYYY-MM-DD"></td> -->
           </tr>

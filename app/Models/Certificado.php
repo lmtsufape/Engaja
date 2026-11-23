@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Certificado extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'modelo_certificado_id',
         'participante_id',
-        'evento_id',
         'evento_nome',
         'codigo_validacao',
         'ano',
@@ -32,8 +32,8 @@ class Certificado extends Model
         return $this->belongsTo(Participante::class);
     }
 
-    public function evento()
+    public function eventos()
     {
-        return $this->belongsTo(Evento::class);
+        return $this->belongsToMany(Evento::class, 'certificado_evento');
     }
 }

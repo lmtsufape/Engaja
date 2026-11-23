@@ -20,7 +20,7 @@
 
                         {{-- E-mail ou CPF --}}
                         <div class="mb-3">
-                            <label for="login" class="form-label">{{ __('E-mail ou CPF') }}</label>
+                            <label for="login" class="form-label">{{ __('E-mail') }}</label>
                             <input id="login" type="text"
                                 class="form-control @error('login') is-invalid @enderror"
                                 name="login" value="{{ old('login') }}" required autofocus>

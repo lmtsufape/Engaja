@@ -16,80 +16,118 @@
       @endhasanyrole
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-hover align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Dia</th>
-            <th>Hora início</th>
-            <th>Hora de término</th>
-            <th>Municípios</th>
-            <th>Público esperado</th>
-            <th>Carga horária</th>
-            <th>Status</th>
-            @auth
-            <th class="text-end">Ações</th>
-            @endauth
-          </tr>
-        </thead>
-        @php $temPermissao = auth()->check(); @endphp
-        <tbody>
-          @forelse($atividades as $at)
-            @php
-              $munLabel = $at->municipios->isNotEmpty()
-                ? $at->municipios->map(fn($m) => $m->nome_com_estado ?? $m->nome)->join(', ')
-                : '-';
-            @endphp
-            <tr>
-              <td>{{ \Carbon\Carbon::parse($at->dia)->format('d/m/Y') }}</td>
-              <td>{{ \Carbon\Carbon::parse($at->hora_inicio)->format('H:i') }}</td>
-              <td>{{ $at->hora_fim ? \Carbon\Carbon::parse($at->hora_fim)->format('H:i') : '—' }}</td>
-              <td>{{ $munLabel }}</td>
-              <td>{{ $at->publico_esperado ? number_format($at->publico_esperado, 0, ',', '.') : '—' }}</td>
-              <td>
-                {{ !is_null($at->carga_horaria) ? \App\Support\CargaHoraria::formatMinutos((int) $at->carga_horaria) : '—' }}
-              </td>
-              <td>
-                {{-- ⚠️ Badge checklist incompleto --}}
-                @if($at->checklists_incompletos)
-                  <button type="button"
-                          class="badge bg-warning text-dark border-0 btn-checklist-reabrir"
-                          data-atividade-id="{{ $at->id }}"
-                          data-checklist-pl="{{ json_encode($at->checklist_planejamento ?? []) }}"
-                          data-checklist-en="{{ json_encode($at->checklist_encerramento ?? []) }}"
-                          style="cursor:pointer; font-size:0.75rem; padding:0.35rem 0.5rem;">
-                    ⚠️ Checklist incompleto
-                  </button>
-                @endif
-              </td>
-              @auth
-              <td class="text-end text-nowrap">
-                @php $minhaAvaliacaoAtividade = $at->minha_avaliacao_atividade; @endphp
-                <a href="{{ route('atividades.show', $at) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-                <a href="{{ route('atividades.edit', $at) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                 <a href="{{ $minhaAvaliacaoAtividade
-                        ? route('avaliacao-atividade.edit',   $at) 
-                        : route('avaliacao-atividade.create', $at) }}"
-                   class="btn btn-sm {{ $minhaAvaliacaoAtividade ? 'btn-warning' : 'btn-outline-warning' }}"
-                   title="{{ $minhaAvaliacaoAtividade ? 'Editar meu relatório' : 'Criar meu relatório' }}">
-                   📋 {{ $minhaAvaliacaoAtividade ? 'Meu relatório' : 'Criar relatório' }}
-                </a>
+    <form method="GET" action="{{ route('eventos.atividades.index', $evento) }}" class="row g-2 align-items-end mb-3">
+      <div class="col-auto">
+        <label for="municipio_id" class="form-label mb-0 small text-muted">Município</label>
+        <select name="municipio_id" id="municipio_id" class="form-select form-select-sm">
+          <option value="">Todos</option>
+          @if($temAbrangenciaNacional ?? false)
+            <option value="brasil" @selected(request('municipio_id') === 'brasil')>Brasil</option>
+          @endif
+          @foreach($municipiosDisponiveis as $m)
+            <option value="{{ $m->id }}" @selected(request('municipio_id') == $m->id)>
+              {{ $m->nome_com_estado ?? $m->nome }}
+            </option>
+          @endforeach
+        </select>
+      </div>
+      <div class="col-auto">
+        <label for="de" class="form-label mb-0 small text-muted">Data inicial</label>
+        <input type="date" name="de" id="de" class="form-control form-control-sm" value="{{ request('de') }}">
+      </div>
+      <div class="col-auto">
+        <label for="ate" class="form-label mb-0 small text-muted">Data final</label>
+        <input type="date" name="ate" id="ate" class="form-control form-control-sm" value="{{ request('ate') }}">
+      </div>
+      <div class="col-auto">
+        <label for="descricao" class="form-label mb-0 small text-muted">Descrição</label>
+        <input type="search" name="descricao" id="descricao" class="form-control form-control-sm" maxlength="255" value="{{ request('descricao') }}" placeholder="Buscar descrição">
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-engaja">Filtrar</button>
+      </div>
+      @if(request()->hasAny(['municipio_id', 'de', 'ate', 'descricao']))
+        <div class="col-auto">
+          <a href="{{ route('eventos.atividades.index', $evento) }}" class="btn btn-sm btn-outline-secondary">Limpar filtro</a>
+        </div>
+      @endif
+    </form>
 
-                <form class="d-inline" method="POST" action="{{ route('atividades.destroy', $at) }}"
-                  data-confirm="Tem certeza que deseja excluir este momento?">
-                  @csrf @method('DELETE')
-                  <button class="btn btn-sm btn-outline-danger">Excluir</button>
-                </form>
-              </td>
-              @endauth
-            </tr>
-          @empty
-            <tr>
-              <td colspan="{{ $temPermissao ? 8 : 7 }}" class="text-center text-muted py-4">Nenhum momento cadastrado.</td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
+    @php
+        $columns = [
+            ['field' => 'dia', 'headerName' => 'Data', 'flex' => 1],
+            ['field' => 'municipios', 'headerName' => 'Municípios', 'flex' => 2],
+            ['field' => 'descricao', 'headerName' => 'Descrição', 'flex' => 2],
+            ['field' => 'carga_horaria', 'headerName' => 'Carga horária', 'flex' => 1],
+            ['field' => 'status', 'headerName' => 'Status', 'flex' => 1, 'html' => true],
+        ];
+
+        if (auth()->check()) {
+            $columns[] = ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true, 'align' => 'end'];
+        }
+
+        $rows = $atividades->map(function ($at) {
+            $munLabel = $at->abrangencia_nacional
+                ? 'Brasil'
+                : ($at->municipios->isNotEmpty()
+                    ? $at->municipios->map(fn ($m) => $m->nome_com_estado ?? $m->nome)->join(', ')
+                    : '-');
+
+            $statusHtml = $at->checklists_incompletos
+                ? '<button type="button" class="badge bg-warning text-dark border-0 btn-checklist-reabrir" data-atividade-id="' . $at->id . '" data-checklist-pl="' . e(json_encode($at->checklist_planejamento ?? [])) . '" data-checklist-en="' . e(json_encode($at->checklist_encerramento ?? [])) . '" style="cursor:pointer; font-size:0.75rem; padding:0.35rem 0.5rem;">⚠️ Checklist incompleto</button>'
+                : '';
+
+            $row = [
+                'dia' => \Carbon\Carbon::parse($at->dia)->format('d/m/Y'),
+                'municipios' => $munLabel,
+                'descricao' => $at->descricao,
+                'carga_horaria' => !is_null($at->carga_horaria) ? \App\Support\CargaHoraria::formatMinutos((int) $at->carga_horaria) : '—',
+                'status' => $statusHtml,
+            ];
+
+            if (auth()->check()) {
+                $minhaAvaliacaoAtividade = $at->minha_avaliacao_atividade;
+
+                $acoesHtml = '<div class="dropdown">'
+                    . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Gerenciar</button>'
+                    . '<ul class="dropdown-menu dropdown-menu-end">'
+                    . '<li><a class="dropdown-item" href="' . route('atividades.show', $at) . '">Ver</a></li>';
+
+                if (auth()->user()->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica'])) {
+                    $acoesHtml .= '<li><a class="dropdown-item" href="' . route('atividades.edit', $at) . '">Editar</a></li>';
+                }
+
+                $acoesHtml .= '<li><a class="dropdown-item" href="' . ($minhaAvaliacaoAtividade ? route('avaliacao-atividade.edit', $at) : route('avaliacao-atividade.create', $at)) . '">📋 ' . ($minhaAvaliacaoAtividade ? 'Editar meu relatório' : 'Criar meu relatório') . '</a></li>';
+
+                if (auth()->user()->hasAnyRole(['administrador', 'gerente'])) {
+                    $acoesHtml .= '<li><hr class="dropdown-divider"></li>'
+                        . '<li>';
+
+                    $presencasCount = (int) ($at->presencas_count ?? 0);
+                    if ($presencasCount > 0) {
+                        $presencasTexto = $presencasCount === 1 ? '1 presença registrada' : "{$presencasCount} presenças registradas";
+                        $msgBloqueio = "Este momento possui {$presencasTexto} e não pode ser excluído.";
+                        $acoesHtml .= '<button type="button" class="dropdown-item text-danger" data-blocked-delete="' . e($msgBloqueio) . '" data-blocked-delete-title="Momento possui presenças associadas">Excluir</button>';
+                    } else {
+                        $acoesHtml .= '<form method="POST" action="' . route('atividades.destroy', $at) . '" data-confirm="Tem certeza que deseja excluir este momento?">'
+                            . csrf_field() . method_field('DELETE')
+                            . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                            . '</form>';
+                    }
+
+                    $acoesHtml .= '</li>';
+                }
+
+                $acoesHtml .= '</ul></div>';
+                $row['acoes'] = $acoesHtml;
+            }
+
+            return $row;
+        })->values();
+    @endphp
+
+    <div class="card shadow-sm">
+        <x-data-table id="grid-atividades" :columns="$columns" :rows="$rows" :pagination="false" />
     </div>
 
     {{ $atividades->links() }}
@@ -143,18 +181,21 @@
 
       let atividadeIdAtual = null;
 
-      document.querySelectorAll('.btn-checklist-reabrir').forEach(btn => {
-          btn.addEventListener('click', function () {
-              atividadeIdAtual = this.dataset.atividadeId;
-            const marcadosPl = normalizeMarkedIndexes(ITENS_PLANEJAMENTO, JSON.parse(this.dataset.checklistPl || '[]'));
-            const marcadosEn = normalizeMarkedIndexes(ITENS_ENCERRAMENTO, JSON.parse(this.dataset.checklistEn || '[]'));
+      // Delegação de evento: os botões .btn-checklist-reabrir são renderizados
+      // pelo AG Grid de forma assíncrona (depois do DOMContentLoaded).
+      document.addEventListener('click', function (e) {
+          const btn = e.target.closest('.btn-checklist-reabrir');
+          if (!btn) return;
 
-              const body = document.getElementById('reopen-checklist-body');
-              body.innerHTML = renderChecklist('planejamento', ITENS_PLANEJAMENTO, marcadosPl)
-                             + renderChecklist('encerramento', ITENS_ENCERRAMENTO, marcadosEn);
+          atividadeIdAtual = btn.dataset.atividadeId;
+          const marcadosPl = normalizeMarkedIndexes(ITENS_PLANEJAMENTO, JSON.parse(btn.dataset.checklistPl || '[]'));
+          const marcadosEn = normalizeMarkedIndexes(ITENS_ENCERRAMENTO, JSON.parse(btn.dataset.checklistEn || '[]'));
 
-              new bootstrap.Modal(document.getElementById('modalReopenChecklist')).show();
-          });
+          const body = document.getElementById('reopen-checklist-body');
+          body.innerHTML = renderChecklist('planejamento', ITENS_PLANEJAMENTO, marcadosPl)
+                         + renderChecklist('encerramento', ITENS_ENCERRAMENTO, marcadosEn);
+
+          new bootstrap.Modal(document.getElementById('modalReopenChecklist')).show();
       });
 
         function normalizeMarkedIndexes(itens, marcados) {
@@ -217,9 +258,9 @@
 
           const salvar = (tipo, itens) => fetch(`/atividades/${atividadeIdAtual}/checklist`, {
               method: 'POST',
-              headers: { 
-                  'Content-Type': 'application/json', 
-                  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content 
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
               },
               body: JSON.stringify({ tipo, itens })
           });

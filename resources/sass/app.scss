@@ -1,5 +1,8 @@
 /* ===== Engaja Theme (Bootstrap 5) ===== */
 
+@use "sass:color";
+@use "sass:map";
+
 /* Fonte Montserrat */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
@@ -27,7 +30,11 @@ $border-radius-lg: .8rem;
 
 @import "bootstrap/scss/bootstrap";
 
-$theme-colors: map-merge(
+/* Bootstrap Icons (classes `bi bi-*` usadas nas views) */
+$bootstrap-icons-font-dir: "bootstrap-icons/font/fonts";
+@import "bootstrap-icons/font/bootstrap-icons";
+
+$theme-colors: map.merge(
   $theme-colors,
   (
     "engaja": $engaja-blue,
@@ -52,4 +59,60 @@ $theme-colors: map-merge(
   --engaja-yellow: #{$engaja-yellow};
   --engaja-pink:   #{$engaja-pink};
   --engaja-green:  #{$engaja-green};
+}
+
+/* Componente de tabela (AG Grid): estilos de linha usados nos relatórios com
+   subtotal/total (ex.: relatorio-quantitativo), equivalentes às cores inline
+   que existiam nas tabelas Blade originais. */
+.ag-row.dt-row-subtotal {
+  background-color: #e8daea !important;
+  font-weight: 700;
+}
+
+.ag-row.dt-row-unidentified {
+  background-color: #f8f5f0 !important;
+}
+
+.dt-header-html {
+  width: 100%;
+  white-space: nowrap;
+}
+
+/* Remove a borda própria do AG Grid (.ag-root-wrapper) quando a tabela já
+   está dentro de um card com sua própria borda/sombra — evita o efeito de
+   "borda dupla". Usar via prop class="dt-no-border" no <x-data-table>. */
+.dt-no-border .ag-root-wrapper {
+  border: none;
+  border-radius: 0;
+}
+
+/* Linha de detalhe "full-width" (simula master/detail sem AG Grid Enterprise).
+   A altura real é ajustada via JS conforme o conteúdo (node.setRowHeight),
+   respeitando um teto — acima dele, rola internamente em vez de estourar a
+   altura alocada da linha. */
+.dt-detail-row {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+
+  /* O AG Grid desabilita seleção de texto nas linhas (.ag-row { user-select:
+     none }) para evitar interferir no drag de seleção de células. Essa linha
+     é só HTML estático (sem interação de grid), então a seleção de texto
+     deve funcionar normalmente para o usuário poder copiar os dados. */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Hover do AG Grid: o padrão do tema Quartz é um cinza muito sutil, quase
+   imperceptível. Usa a cor da marca com mais saturação para ficar visível. */
+.ag-row-hover {
+  background-color: rgba($engaja-blue, 0.16) !important;
+}
+
+.ag-row-hover.dt-row-subtotal {
+  background-color: color.adjust(#e8daea, $lightness: -8%) !important;
+}
+
+.ag-row-hover.dt-row-unidentified {
+  background-color: color.adjust(#f8f5f0, $lightness: -6%) !important;
 }

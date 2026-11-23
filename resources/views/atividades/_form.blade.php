@@ -133,14 +133,31 @@
 </div>
 
 @php
-  $municipiosSelecionados = collect(old('municipios', isset($atividade) ? $atividade->municipios->pluck('id')->all() : []))
+  $municipiosSelecionados = collect(old('municipios_enviados') ? old('municipios', []) : (isset($atividade) ? $atividade->municipios->pluck('id')->all() : []))
     ->map(fn($v) => (string) $v)
     ->all();
+  $abrangenciaNacional = (bool) old('abrangencia_nacional', $atividade->abrangencia_nacional ?? false);
 @endphp
 <div class="mb-3">
-  <span class="form-label d-block">Municípios</span>
+  <span class="form-label d-block">Abrangência territorial</span>
+  <input type="hidden" name="municipios_enviados" value="1">
+  <input type="hidden" name="abrangencia_nacional" value="0">
+  <div class="form-check border rounded p-3 ps-5 mb-3 bg-light">
+    <input
+      class="form-check-input"
+      type="checkbox"
+      name="abrangencia_nacional"
+      value="1"
+      id="abrangencia_nacional"
+      @checked($abrangenciaNacional)>
+    <label class="form-check-label fw-semibold" for="abrangencia_nacional">
+      Brasil (abrangência nacional)
+    </label>
+    <div class="form-text">Use esta opção quando o momento puder receber participantes de qualquer município brasileiro.</div>
+  </div>
+
   <script type="application/json" id="municipios-json-data">{!! json_encode($municipiosJson ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!}</script>
-  <div class="row g-3 align-items-start">
+  <div class="row g-3 align-items-start" id="municipios-selecao-container" @if($abrangenciaNacional) hidden @endif>
     <div class="col-lg-7">
       <div class="municipios-busca-wrap mb-2">
         <label for="municipios-busca-input" class="visually-hidden">Buscar pelo nome do município</label>
@@ -168,6 +185,9 @@
       <div class="d-flex flex-wrap gap-2 mb-2 municipios-filtros-tags" id="municipios-filtros-tags" hidden></div>
 
       <div class="btn-toolbar flex-wrap gap-2 mb-2" role="toolbar" aria-label="Seleção em massa">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="municipios-btn-prioritarios">
+          Selecionar municípios prioritários
+        </button>
         <div class="btn-group btn-group-sm" role="group">
           <button type="button" class="btn btn-outline-primary" id="municipios-btn-selecionar-todos" title="Aplica aos municípios visíveis no filtro atual (ou a todos, sem filtro)">
             Selecionar filtrados
@@ -185,7 +205,7 @@
            class="municipios-checkbox-list @error('municipios') is-invalid @enderror @error('municipios.*') is-invalid @enderror"></div>
       <div id="municipios-hidden-inputs" class="d-none" aria-hidden="true"></div>
 
-      <div class="form-text">Selecione um ou mais municípios atendidos por este momento. A busca filtra pelo <strong>nome do município</strong>; as sugestões permitem filtrar por estado ou região.</div>
+      <div class="form-text">Selecione um ou mais municípios atendidos por este momento. A opção de municípios prioritários substitui a seleção atual. A busca filtra pelo <strong>nome do município</strong>; as sugestões permitem filtrar por estado ou região.</div>
       @error('municipios') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
       @error('municipios.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
     </div>
@@ -224,12 +244,15 @@
   const resumoLista = document.getElementById('municipios-resumo-lista');
   const resumoContador = document.getElementById('municipios-resumo-contador');
   const filtrosTags = document.getElementById('municipios-filtros-tags');
+  const abrangenciaNacional = document.getElementById('abrangencia_nacional');
+  const municipiosContainer = document.getElementById('municipios-selecao-container');
 
   if (!buscaInput || !listaEl || !hiddenEl) return;
 
   const selected = new Set(inicialSelecionados.map(String));
   let scopeEstado = null;
   let scopeRegiao = null;
+  let somentePrioritarios = false;
   let query = buscaInput.value || '';
   let debounceTimer = null;
 
@@ -257,6 +280,9 @@
 
   function getFilteredMunicipios() {
     let list = MUNICIPIOS.slice();
+    if (somentePrioritarios) {
+      list = list.filter((m) => m.prioritario);
+    }
     if (scopeEstado) {
       const uf = String(scopeEstado).trim().toUpperCase();
       list = list.filter((m) => siglaEstado(m).trim().toUpperCase() === uf);
@@ -282,6 +308,21 @@
       inp.value = id;
       hiddenEl.appendChild(inp);
     });
+  }
+
+  function restaurarListaSePrioritariosDesmarcados() {
+    if (!somentePrioritarios || MUNICIPIOS.some((m) => m.prioritario && selected.has(m.id))) return;
+
+    somentePrioritarios = false;
+    scopeEstado = null;
+    scopeRegiao = null;
+    buscaInput.value = '';
+    query = '';
+    window.clearTimeout(debounceTimer);
+    sugestoesEl.classList.remove('is-open');
+    sugestoesEl.innerHTML = '';
+    renderFiltrosTags();
+    renderListaCheckboxes();
   }
 
   function renderResumo() {
@@ -368,6 +409,7 @@
         else selected.delete(m.id);
         syncHiddenInputs();
         renderResumo();
+        if (!cb.checked) restaurarListaSePrioritariosDesmarcados();
       });
       const lab = document.createElement('label');
       lab.className = 'form-check-label small';
@@ -382,6 +424,25 @@
   function renderFiltrosTags() {
     filtrosTags.innerHTML = '';
     let has = false;
+    if (somentePrioritarios) {
+      has = true;
+      const span = document.createElement('span');
+      span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+      span.appendChild(document.createTextNode('Municípios prioritários '));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-close btn-close-white btn-sm p-0 ms-1';
+      btn.style.fontSize = '0.6rem';
+      btn.setAttribute('aria-label', 'Remover filtro de municípios prioritários');
+      btn.addEventListener('click', () => {
+        somentePrioritarios = false;
+        renderFiltrosTags();
+        renderListaCheckboxes();
+        buildSugestoes();
+      });
+      span.appendChild(btn);
+      filtrosTags.appendChild(span);
+    }
     if (scopeEstado) {
       has = true;
       const span = document.createElement('span');
@@ -433,12 +494,13 @@
     const limEst = 8;
     const limReg = 6;
 
-    const munHits = MUNICIPIOS.filter((m) => norm(m.nome).includes(q))
+    const disponiveis = somentePrioritarios ? MUNICIPIOS.filter((m) => m.prioritario) : MUNICIPIOS;
+    const munHits = disponiveis.filter((m) => norm(m.nome).includes(q))
       .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'))
       .slice(0, limMun);
 
     const estadosMap = new Map();
-    MUNICIPIOS.forEach((m) => {
+    disponiveis.forEach((m) => {
       const sigla = siglaEstado(m);
       if (sigla && !estadosMap.has(sigla)) {
         estadosMap.set(sigla, nomeEstado(m) || sigla);
@@ -450,7 +512,7 @@
       .sort((a, b) => a.sigla.localeCompare(b.sigla, 'pt-BR'))
       .slice(0, limEst);
 
-    const regSet = new Set(MUNICIPIOS.map((m) => nomeRegiao(m)).filter(Boolean));
+    const regSet = new Set(disponiveis.map((m) => nomeRegiao(m)).filter(Boolean));
     const regHits = [...regSet]
       .filter((nome) => norm(nome).includes(q))
       .sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -558,6 +620,22 @@
     }
   });
 
+  document.getElementById('municipios-btn-prioritarios')?.addEventListener('click', () => {
+    somentePrioritarios = true;
+    scopeEstado = null;
+    scopeRegiao = null;
+    buscaInput.value = '';
+    query = '';
+    sugestoesEl.classList.remove('is-open');
+    sugestoesEl.innerHTML = '';
+    selected.clear();
+    MUNICIPIOS.filter((m) => m.prioritario).forEach((m) => selected.add(m.id));
+    syncHiddenInputs();
+    renderResumo();
+    renderFiltrosTags();
+    renderListaCheckboxes();
+  });
+
   document.getElementById('municipios-btn-selecionar-todos')?.addEventListener('click', () => {
     getFilteredMunicipios().forEach((m) => selected.add(m.id));
     syncHiddenInputs();
@@ -569,6 +647,7 @@
     getFilteredMunicipios().forEach((m) => selected.delete(m.id));
     syncHiddenInputs();
     renderResumo();
+    restaurarListaSePrioritariosDesmarcados();
     renderListaCheckboxes();
   });
 
@@ -579,12 +658,14 @@
     });
     syncHiddenInputs();
     renderResumo();
+    restaurarListaSePrioritariosDesmarcados();
     renderListaCheckboxes();
   });
 
   document.getElementById('municipios-btn-limpar-filtros')?.addEventListener('click', () => {
     scopeEstado = null;
     scopeRegiao = null;
+    somentePrioritarios = false;
     buscaInput.value = '';
     query = '';
     sugestoesEl.classList.remove('is-open');
@@ -594,7 +675,16 @@
     buildSugestoes();
   });
 
+  function syncAbrangenciaNacional() {
+    if (municipiosContainer && abrangenciaNacional) {
+      municipiosContainer.hidden = abrangenciaNacional.checked;
+    }
+  }
+
+  abrangenciaNacional?.addEventListener('change', syncAbrangenciaNacional);
+
   syncHiddenInputs();
+  syncAbrangenciaNacional();
   renderFiltrosTags();
   renderResumo();
   renderListaCheckboxes();
@@ -709,6 +799,94 @@
     </div>
   </div>
 </div>
+
+@can('presenca.abrir')
+  @php
+    $valorAbreEm = old('presenca_abre_em', isset($atividade) ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em) : null);
+    $valorFechaEm = old('presenca_fecha_em', isset($atividade) ? \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em) : null);
+    $agendamentoAtivo = (bool) old('agendamento_presenca_ativo', $valorAbreEm || $valorFechaEm);
+    if (! $agendamentoAtivo) {
+      $valorAbreEm = null;
+      $valorFechaEm = null;
+    }
+  @endphp
+  <div class="border rounded p-3 mt-3 bg-light">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+      <label class="form-label fw-bold mb-0 text-engaja">
+        <i class="bi bi-clock-history me-1"></i> Confirmação de presença — Agendamento de abertura/fechamento
+      </label>
+    </div>
+    <x-agendamento-presenca id="agendamento_presenca_ativo" :ativo="$agendamentoAtivo">
+      <div class="btn-group btn-group-sm mb-3">
+        <button type="button" class="btn btn-outline-secondary" id="btn-preencher-agendamento-sugestao" title="Preenche os campos com a data e horários do momento">
+          Preencher com dia/horário do momento
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="btn-limpar-agendamento-form" title="Limpa os campos de agendamento">
+          Limpar agendamento
+        </button>
+      </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label for="presenca_abre_em" class="form-label">Abrir presença em</label>
+        <input type="datetime-local" name="presenca_abre_em" id="presenca_abre_em"
+               value="{{ $valorAbreEm }}"
+               class="form-control @error('presenca_abre_em') is-invalid @enderror">
+        @error('presenca_abre_em') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+
+      <div class="col-md-6">
+        <label for="presenca_fecha_em" class="form-label">Fechar presença em</label>
+        <input type="datetime-local" name="presenca_fecha_em" id="presenca_fecha_em"
+               value="{{ $valorFechaEm }}"
+               class="form-control @error('presenca_fecha_em') is-invalid @enderror">
+        @error('presenca_fecha_em') <div class="invalid-feedback">{{ $message }}</div> @enderror
+      </div>
+    </div>
+    </x-agendamento-presenca>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const btnSugestao = document.getElementById('btn-preencher-agendamento-sugestao');
+      const btnLimpar = document.getElementById('btn-limpar-agendamento-form');
+      const inputDia = document.getElementById('dia');
+      const inputHoraInicio = document.getElementById('hora_inicio');
+      const inputHoraFim = document.getElementById('hora_fim');
+      const inputAbre = document.getElementById('presenca_abre_em');
+      const inputFecha = document.getElementById('presenca_fecha_em');
+
+      function formatarDateTime(dia, hora) {
+        if (!dia || !hora) return '';
+        const h = hora.length >= 5 ? hora.substring(0, 5) : hora;
+        // Horário (Brasília, UTC-3) que já passou não é sugerido: evitaria agendar um
+        // fechamento/abertura no passado e alterar o estado da presença sem querer.
+        if (new Date(`${dia}T${h}:00-03:00`).getTime() <= Date.now()) return '';
+        return `${dia}T${h}`;
+      }
+
+      function aplicarSugestao() {
+        if (!inputDia || !inputAbre || !inputFecha) return;
+        const dia = inputDia.value;
+        const hIni = inputHoraInicio?.value;
+        const hFim = inputHoraFim?.value;
+
+        inputAbre.value = formatarDateTime(dia, hIni);
+        inputFecha.value = formatarDateTime(dia, hFim);
+        inputAbre.dispatchEvent(new Event('input', { bubbles: true }));
+        inputFecha.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      btnSugestao?.addEventListener('click', aplicarSugestao);
+
+      btnLimpar?.addEventListener('click', function () {
+        const toggle = document.getElementById('agendamento_presenca_ativo');
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event('change'));
+      });
+    });
+  </script>
+@endcan
 
 @php
   $listaCopiaveis = collect($atividadesCopiaveis ?? []);

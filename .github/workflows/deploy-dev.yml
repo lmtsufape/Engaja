@@ -21,5 +21,6 @@ jobs:
             cd /home/lmts/engaja/engaja-dev
             git fetch origin dev
             git pull origin dev
-            docker compose exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
-            docker compose exec -T app php artisan migrate --no-interaction
+            docker compose -f docker-compose.yaml exec -T app composer install --no-interaction --prefer-dist --optimize-autoloader
+            docker compose -f docker-compose.yaml exec -T app php artisan migrate --no-interaction
+            docker compose -f docker-compose.yaml up -d

@@ -9,42 +9,35 @@
   <a href="{{ route('agendamentos.efetivados.index') }}" class="btn btn-outline-secondary">Ver agendamentos efetivados</a>
 </div>
 
+@php
+    $columns = [
+        ['field' => 'data_horario', 'headerName' => 'Data e horário', 'flex' => 1],
+        ['field' => 'municipio', 'headerName' => 'Município', 'flex' => 2],
+        ['field' => 'atividade_acao', 'headerName' => 'Atividade/Ação', 'flex' => 2],
+        ['field' => 'turma', 'headerName' => 'Turma', 'flex' => 1],
+        ['field' => 'participantes', 'headerName' => 'Participantes', 'flex' => 1, 'align' => 'end'],
+        ['field' => 'responsavel', 'headerName' => 'Responsável', 'flex' => 1],
+        ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true, 'align' => 'center'],
+    ];
+
+    $rows = $agendamentos->map(fn ($agendamento) => [
+        'data_horario' => optional($agendamento->data_horario)->format('d/m/Y H:i') ?? '—',
+        'municipio' => $agendamento->municipio?->nome_com_estado ?? '—',
+        'atividade_acao' => $agendamento->atividadeAcao?->nome ?? '—',
+        'turma' => $agendamento->turma ?: '—',
+        'participantes' => $agendamento->participantes_clonados_count ?? 0,
+        'responsavel' => $agendamento->user?->name ?? '—',
+        'acoes' => '<div class="dropdown">'
+            . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false">Gerenciar</button>'
+            . '<ul class="dropdown-menu dropdown-menu-end">'
+            . '<li><a class="dropdown-item" href="' . route('agendamentos.show', $agendamento) . '">Ver</a></li>'
+            . '<li><a class="dropdown-item" href="' . route('agendamentos.efetivacoes.create', $agendamento) . '">Efetivar</a></li>'
+            . '</ul></div>',
+    ])->values();
+@endphp
+
 <div class="card shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        <tr>
-          <th>Data e horário</th>
-          <th>Município</th>
-          <th>Atividade/Ação</th>
-          <th>Turma</th>
-          <th>Participantes</th>
-          <th>Responsável</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($agendamentos as $agendamento)
-          <tr>
-            <td>{{ optional($agendamento->data_horario)->format('d/m/Y H:i') }}</td>
-            <td>{{ $agendamento->municipio?->nome_com_estado ?? '—' }}</td>
-            <td>{{ $agendamento->atividadeAcao?->nome ?? '—' }}</td>
-            <td>{{ $agendamento->turma ?: '—' }}</td>
-            <td>{{ $agendamento->participantes_clonados_count ?? 0 }}</td>
-            <td>{{ $agendamento->user?->name ?? '—' }}</td>
-            <td class="text-end">
-              <a href="{{ route('agendamentos.show', $agendamento) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-              <a href="{{ route('agendamentos.efetivacoes.create', $agendamento) }}" class="btn btn-sm btn-engaja">Efetivar</a>
-            </td>
-          </tr>
-        @empty
-          <tr>
-            <td colspan="7" class="text-center text-muted py-4">Nenhum agendamento pendente de efetivação.</td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
+    <x-data-table id="grid-agendamentos-efetivacoes" :columns="$columns" :rows="$rows" :pagination="false" />
 </div>
 
 <div class="mt-3">

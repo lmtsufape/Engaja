@@ -45,24 +45,48 @@
         $ini = \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i');
         $dia = \Carbon\Carbon::parse($atividade->dia)
         ->locale('pt_BR')->translatedFormat('l, d \\d\\e F \\d\\e Y');
+        $presencaAberta = $atividade->presencaEstaAberta();
     @endphp
     <div class="container py-4">
 
         {{-- Cabeçalho do momento --}}
         <div class="d-flex justify-content-between align-items-start mb-4">
-            <x-header-atividade :atividade="$atividade" />
+            <div>
+                <x-header-atividade :atividade="$atividade" />
+                <div class="mt-2">
+                    <span class="badge {{ $presencaAberta ? 'bg-success' : 'bg-secondary' }} d-inline-flex align-items-center gap-1">
+                        <i class="bi {{ $presencaAberta ? 'bi-check-circle-fill' : 'bi-lock-fill' }}"></i>
+                        {{ $atividade->status_presenca_label }}
+                    </span>
+                </div>
+            </div>
 
-            <div class="d-flex flex-wrap gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+                {{-- Alerta de dados demográficos pendentes --}}
+                @if (session('erro_demograficos'))
+                    <div class="w-100 mb-2">
+                        <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" role="alert">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1" viewBox="0 0 16 16">
+                                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                            </svg>
+                            <div>
+                                <strong>Dados demográficos pendentes!</strong><br>
+                                {{ session('erro_demograficos') }}
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Ação Principal (Sempre visível para o usuário final) --}}
                 @auth
                     <form action="{{ route('atividades.presenca.checkin', $atividade) }}" method="POST" class="d-inline">
                         @csrf
-                        <button class="btn btn-primary" {{ $atividade->presenca_ativa ? '' : 'disabled' }}>
+                        <button class="btn btn-primary" {{ $presencaAberta ? '' : 'disabled' }}>
                             Confirmar minha presença
                         </button>
                     </form>
                 @else
-                    @if($atividade->presenca_ativa)
+                    @if($presencaAberta)
                         <a class="btn btn-primary" href="{{ route('presenca.confirmar', $atividade) }}">
                             Confirmar presença
                         </a>
@@ -103,15 +127,20 @@
                                 </li>
                                 <li>
                                      <a class="dropdown-item text-engaja" href="{{ route('atividades.diario', $atividade) }}">
-                                         <i class="bi bi-card-checklist"></i>Diário de Presenças
+                                         Diário de Presenças
                                      </a>
                                 </li>
-                                    <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button type="button" class="dropdown-item text-engaja" data-bs-toggle="modal" data-bs-target="#modalAgendamentoPresenca">
+                                        </i>Agendar abertura/fechamento
+                                    </button>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form action="{{ route('atividades.presenca.toggle', $atividade) }}" method="POST" class="m-0">
                                         @csrf @method('PATCH')
-                                        <button type="submit" class="dropdown-item {{ $atividade->presenca_ativa ? 'text-danger' : 'text-success' }}">
-                                            {{ $atividade->presenca_ativa ? 'Fechar presença' : 'Abrir presença' }}
+                                        <button type="submit" class="dropdown-item {{ $presencaAberta ? 'text-danger' : 'text-success' }}">
+                                            {{ $presencaAberta ? 'Fechar presença' : 'Abrir presença' }}
                                         </button>
                                     </form>
                                 </li>
@@ -125,31 +154,154 @@
 
         @auth
             {{-- QR Code de presença --}}
+            @php
+                $presencaUrl = route('presenca.confirmar', $atividade);
+                $qrFormatConfig = strtolower(trim((string) config('qrcode.format')));
+                $qrFormat = in_array($qrFormatConfig, ['png', 'svg'], true) ? $qrFormatConfig : 'png';
+                $qrData = QrCode::format($qrFormat)
+                    ->style('round')
+                    ->color(129,18,131)
+                    ->eye('circle')
+                    ->eyeColor(0, 0,156,209,0,156,209)
+                    ->eyeColor(1, 44,181,124,44,181,124)
+                    ->eyeColor(2, 192,12,142,192,12,142)
+                    ->size(200)
+                    ->margin(0)
+                    ->merge(public_path('/images/engaja-qr.png'), 0.3, true)
+                    ->errorCorrection('H')
+                    ->generate($presencaUrl);
+                $qrMime = $qrFormat === 'svg' ? 'image/svg+xml' : 'image/'.$qrFormat;
+                $qrSrc = 'data:'.$qrMime.';base64,'.base64_encode($qrData);
+            @endphp
             <div class="mb-4">
                 <h2 class="h6 fw-bold mb-2">Confirmação de presença (QR)</h2>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="p-2 border rounded bg-white">
-                        @php
-                            $qrFormat = env('QR_CODE_FORMAT', 'png');
-                            $qrData = QrCode::format($qrFormat)
-                                ->style('round')
-                                ->color(129,18,131)
-                                ->eye('circle')
-                                ->eyeColor(0, 0,156,209,0,156,209)
-                                ->eyeColor(1, 44,181,124,44,181,124)
-                                ->eyeColor(2, 192,12,142,192,12,142)
-                                ->size(200)
-                                ->margin(0)
-                                ->merge(public_path('/images/engaja-qr.png'), 0.3, true)
-                                ->errorCorrection('H')
-                                ->generate(route('presenca.confirmar', $atividade));
-                            $qrMime = $qrFormat === 'svg' ? 'image/svg+xml' : 'image/'.$qrFormat;
-                            $qrSrc = 'data:'.$qrMime.';base64,'.base64_encode($qrData);
-                        @endphp
                         <img src="{{ $qrSrc }}" alt="QR Code">
                     </div>
                 </div>
+
+                <div class="mt-3" style="max-width: 36rem;">
+                    <label for="presenca-confirmacao-url" class="form-label fw-semibold mb-1">
+                        Link de confirmação de presença
+                    </label>
+                    <div class="d-flex flex-wrap gap-2 align-items-stretch">
+                        <input
+                            type="url"
+                            id="presenca-confirmacao-url"
+                            class="form-control"
+                            style="flex: 1 1 16rem; min-width: 0;"
+                            value="{{ $presencaUrl }}"
+                            readonly
+                            aria-describedby="presenca-confirmacao-ajuda presenca-confirmacao-feedback"
+                        >
+                        <button
+                            type="button"
+                            id="copiar-link-presenca"
+                            class="btn btn-outline-primary flex-shrink-0"
+                        >
+                            Copiar link
+                        </button>
+                    </div>
+                    <div id="presenca-confirmacao-ajuda" class="form-text">
+                        Use este link para compartilhar a confirmação de presença.
+                    </div>
+                    <div
+                        id="presenca-confirmacao-feedback"
+                        class="small mt-1"
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                    ></div>
+                </div>
             </div>
+
+            @push('scripts')
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        const input = document.getElementById('presenca-confirmacao-url');
+                        const button = document.getElementById('copiar-link-presenca');
+                        const feedback = document.getElementById('presenca-confirmacao-feedback');
+
+                        if (!input || !button) {
+                            return;
+                        }
+
+                        const defaultLabel = button.textContent.trim();
+                        let resetTimerId = null;
+                        let attemptId = 0;
+
+                        const clearResetTimer = () => {
+                            if (resetTimerId !== null) {
+                                window.clearTimeout(resetTimerId);
+                                resetTimerId = null;
+                            }
+                        };
+
+                        const selectInputValue = () => {
+                            input.focus();
+                            input.select();
+                            if (typeof input.setSelectionRange === 'function') {
+                                try {
+                                    input.setSelectionRange(0, input.value.length);
+                                } catch (selectionError) {
+                                    // Mantém a seleção via select() caso o navegador restrinja setSelectionRange.
+                                }
+                            }
+                        };
+
+                        const setFeedback = (message, isError = false) => {
+                            if (!feedback) {
+                                return;
+                            }
+                            feedback.textContent = message;
+                            feedback.classList.toggle('text-success', !isError && Boolean(message));
+                            feedback.classList.toggle('text-danger', isError && Boolean(message));
+                        };
+
+                        button.addEventListener('click', async () => {
+                            clearResetTimer();
+                            const currentAttempt = ++attemptId;
+                            const url = input.value;
+                            const canWriteClipboard = Boolean(
+                                navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
+                            );
+
+                            if (!canWriteClipboard) {
+                                button.textContent = defaultLabel;
+                                selectInputValue();
+                                setFeedback('Não foi possível copiar automaticamente. Copie o link selecionado.', true);
+                                return;
+                            }
+
+                            try {
+                                await navigator.clipboard.writeText(url);
+                                if (currentAttempt !== attemptId) {
+                                    return;
+                                }
+
+                                button.textContent = 'Link copiado!';
+                                setFeedback('Link copiado!', false);
+
+                                resetTimerId = window.setTimeout(() => {
+                                    if (currentAttempt === attemptId) {
+                                        button.textContent = defaultLabel;
+                                        resetTimerId = null;
+                                    }
+                                }, 2000);
+                            } catch (error) {
+                                if (currentAttempt !== attemptId) {
+                                    return;
+                                }
+
+                                button.textContent = defaultLabel;
+                                selectInputValue();
+                                setFeedback('Não foi possível copiar automaticamente. Copie o link selecionado.', true);
+                            }
+                        });
+                    });
+                </script>
+            @endpush
         @endauth
 
         @can('presenca.abrir')
@@ -166,56 +318,54 @@
                     $lista = $atividade->presencas()->with([
                     'inscricao.participante.user:id,name,email',
                     'inscricao.participante.municipio.estado:id,nome,sigla'
-                    ])->orderByDesc('id')->paginate(25);
+                    ])->orderByDesc('id')->get();
+
+                    $statusBadges = [
+                        'ouvinte'     => '<span class="badge bg-info">Ouvinte</span>',
+                        'presente'    => '<span class="badge bg-success">Presente</span>',
+                        'ausente'     => '<span class="badge bg-secondary">Ausente</span>',
+                        'justificado' => '<span class="badge bg-warning text-dark">Justificado</span>',
+                    ];
+
+                    $columns = [
+                        ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+                        ['field' => 'email', 'headerName' => 'E-mail', 'flex' => 2],
+                        ['field' => 'municipio', 'headerName' => 'Município', 'flex' => 2],
+                        ['field' => 'status', 'headerName' => 'Status', 'minWidth' => 140, 'html' => true],
+                        ['field' => 'marcado_em', 'headerName' => 'Marcado em', 'minWidth' => 140],
+                    ];
+
+                    $rows = $lista->map(function ($pr) use ($statusBadges) {
+                        $p = $pr->inscricao->participante ?? null;
+                        $u = $p?->user;
+                        $m = $p?->municipio;
+                        $uf = $m?->estado?->sigla;
+                        $munLabel = $m ? ($m->nome . ($uf ? " - $uf" : "")) : '—';
+                        $status = ($pr->inscricao?->ouvinte ?? false) ? 'ouvinte' : ($pr->status_participacao ?? $pr->status ?? null);
+
+                        return [
+                            'id' => $pr->id,
+                            'nome' => $u->name ?? '—',
+                            'email' => $u->email ?? '—',
+                            'municipio' => $munLabel,
+                            'status' => $statusBadges[$status] ?? '<span class="badge bg-light text-muted">—</span>',
+                            'marcado_em' => optional($pr->created_at)->format('d/m/Y H:i') ?? '—',
+                        ];
+                    })->values();
                 @endphp
 
-                @if($lista->count() === 0)
+                @if($lista->isEmpty())
                     <div class="ev-card p-3 text-muted">Nenhuma presença registrada para este momento.</div>
                 @else
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered align-middle bg-white">
-                            <thead class="table-light">
-                            <tr>
-                                <th>Nome</th>
-                                <th>E-mail</th>
-                                <th>Município</th>
-                                <th style="min-width:140px;">Status</th>
-                                <th style="min-width:140px;">Marcado em</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @foreach($lista as $pr)
-                                @php
-                                    $p = $pr->inscricao->participante ?? null;
-                                    $u = $p?->user;
-                                    $m = $p?->municipio;
-                                    $uf = $m?->estado?->sigla;
-                                    $munLabel = $m ? ($m->nome . ($uf ? " - $uf" : "")) : '—';
-                                    $status = ($pr->inscricao?->ouvinte ?? false) ? 'ouvinte' : ($pr->status_participacao ?? $pr->status ?? null);
-                                @endphp
-                                <tr>
-                                    <td>{{ $u->name ?? '—' }}</td>
-                                    <td>{{ $u->email ?? '—' }}</td>
-                                    <td>{{ $munLabel }}</td>
-                                    <td>
-                                        @switch($status)
-                                            @case('ouvinte') <span class="badge bg-info">Ouvinte</span> @break
-                                            @case('presente') <span class="badge bg-success">Presente</span> @break
-                                            @case('ausente') <span class="badge bg-secondary">Ausente</span> @break
-                                            @case('justificado') <span class="badge bg-warning text-dark">Justificado</span> @break
-                                            @default <span class="badge bg-light text-muted">—</span>
-                                        @endswitch
-                                    </td>
-                                    <td>{{ optional($pr->updated_at ?? $pr->created_at)->format('d/m/Y H:i') ?? '—' }}</td>
-                                </tr>
-                            @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="small text-muted">Exibindo {{ $lista->count() }} de {{ $lista->total() }}</div>
-                        {{ $lista->links() }}
+                    <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                            <x-data-table
+                                id="grid-presencas-{{ $atividade->id }}"
+                                :columns="$columns"
+                                :rows="$rows"
+                                :page-size="25"
+                            />
+                        </div>
                     </div>
                 @endif
             </div>
@@ -239,6 +389,8 @@
                                 <label for="tipoTemplate" class="form-label fw-semibold">Modelo da Lista</label>
                                 <select name="tipo" id="tipoTemplate" class="form-select form-select-lg" style="border-radius: 0.6rem; font-size: 0.95rem;">
                                     <option value="assessoria">Assessoria e Formação</option>
+                                    <option value="escuta_territorial">Escuta Territorial</option>
+                                    <option value="feira_pedagogica">Feira Pedagógica</option>
                                     <option value="oficina">Oficina de Leitura e Escrita</option>
                                 </select>
                             </div>
@@ -259,6 +411,113 @@
                 </div>
             </div>
         </div>
+
+        @can('presenca.abrir')
+            @php
+                $temAgendamentoAtivo = $atividade->presenca_abre_em || $atividade->presenca_fecha_em;
+                $valModalAbre = old('presenca_abre_em', \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_abre_em));
+                $valModalFecha = old('presenca_fecha_em', \App\Support\AgendamentoPresenca::paraInput($atividade->presenca_fecha_em));
+                $agendamentoAtivo = (bool) old('agendamento_presenca_ativo', $valModalAbre || $valModalFecha);
+                if (! $agendamentoAtivo) {
+                    $valModalAbre = null;
+                    $valModalFecha = null;
+                }
+            @endphp
+            <div class="modal fade" id="modalAgendamentoPresenca" tabindex="-1" aria-labelledby="modalAgendamentoPresencaLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 1rem;">
+
+                        <div class="modal-header border-bottom-0 pb-0">
+                            <h5 class="modal-title fw-bold text-engaja" id="modalAgendamentoPresencaLabel">
+                                <i class="bi bi-clock-history me-1"></i> Agendar Confirmação de Presença
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <form action="{{ route('atividades.presenca.agendamento', $atividade) }}" method="POST" id="form-agendamento-presenca">
+                            @csrf
+                            @method('PATCH')
+                            <div class="modal-body py-3">
+                                @if ($errors->agendamentoPresenca->any())
+                                    <div class="alert alert-danger py-2 small mb-3">
+                                        <ul class="mb-0 ps-3">
+                                            @foreach ($errors->agendamentoPresenca->all() as $erro)
+                                                <li>{{ $erro }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+
+                                <x-agendamento-presenca id="modal_agendamento_presenca_ativo" :ativo="$agendamentoAtivo">
+                                <div class="mb-3">
+                                    <label for="modal_presenca_abre_em" class="form-label fw-semibold">Abrir presença em</label>
+                                    <input type="datetime-local"
+                                           name="presenca_abre_em"
+                                           id="modal_presenca_abre_em"
+                                           value="{{ $valModalAbre }}"
+                                           class="form-control @if($errors->agendamentoPresenca->has('presenca_abre_em')) is-invalid @endif">
+                                    @if($errors->agendamentoPresenca->has('presenca_abre_em'))
+                                        <div class="invalid-feedback">{{ $errors->agendamentoPresenca->first('presenca_abre_em') }}</div>
+                                    @endif
+                                    <div class="form-text">Deixe em branco se já estiver aberta ou se desejar abrir manualmente.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="modal_presenca_fecha_em" class="form-label fw-semibold">Fechar presença em</label>
+                                    <input type="datetime-local"
+                                           name="presenca_fecha_em"
+                                           id="modal_presenca_fecha_em"
+                                           value="{{ $valModalFecha }}"
+                                           class="form-control @if($errors->agendamentoPresenca->has('presenca_fecha_em')) is-invalid @endif">
+                                    @if($errors->agendamentoPresenca->has('presenca_fecha_em'))
+                                        <div class="invalid-feedback">{{ $errors->agendamentoPresenca->first('presenca_fecha_em') }}</div>
+                                    @endif
+                                    <div class="form-text">Deixe em branco se desejar fechar manualmente.</div>
+                                </div>
+                                </x-agendamento-presenca>
+                            </div>
+
+                            <div class="modal-footer border-top-0 pt-0 d-flex justify-content-between">
+                                <div>
+                                    @if($temAgendamentoAtivo)
+                                        <button type="submit"
+                                                form="form-limpar-agendamento"
+                                                class="btn btn-outline-danger btn-sm"
+                                                onclick="return confirm('Tem certeza que deseja remover o agendamento?');">
+                                            Remover agendamento
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-engaja">Salvar agendamento</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        @if($temAgendamentoAtivo)
+                            <form id="form-limpar-agendamento" action="{{ route('atividades.presenca.agendamento.limpar', $atividade) }}" method="POST" class="d-none">
+                                @csrf
+                                @method('DELETE')
+                            </form>
+                        @endif
+
+                    </div>
+                </div>
+            </div>
+
+            @if ($errors->agendamentoPresenca->any())
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const modalEl = document.getElementById('modalAgendamentoPresenca');
+                        if (modalEl) {
+                            const modal = new bootstrap.Modal(modalEl);
+                            modal.show();
+                        }
+                    });
+                </script>
+            @endif
+        @endcan
 
     </div>
 @endsection

@@ -225,6 +225,30 @@
                                 @error('municipio_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
 
+                            <div class="col-md-6">
+                                <label for="sexo" class="form-label">Sexo</label>
+                                @php $currentSexo = old('sexo', $participante->sexo ?? 'Não preenchido'); @endphp
+                                <select id="sexo" name="sexo" class="form-select @error('sexo') is-invalid @enderror">
+                                    <option value="">Selecione...</option>
+                                    @foreach(\App\Models\Participante::SEXOS as $opcaoSexo)
+                                        <option value="{{ $opcaoSexo }}" @selected($currentSexo === $opcaoSexo)>{{ $opcaoSexo }}</option>
+                                    @endforeach
+                                </select>
+                                @error('sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="data_nascimento" class="form-label">Data de nascimento</label>
+                                <input type="date" id="data_nascimento" name="data_nascimento"
+                                    max="{{ date('Y-m-d') }}"
+                                    value="{{ old('data_nascimento', isset($participante?->data_nascimento) ? \Illuminate\Support\Carbon::parse($participante->data_nascimento)->format('Y-m-d') : '') }}"
+                                    class="form-control @error('data_nascimento') is-invalid @enderror">
+                                @error('data_nascimento') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                @if(($participante?->idade) !== null)
+                                    <div class="form-text">Idade calculada: {{ $participante->idade }} anos</div>
+                                @endif
+                            </div>
+
                             {{-- campo de autorização de imagem --}}
                             <div class="col-md-6">
                                 <style>
@@ -265,7 +289,7 @@
                                         </svg>
 
                                         <label class="form-check-label mb-0" for="autorizacao_imagem" style="cursor: pointer; font-size: 1rem;">
-                                            Autorização de imagem, voz e nome
+                                            Autorização global anterior (legado)
                                         </label>
 
                                         <button type="button" class="btn btn-link p-0 border-0 bg-transparent" data-bs-toggle="modal" data-bs-target="#modalTermosImagem" aria-label="Ler termos de uso de imagem" title="Ler termos de uso de imagem">

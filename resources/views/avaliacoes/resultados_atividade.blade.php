@@ -25,6 +25,10 @@
                    class="btn btn-primary">
                     Baixar PDF
                 </a>
+                <a href="{{ route('atividades.avaliacoes.pdf', ['atividade' => $atividade, 'formato' => 'docx']) }}"
+                   class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark-word"></i> Baixar Word
+                </a>
             @endif
             <a href="{{ route('eventos.show', $atividade->evento_id) }}"
                class="btn btn-outline-secondary">← Voltar à ação pedagógica</a>

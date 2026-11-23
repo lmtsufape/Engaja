@@ -2,17 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Avaliacao extends Model
 {
-    protected $fillable = ['template_avaliacao_id', 'descricao_universal', 'formulario_aberto', 'inscricao_id', 'atividade_id', 'anonima', 'transcricao'];
+    use HasFactory;
+
+    protected $fillable = ['template_avaliacao_id', 'descricao_universal', 'formulario_aberto', 'is_cartas', 'inscricao_id', 'atividade_id', 'anonima', 'transcricao'];
 
     protected $casts = [
         'anonima' => 'boolean',
         'formulario_aberto' => 'boolean',
+        'is_cartas' => 'boolean',
         'transcricao' => 'boolean',
     ];
 

@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Evento;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\Exportable;
@@ -34,8 +35,10 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
     public function headings(): array
     {
         return [
+            'ID do usuário',
             'Nome',
             'Email',
+            'Data de cadastro',
             'CPF',
             'Telefone',
             'Município',
@@ -49,8 +52,10 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
     public function map($row): array
     {
         return [
+            $row->usuario_id,
             $row->nome,
             $row->email,
+            $row->data_cadastro ? Carbon::parse($row->data_cadastro)->format('d/m/y') : null,
             $row->cpf,
             $row->telefone,
             $this->formatMunicipioEstado($row->municipio, $row->estado),
@@ -77,8 +82,10 @@ class EventoParticipantesGeralExport implements FromCollection, WithHeadings, Wi
             ->when($this->semOuvintes, fn ($q) => $q->where('inscricaos.ouvinte', false))
             ->select([
                 'participantes.id as participante_id',
+                'users.id as usuario_id',
                 'users.name as nome',
                 'users.email',
+                'users.created_at as data_cadastro',
                 'participantes.cpf',
                 'participantes.telefone',
                 'municipios.nome as municipio',

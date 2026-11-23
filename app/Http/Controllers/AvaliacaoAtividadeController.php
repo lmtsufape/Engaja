@@ -7,6 +7,7 @@ use App\Models\AvaliacaoAtividade;
 use App\Models\Evento;
 use App\Models\Municipio;
 use App\Models\Participante;
+use App\Word\AvaliacaoAtividadeWordBuilder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,10 +17,10 @@ class AvaliacaoAtividadeController extends Controller
 {
     use AuthorizesRequests;
 
-    private const REPORT_EDIT_ROLES = ['administrador', 'gerente'];
+    private const REPORT_EDIT_ROLES = ['administrador', 'gerente', 'eq_pedagogica'];
 
     private const REPORT_QUESTION_FIELDS = [
-        'questao_unificada' => 'Avaliação Geral do Momento (Logística, Acolhimento, Planejamento, Atuação da equipe, Recursos e Destaques).',
+        'questao_unificada' => 'Relatório Geral do Momento (Logística, Acolhimento, Planejamento, Atuação da equipe, Recursos e Destaques).',
     ];
 
     private function parseIntArray(Request $request, string $key): array
@@ -32,7 +33,7 @@ class AvaliacaoAtividadeController extends Controller
             ->all();
     }
 
-    public function index(Request $request)
+    private function getFilteredRelatoriosQuery(Request $request): array
     {
         $acaoIds = $this->parseIntArray($request, 'acao_ids');
         $municipioIds = $this->parseIntArray($request, 'municipio_ids');
@@ -62,6 +63,22 @@ class AvaliacaoAtividadeController extends Controller
                     ->orWhereHas('municipios', fn ($m) => $m->whereIn('municipios.id', $municipioIds));
             });
         });
+
+        return [
+            'query' => $query,
+            'acaoIds' => $acaoIds,
+            'momentoIds' => $momentoIds,
+            'municipioIds' => $municipioIds,
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $filterData = $this->getFilteredRelatoriosQuery($request);
+        $query = $filterData['query'];
+        $acaoIds = $filterData['acaoIds'];
+        $momentoIds = $filterData['momentoIds'];
+        $municipioIds = $filterData['municipioIds'];
 
         $atividadesDisponiveis = Atividade::query()
             ->with('evento')
@@ -188,6 +205,10 @@ class AvaliacaoAtividadeController extends Controller
 
         $dados = $request->validate($this->rules());
 
+        if (isset($dados['questao_unificada'])) {
+            $dados['questao_unificada'] = clean($dados['questao_unificada']);
+        }
+
         $atividade->avaliacaoAtividades()->updateOrCreate(
             [
                 'atividade_id' => $atividade->id,
@@ -224,6 +245,10 @@ class AvaliacaoAtividadeController extends Controller
 
         $dados = $request->validate($this->rules());
 
+        if (isset($dados['questao_unificada'])) {
+            $dados['questao_unificada'] = clean($dados['questao_unificada']);
+        }
+
         $atividade->avaliacaoAtividades()->updateOrCreate(
             [
                 'atividade_id' => $atividade->id,
@@ -249,12 +274,17 @@ class AvaliacaoAtividadeController extends Controller
         ]);
     }
 
-    public function download(AvaliacaoAtividade $relatorio)
+    public function download(AvaliacaoAtividade $relatorio, Request $request)
     {
         $this->authorizeRelatorio($relatorio);
         $this->loadRelatorioRelations($relatorio);
 
         $resumoPublico = $this->buildResumoPublicoForRelatorio($relatorio);
+
+        if ($request->get('formato') === 'docx') {
+            return AvaliacaoAtividadeWordBuilder::single($relatorio, $resumoPublico, self::REPORT_QUESTION_FIELDS)
+                ->download('relatorio-acao-'.$relatorio->id.'.docx');
+        }
 
         return Pdf::view('avaliacao-atividade.pdf', [
             'relatorio' => $relatorio,
@@ -266,20 +296,20 @@ class AvaliacaoAtividadeController extends Controller
             ->download('relatorio-acao-'.$relatorio->id.'.pdf');
     }
 
-    public function downloadOwn(Atividade $atividade)
+    public function downloadOwn(Atividade $atividade, Request $request)
     {
         $this->authorizeReport($atividade);
 
         $relatorio = $this->getUserReport($atividade);
         abort_if(! $relatorio, 404, 'Relatório não encontrado para este momento.');
 
-        return $this->download($relatorio);
+        return $this->download($relatorio, $request);
     }
 
     /**
      * Gera PDF consolidado com todos os relatórios de um momento (atividade).
      */
-    public function baixarTodosPorAtividade(Atividade $atividade)
+    public function baixarTodosPorAtividade(Atividade $atividade, Request $request)
     {
         abort_unless(
             auth()->user()?->hasAnyRole(self::REPORT_EDIT_ROLES),
@@ -323,6 +353,11 @@ class AvaliacaoAtividadeController extends Controller
             ];
         })->values();
 
+        if ($request->get('formato') === 'docx') {
+            return AvaliacaoAtividadeWordBuilder::consolidado($atividade, $relatorios, $resumoPublico, $respostasPorPergunta)
+                ->download('relatorios-consolidado-'.Str::slug($atividade->descricao ?? 'momento').'.docx');
+        }
+
         $nomeArquivo = 'relatorios-consolidado-'.Str::slug($atividade->descricao ?? 'momento').'.pdf';
 
         return Pdf::view('avaliacao-atividade.pdf-consolidado', [
@@ -331,6 +366,65 @@ class AvaliacaoAtividadeController extends Controller
             'resumoPublico' => $resumoPublico,
             'camposPerguntas' => self::REPORT_QUESTION_FIELDS,
             'respostasPorPergunta' => $respostasPorPergunta,
+        ])
+            ->format('a4')
+            ->withAlfaEjaBrand()
+            ->download($nomeArquivo);
+    }
+
+    public function baixarConsolidadoFiltro(Request $request)
+    {
+        abort_unless(
+            auth()->user()?->hasAnyRole(self::REPORT_EDIT_ROLES),
+            403,
+            'Sem permissão para baixar relatórios consolidados.'
+        );
+
+        $filterData = $this->getFilteredRelatoriosQuery($request);
+        $query = $filterData['query'];
+        $relatorios = $query->orderBy('nome_educador')->get();
+
+        abort_if($relatorios->isEmpty(), 404, 'Nenhum relatório encontrado para este filtro.');
+
+        $atividadesRelatorios = $relatorios->groupBy('atividade_id')->map(function ($relatoriosDoMomento) {
+            $atividade = $relatoriosDoMomento->first()->atividade;
+            $resumoPublico = $this->calcularResumoPublico($atividade, $relatoriosDoMomento->first());
+
+            $respostasPorPergunta = collect(self::REPORT_QUESTION_FIELDS)->map(function ($pergunta, $campo) use ($relatoriosDoMomento) {
+                return [
+                    'pergunta' => $pergunta,
+                    'respostas' => $relatoriosDoMomento
+                        ->map(function (AvaliacaoAtividade $relatorio) use ($campo) {
+                            $resposta = trim((string) ($relatorio->{$campo} ?? ''));
+                            if ($resposta === '') {
+                                return null;
+                            }
+                            $nomeResponsavel = $relatorio->user->name ?? $relatorio->nome_educador ?? 'Usuário não identificado';
+
+                            return [
+                                'responsavel_id' => $relatorio->user_id ?? '—',
+                                'responsavel_nome' => $nomeResponsavel,
+                                'resposta' => $resposta,
+                                'atualizado_em' => $relatorio->updated_at,
+                            ];
+                        })
+                        ->filter()
+                        ->values(),
+                ];
+            })->values();
+
+            return [
+                'atividade' => $atividade,
+                'resumoPublico' => $resumoPublico,
+                'respostasPorPergunta' => $respostasPorPergunta,
+            ];
+        })->values();
+
+        $nomeArquivo = 'relatorios-consolidado-filtro-'.now()->format('Ymd_His').'.pdf';
+
+        return Pdf::view('avaliacao-atividade.pdf-consolidado-geral', [
+            'dadosPorAtividade' => $atividadesRelatorios,
+            'camposPerguntas' => self::REPORT_QUESTION_FIELDS,
         ])
             ->format('a4')
             ->withAlfaEjaBrand()

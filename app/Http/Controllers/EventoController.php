@@ -15,8 +15,11 @@ use App\Models\Participante;
 use App\Models\Presenca;
 use App\Models\SituacaoDesafiadora;
 use App\Models\User;
-use App\Services\AvaliacaoConsolidacaoService;
+use App\Services\EventoDuplicacaoService;
 use App\Support\CargaHoraria;
+use App\Word\PlanejamentoWordBuilder;
+use App\Word\WordDocument;
+use App\Word\WordTableExport;
 use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -25,11 +28,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\LaravelPdf\Facades\Pdf;
-use Spatie\LaravelPdf\PdfBuilder;
 
 class EventoController extends Controller
 {
@@ -37,7 +40,10 @@ class EventoController extends Controller
 
     public function index(Request $r)
     {
-        $eventos = Evento::with(['user'])
+        $sort = $r->query('sort', 'id');
+        $dir = strtolower((string) $r->query('dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        $query = Evento::with(['user'])
             ->when($r->q, function ($q) use ($r) {
                 $search = mb_strtolower($r->q);
                 $q->where(function ($w) use ($search) {
@@ -47,9 +53,20 @@ class EventoController extends Controller
                 });
             })
             ->when($r->acao_geral, fn ($q) => $q->where('acao_geral', $r->acao_geral))
-            ->when($r->de, fn ($q) => $q->whereDate('data_inicio', '>=', $r->de))
-            ->orderByDesc('id')
-            ->paginate(10);
+            ->when($r->de, fn ($q) => $q->whereDate('data_inicio', '>=', $r->de));
+
+        match ($sort) {
+            'nome' => $query->orderBy('nome', $dir),
+            'tipo' => $query->orderBy('tipo', $dir),
+            'periodo' => $query->orderBy('data_inicio', $dir),
+            'criado_por' => $query->orderBy(
+                User::select('name')->whereColumn('users.id', 'eventos.user_id'),
+                $dir
+            ),
+            default => $query->orderBy('id', $dir),
+        };
+
+        $eventos = $query->paginate(10)->appends($r->query());
 
         $modelosCertificados = ModeloCertificado::orderBy('nome')->get();
 
@@ -128,6 +145,7 @@ class EventoController extends Controller
             'user',
             'atividades' => fn ($q) => $q
                 ->with(['municipios.estado', 'avaliacaoAtividades', 'avaliacoes'])
+                ->withCount('presencas')
                 ->orderBy('dia')
                 ->orderBy('hora_inicio'),
         ]);
@@ -154,14 +172,16 @@ class EventoController extends Controller
         return view('eventos.show', compact('evento', 'atividades', 'presencasPorAtividade'));
     }
 
-    public function avaliacoesConsolidadas(Request $request, Evento $evento, AvaliacaoConsolidacaoService $service)
+    public function avaliacoesConsolidadas(Request $request, Evento $evento)
     {
         $this->authorize('update', $evento);
 
         $agrupamento = $request->get('agrupamento', 'geral');
-        $grupos = $service->build($evento, $agrupamento);
 
-        return view('eventos.avaliacoes-consolidadas', compact('evento', 'agrupamento', 'grupos'));
+        return redirect()->route('avaliacoes-consolidadas.index', [
+            'evento_id' => $evento->id,
+            'agrupamento' => $agrupamento,
+        ]);
     }
 
     public function relatorios(Request $request, Evento $evento)
@@ -174,18 +194,29 @@ class EventoController extends Controller
 
         $tipo = $request->get('tipo', 'geral');
         $semOuvintes = $request->boolean('sem_ouvintes');
+        $formato = $request->get('formato', 'xlsx');
         $slug = Str::slug($evento->nome ?? 'acao-pedagogica');
         $sufixo = $semOuvintes ? '-sem-ouvintes' : '';
 
         if ($tipo === 'momentos') {
-            $nomeArquivo = $slug.'-participantes-por-momento'.$sufixo.'.xlsx';
-
-            return Excel::download(new EventoParticipantesPorMomentoExport($evento, $semOuvintes), $nomeArquivo);
+            $export = new EventoParticipantesPorMomentoExport($evento, $semOuvintes);
+            $baseNome = $slug.'-participantes-por-momento'.$sufixo;
+            $titulo = 'Participantes por momento — '.($evento->nome ?? '');
+        } else {
+            $export = new EventoParticipantesGeralExport($evento, $semOuvintes);
+            $baseNome = $slug.'-participantes-geral'.$sufixo;
+            $titulo = 'Participantes — '.($evento->nome ?? '');
         }
 
-        $nomeArquivo = $slug.'-participantes-geral'.$sufixo.'.xlsx';
+        if ($formato === 'docx') {
+            $doc = new WordDocument;
+            $doc->addTitle($titulo);
+            WordTableExport::render($doc, $export);
 
-        return Excel::download(new EventoParticipantesGeralExport($evento, $semOuvintes), $nomeArquivo);
+            return $doc->download($baseNome.'.docx');
+        }
+
+        return Excel::download($export, $baseNome.'.xlsx');
     }
 
     public function edit(Evento $evento)
@@ -258,6 +289,25 @@ class EventoController extends Controller
             ->with('success', 'Ação pedagógica atualizada com sucesso!');
     }
 
+    public function duplicate(Evento $evento, EventoDuplicacaoService $service)
+    {
+        $this->authorize('duplicate', $evento);
+
+        try {
+            $copia = $service->duplicar($evento);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('eventos.index')
+                ->with('error', 'Não foi possível duplicar a ação pedagógica. Tente novamente.');
+        }
+
+        return redirect()
+            ->route('eventos.edit', $copia)
+            ->with('success', 'Ação pedagógica duplicada com sucesso! Revise e ajuste os dados antes de publicar.');
+    }
+
     public function destroy(Evento $evento)
     {
         $this->authorize('delete', $evento);
@@ -271,7 +321,7 @@ class EventoController extends Controller
         return redirect()->route('eventos.index')->with('success', 'Evento excluído.');
     }
 
-    public function gerarPdfPlanejamento(Evento $evento): PdfBuilder
+    public function gerarPdfPlanejamento(Evento $evento, Request $request)
     {
         $this->authorize('view', $evento);
 
@@ -279,6 +329,15 @@ class EventoController extends Controller
         $matrizesOrdenadas = $evento->matrizes
             ->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
+
+        if ($request->get('formato') === 'docx') {
+            return PlanejamentoWordBuilder::build(
+                $evento,
+                $matrizesOrdenadas,
+                Evento::ACOES_GERAIS,
+                array_values(Evento::CHECKLIST_PLANEJAMENTO_ITEMS),
+            )->download('planejamento-'.Str::slug($evento->nome).'.docx');
+        }
 
         return Pdf::view('eventos.planejamento_pdf', [
             'evento' => $evento,
@@ -290,6 +349,34 @@ class EventoController extends Controller
             ->withAlfaEjaBrand()
             ->inline('planejamento-'.Str::slug($evento->nome).'.pdf');
     }
+
+    public function gerarPdfCronograma(Request $request, Evento $evento)
+    {
+        $this->authorize('view', $evento);
+
+        $agrupamento = in_array($request->query('agrupamento'), ['data', 'municipio'])
+            ? $request->query('agrupamento')
+            : 'data';
+
+        $evento->load([
+            'atividades' => fn ($q) => $q
+                ->with(['municipios.estado'])
+                ->orderBy('dia')
+                ->orderBy('hora_inicio'),
+        ]);
+
+        $nomeArquivo = 'cronograma-'.Str::slug($evento->nome).'.pdf';
+
+        return Pdf::view('eventos.cronograma_pdf', [
+            'evento'       => $evento,
+            'atividades'   => $evento->atividades,
+            'agrupamento'  => $agrupamento,
+        ])
+            ->format('a4')
+            ->withAlfaEjaBrand()
+            ->download($nomeArquivo);
+    }
+
 
     public function relatorioParticipantesUnicos(Request $request, Evento $evento)
     {
@@ -440,7 +527,10 @@ class EventoController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => [
+                'required', 'string', 'lowercase', 'email', 'max:255',
+                Rule::unique('users', 'email')->where('sistema_origem', User::SISTEMA_ENGAJA),
+            ],
         ]);
 
         $data = $request->validated();
@@ -455,6 +545,7 @@ class EventoController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make(Str::random(8)),
+                'sistema_origem' => User::SISTEMA_ENGAJA,
             ]);
 
             $user->assignRole('participante');

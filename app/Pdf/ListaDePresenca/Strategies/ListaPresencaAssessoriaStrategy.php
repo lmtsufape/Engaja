@@ -4,9 +4,9 @@ namespace App\Pdf\ListaDePresenca\Strategies;
 
 use App\Models\Atividade;
 use App\Pdf\ListaDePresenca\ListaPresencaAssessoriaPdf;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Collection;
-use Carbon\Carbon;
 
 class ListaPresencaAssessoriaStrategy implements ListaPresencaStrategyInterface
 {
@@ -14,23 +14,25 @@ class ListaPresencaAssessoriaStrategy implements ListaPresencaStrategyInterface
     {
         $templatePath = storage_path('app/templates/base_lista_presenca_assessoria.pdf');
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             throw new Exception('O template base em PDF não foi encontrado.');
         }
 
         $pdf = new ListaPresencaAssessoriaPdf('L');
         $pdf->setBaseTemplate($templatePath);
 
-        //preenche o cabecalho do template
+        // preenche o cabecalho do template
         $municipioAtividade = $atividade->municipio;
-        $pdf->municipioLabel = $municipioAtividade ? ($municipioAtividade->nome . ' / ' . ($municipioAtividade->estado->sigla ?? '')) : '';
+        $pdf->municipioLabel = $atividade->abrangencia_nacional
+            ? 'Brasil'
+            : ($municipioAtividade ? ($municipioAtividade->nome.' / '.($municipioAtividade->estado->sigla ?? '')) : '');
         $ini = Carbon::parse($atividade->hora_inicio)->format('H:i');
         $fim = Carbon::parse($atividade->hora_fim)->format('H:i');
         $pdf->periodoLabel = "{$ini} às {$fim}";
         $pdf->dataLabel = Carbon::parse($atividade->dia)->format('d/m/Y');
         $pdf->atividadeLabel = $atividade->descricao;
 
-        //margens
+        // margens
         $pdf->SetMargins(10, 10, 10);
         $pdf->SetAutoPageBreak(true, 30);
         $pdf->AddPage();
@@ -46,26 +48,26 @@ class ListaPresencaAssessoriaStrategy implements ListaPresencaStrategyInterface
             foreach ($participantes as $participante) {
                 $user = $participante->user;
 
-                //nome
+                // nome
                 $nome = utf8_decode($user->name ?? '');
                 while ($pdf->GetStringWidth($nome) > 74) {
                     $nome = substr($nome, 0, -1);
                 }
 
-                //CPF
+                // CPF
                 $cpfSujo = $participante->cpf ?? '';
                 $cpfLimpo = preg_replace('/[^0-9]/', '', $cpfSujo);
                 if (strlen($cpfLimpo) === 11) {
-                    $cpfFormatado = preg_replace("/(\d{3})(\d{3})(\d{3})(\d{2})/", "\$1.\$2.\$3-\$4", $cpfLimpo);
+                    $cpfFormatado = preg_replace("/(\d{3})(\d{3})(\d{3})(\d{2})/", '$1.$2.$3-$4', $cpfLimpo);
                 } else {
                     $cpfFormatado = $cpfSujo ?: '';
                 }
                 $cpf = utf8_decode($cpfFormatado);
 
-                //municipio do participante
+                // municipio do participante
                 $nomeMun = $participante->municipio?->nome;
                 $siglaUf = $participante->municipio?->estado?->sigla;
-                $textoLocal = $nomeMun ? ($nomeMun . ' - ' . $siglaUf) : '';
+                $textoLocal = $nomeMun ? ($nomeMun.' - '.$siglaUf) : '';
                 $municipio = utf8_decode($textoLocal);
                 while ($pdf->GetStringWidth($municipio) > 49) {
                     $municipio = substr($municipio, 0, -1);

@@ -3,17 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\TemplateEmUsoException;
-use App\Models\Evidencia;
 use App\Models\Escala;
+use App\Models\Evidencia;
 use App\Models\TemplateAvaliacao;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Str;
 
 class TemplateAvaliacaoController extends Controller
 {
@@ -24,8 +24,8 @@ class TemplateAvaliacaoController extends Controller
         $searchTerm = trim((string) $request->query('search', ''));
         if ($searchTerm !== '') {
             $query->where(function ($nested) use ($searchTerm) {
-                $nested->where('nome', 'like', '%' . $searchTerm . '%')
-                    ->orWhere('descricao', 'like', '%' . $searchTerm . '%');
+                $nested->where('nome', 'like', '%'.$searchTerm.'%')
+                    ->orWhere('descricao', 'like', '%'.$searchTerm.'%');
             });
         }
 
@@ -43,14 +43,14 @@ class TemplateAvaliacaoController extends Controller
         if ($sort === 'questoes') {
             $query->orderBy('questoes_count', $direction);
         } elseif ($sort === 'descricao') {
-            $query->orderByRaw('COALESCE(descricao, \'\') ' . $direction);
+            $query->orderByRaw('COALESCE(descricao, \'\') '.$direction);
         } elseif ($sort === 'created_at') {
             $query->orderBy('created_at', $direction);
         } else {
             $query->orderBy('nome', $direction);
         }
 
-        $templates = $query->paginate(15)->appends($request->query());
+        $templates = $query->get();
 
         return view('templates-avaliacao.index', compact('templates'));
     }
@@ -131,7 +131,7 @@ class TemplateAvaliacaoController extends Controller
     private function validateTemplate(Request $request): array
     {
         return $request->validate([
-            'nome'      => ['required', 'string', 'max:255'],
+            'nome' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string'],
         ]);
     }
@@ -144,14 +144,14 @@ class TemplateAvaliacaoController extends Controller
             ->mapWithKeys(function ($evidencia) {
                 $descricaoIndicador = $evidencia->indicador
                     ? ($evidencia->indicador->dimensao
-                        ? $evidencia->indicador->dimensao->descricao . ' - ' . ($evidencia->indicador->descricao ?? '')
+                        ? $evidencia->indicador->dimensao->descricao.' - '.($evidencia->indicador->descricao ?? '')
                         : ($evidencia->indicador->descricao ?? ''))
                     : null;
 
                 return [
                     $evidencia->id => trim(
                         $descricaoIndicador
-                            ? $descricaoIndicador . ' | ' . $evidencia->descricao
+                            ? $descricaoIndicador.' | '.$evidencia->descricao
                             : $evidencia->descricao
                     ),
                 ];
@@ -161,11 +161,11 @@ class TemplateAvaliacaoController extends Controller
         $escalas = Escala::orderBy('descricao')->pluck('descricao', 'id');
 
         $tiposQuestao = [
-            'texto'  => 'Texto aberto',
+            'texto' => 'Texto aberto',
             'escala' => 'Escala',
             'numero' => 'Numérica',
-            'boolean'=> 'Sim/Não',
-            'unica'  => 'Resposta única',
+            'boolean' => 'Sim/Não',
+            'unica' => 'Resposta única',
             'multipla' => 'Múltipla escolha',
         ];
 
@@ -173,7 +173,7 @@ class TemplateAvaliacaoController extends Controller
     }
 
     /**
-     * @return array{0: \Illuminate\Support\Collection, 1: array}
+     * @return array{0: Collection, 1: array}
      */
     private function processaQuestoes(Request $request, bool $permitirIds): array
     {
@@ -193,28 +193,28 @@ class TemplateAvaliacaoController extends Controller
             $validator = Validator::make(
                 $questao,
                 [
-                    'id'           => $permitirIds
+                    'id' => $permitirIds
                         ? ['nullable', 'integer', Rule::exists('questaos', 'id')->whereNull('deleted_at')]
                         : ['prohibited'],
                     'evidencia_id' => ['nullable', 'integer', Rule::exists('evidencias', 'id')],
-                    'escala_id'    => ['nullable', 'integer', Rule::exists('escalas', 'id')],
-                    'texto'        => ['required', 'string', 'max:1000'],
-                    'tipo'         => ['required', 'string', Rule::in(['texto', 'escala', 'numero', 'boolean', 'unica', 'multipla'])],
+                    'escala_id' => ['nullable', 'integer', Rule::exists('escalas', 'id')],
+                    'texto' => ['required', 'string', 'max:1000'],
+                    'tipo' => ['required', 'string', Rule::in(['texto', 'escala', 'numero', 'boolean', 'unica', 'multipla'])],
                     'opcoes_resposta' => ['nullable', 'array'],
                     'opcoes_resposta.*' => ['nullable', 'string', 'max:255'],
-                    'ordem'        => ['nullable', 'integer', 'min:1', 'max:999'],
-                    'fixa'         => ['nullable', 'boolean'],
+                    'ordem' => ['nullable', 'integer', 'min:1', 'max:999'],
+                    'fixa' => ['nullable', 'boolean'],
                 ],
                 [],
                 [
-                    'id'           => "questoes.$index.id",
+                    'id' => "questoes.$index.id",
                     'evidencia_id' => "questoes.$index.evidencia_id",
-                    'escala_id'    => "questoes.$index.escala_id",
-                    'texto'        => "questoes.$index.texto",
-                    'tipo'         => "questoes.$index.tipo",
+                    'escala_id' => "questoes.$index.escala_id",
+                    'texto' => "questoes.$index.texto",
+                    'tipo' => "questoes.$index.tipo",
                     'opcoes_resposta' => "questoes.$index.opcoes_resposta",
-                    'ordem'        => "questoes.$index.ordem",
-                    'fixa'         => "questoes.$index.fixa",
+                    'ordem' => "questoes.$index.ordem",
+                    'fixa' => "questoes.$index.fixa",
                 ]
             );
 

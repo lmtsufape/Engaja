@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dimensao;
 use App\Models\Evidencia;
 use App\Models\Indicador;
-use App\Models\Dimensao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -17,7 +17,7 @@ class EvidenciaController extends Controller
 
         $searchTerm = trim((string) $request->query('search', ''));
         if ($searchTerm !== '') {
-            $query->where('descricao', 'like', '%' . $searchTerm . '%');
+            $query->where('descricao', 'like', '%'.$searchTerm.'%');
         }
 
         $dimensaoId = $request->query('dimensao_id');
@@ -54,7 +54,7 @@ class EvidenciaController extends Controller
             $query->orderBy('descricao', $direction);
         }
 
-        $evidencias = $query->paginate(15)->appends($request->query());
+        $evidencias = $query->get();
 
         $dimensoes = Dimensao::orderBy('descricao')
             ->pluck('descricao', 'id')
@@ -64,7 +64,8 @@ class EvidenciaController extends Controller
             ->get()
             ->mapWithKeys(function ($indicador) {
                 $prefixo = $indicador->dimensao?->descricao;
-                $label = $prefixo ? $prefixo . ' - ' . $indicador->descricao : $indicador->descricao;
+                $label = $prefixo ? $prefixo.' - '.$indicador->descricao : $indicador->descricao;
+
                 return [$indicador->id => $label];
             })
             ->sort(SORT_NATURAL | SORT_FLAG_CASE);
@@ -79,7 +80,7 @@ class EvidenciaController extends Controller
             ->get()
             ->mapWithKeys(fn ($indicador) => [
                 $indicador->id => $indicador->dimensao
-                    ? $indicador->dimensao->descricao . ' - ' . $indicador->descricao
+                    ? $indicador->dimensao->descricao.' - '.$indicador->descricao
                     : $indicador->descricao,
             ]);
 
@@ -90,7 +91,7 @@ class EvidenciaController extends Controller
     {
         $dados = $request->validate([
             'indicador_id' => ['required', Rule::exists('indicadors', 'id')],
-            'descricao'    => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string', 'max:255'],
         ]);
 
         Evidencia::create($dados);
@@ -120,7 +121,7 @@ class EvidenciaController extends Controller
     {
         $dados = $request->validate([
             'indicador_id' => ['required', Rule::exists('indicadors', 'id')],
-            'descricao'    => ['required', 'string', 'max:255'],
+            'descricao' => ['required', 'string', 'max:255'],
         ]);
 
         $evidencia->update($dados);
@@ -138,7 +139,7 @@ class EvidenciaController extends Controller
     public function duplicar(Evidencia $evidencia)
     {
         $novaEvidencia = $evidencia->replicate();
-        $novaEvidencia->descricao = $evidencia->descricao . ' (Cópia)';
+        $novaEvidencia->descricao = $evidencia->descricao.' (Cópia)';
         $novaEvidencia->save();
 
         return redirect()->route('evidencias.edit', $novaEvidencia)

@@ -13,6 +13,7 @@
     <div class="d-flex flex-wrap gap-2">
       <a href="{{ route('usuarios.participantes-exclusivos.index', ['eventos' => $eventoIds]) }}" class="btn btn-light border">Alterar seleção</a>
       <a href="{{ route('usuarios.participantes-exclusivos.exportar', ['eventos' => $eventoIds]) }}" class="btn btn-engaja">Exportar XLSX</a>
+      <a href="{{ route('usuarios.participantes-exclusivos.exportar', ['eventos' => $eventoIds, 'formato' => 'docx']) }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-word"></i> Word</a>
     </div>
   </div>
 

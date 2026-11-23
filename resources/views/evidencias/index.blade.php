@@ -33,9 +33,6 @@
         </select>
       </div>
       <div class="col-2 d-flex gap-2">
-        <input type="hidden" name="sort" value="{{ request('sort', 'descricao') }}">
-        <input type="hidden" name="dir"
-          value="{{ strtolower(request('dir', request('direction', 'asc'))) === 'desc' ? 'desc' : 'asc' }}">
         <button type="submit" class="btn btn-engaja">Aplicar</button>
         <a href="{{ route('evidencias.index') }}" class="btn btn-outline-secondary">Limpar</a>
       </div>
@@ -43,64 +40,55 @@
   </div>
 </form>
 
-<div class="card shadow-sm">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
-      <thead class="table-light">
-        @php
-          function evidencia_sort_link($label, $key) {
-            $currentSort = request('sort', 'descricao');
-            $dirParam = request('dir', request('direction', 'asc'));
-            $currentDir = strtolower((string) $dirParam) === 'desc' ? 'desc' : 'asc';
-            $nextDir = ($currentSort === $key && $currentDir === 'asc') ? 'desc' : 'asc';
-            $params = array_merge(request()->except('page'), ['sort' => $key, 'dir' => $nextDir]);
-            $url = request()->url() . '?' . http_build_query($params);
-            $isActive = $currentSort === $key;
-            $arrow = $isActive ? ($currentDir === 'asc' ? '↑' : '↓') : '';
-            return '<a href="' . $url . '" class="text-decoration-none text-nowrap">' . e($label) . ' <span class="text-muted">' . $arrow . '</span></a>';
-          }
-        @endphp
-        <tr>
-          <th>{!! evidencia_sort_link('Descrição', 'descricao') !!}</th>
-          <th>{!! evidencia_sort_link('Dimensão', 'dimensao') !!}</th>
-          <th>{!! evidencia_sort_link('Indicador', 'indicador') !!}</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse ($evidencias as $evidencia)
-        <tr>
-          <td class="fw-semibold">{{ $evidencia->descricao }}</td>
-          <td>{{ $evidencia->indicador->dimensao->descricao ?? '—' }}</td>
-          <td>{{ $evidencia->indicador->descricao ?? '—' }}</td>
-          <td class="text-end">
-            <a href="{{ route('evidencias.show', $evidencia) }}" class="btn btn-sm btn-outline-primary">Ver</a>
-            <a href="{{ route('evidencias.edit', $evidencia) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-            <form action="{{ route('evidencias.duplicar', $evidencia) }}" method="POST" class="d-inline" data-confirm="Tem certeza que deseja duplicar esta evidência?">
-                 @csrf
-                 <button class="btn btn-sm btn-outline-primary" type="submit">Duplicar</button>
-            </form>
-            @hasanyrole('administrador|gerente|eq_pedagogica')
-            <form action="{{ route('evidencias.destroy', $evidencia) }}" method="POST" class="d-inline">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="btn btn-sm btn-outline-danger"
-                onclick="return confirm('Tem certeza que deseja excluir esta evidência?')">Excluir</button>
-            </form>
-            @endhasanyrole
-          </td>
-        </tr>
-        @empty
-        <tr>
-          <td colspan="4" class="text-center text-muted py-4">Nenhuma evidência cadastrada.</td>
-        </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-</div>
+@php
+    $columns = [
+        ['field' => 'descricao', 'headerName' => 'Descrição', 'flex' => 2],
+        ['field' => 'dimensao', 'headerName' => 'Dimensão', 'flex' => 1],
+        ['field' => 'indicador', 'headerName' => 'Indicador', 'flex' => 1],
+        ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+    ];
 
-<div class="mt-3">
-  {{ $evidencias->links() }}
+    $podeExcluir = auth()->user()?->hasAnyRole(['administrador', 'gerente', 'eq_pedagogica']);
+
+    $rows = $evidencias->map(function ($evidencia) use ($podeExcluir) {
+        $acoesHtml = '<div class="dropdown">'
+            . '<button class="btn btn-sm btn-engaja dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Gerenciar</button>'
+            . '<ul class="dropdown-menu dropdown-menu-end">'
+            . '<li><a class="dropdown-item" href="' . route('evidencias.show', $evidencia) . '">Ver</a></li>'
+            . '<li><a class="dropdown-item" href="' . route('evidencias.edit', $evidencia) . '">Editar</a></li>'
+            . '<li>'
+            . '<form method="POST" action="' . route('evidencias.duplicar', $evidencia) . '" data-confirm="Tem certeza que deseja duplicar esta evidência?">'
+            . csrf_field()
+            . '<button type="submit" class="dropdown-item">Duplicar</button>'
+            . '</form>'
+            . '</li>';
+
+        if ($podeExcluir) {
+            $acoesHtml .= '<li>'
+                . '<form method="POST" action="' . route('evidencias.destroy', $evidencia) . '" data-confirm="Tem certeza que deseja excluir esta evidência?">'
+                . csrf_field() . method_field('DELETE')
+                . '<button type="submit" class="dropdown-item text-danger">Excluir</button>'
+                . '</form>'
+                . '</li>';
+        }
+
+        $acoesHtml .= '</ul></div>';
+
+        return [
+            'descricao' => $evidencia->descricao,
+            'dimensao' => $evidencia->indicador->dimensao->descricao ?? '—',
+            'indicador' => $evidencia->indicador->descricao ?? '—',
+            'acoes' => $acoesHtml,
+        ];
+    })->values();
+@endphp
+
+<div class="card shadow-sm">
+    <x-data-table
+        id="grid-evidencias"
+        :columns="$columns"
+        :rows="$rows"
+        :page-size="15"
+    />
 </div>
 @endsection

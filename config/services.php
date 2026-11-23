@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    'limesurvey' => [
+        'url' => env('LIMESURVEY_URL'),
+        'username' => env('LIMESURVEY_USERNAME'),
+        'password' => env('LIMESURVEY_PASSWORD'),
+        'survey_id' => env('LIMESURVEY_SURVEY_ID'),
+        'verify_ssl' => env('LIMESURVEY_VERIFY_SSL', true),
+        'cafile' => env('LIMESURVEY_CAFILE'),
+        'municipio_field' => env('LIMESURVEY_MUNICIPIO_FIELD'),
+        'matrix_column_labels' => env('LIMESURVEY_MATRIX_COLUMN_LABELS'),
+        'timeout' => env('LIMESURVEY_TIMEOUT', 30),
+        'cache_minutes' => env('LIMESURVEY_CACHE_MINUTES', 5),
+    ],
+
 ];

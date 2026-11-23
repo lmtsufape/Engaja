@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Indicador;
 use App\Models\Dimensao;
+use App\Models\Indicador;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -17,7 +17,7 @@ class IndicadorController extends Controller
 
         $searchTerm = trim((string) $request->query('search', ''));
         if ($searchTerm !== '') {
-            $query->where('descricao', 'like', '%' . $searchTerm . '%');
+            $query->where('descricao', 'like', '%'.$searchTerm.'%');
         }
 
         $dimensaoId = $request->query('dimensao_id');
@@ -44,7 +44,7 @@ class IndicadorController extends Controller
             $query->orderBy('descricao', $direction);
         }
 
-        $indicadors = $query->paginate(15)->appends($request->query());
+        $indicadors = $query->get();
         $dimensoes = Dimensao::orderBy('descricao')->pluck('descricao', 'id');
 
         return view('indicadors.index', compact('indicadors', 'dimensoes'));
@@ -53,6 +53,7 @@ class IndicadorController extends Controller
     public function create()
     {
         $dimensoes = Dimensao::orderBy('descricao')->pluck('descricao', 'id');
+
         return view('indicadors.create', compact('dimensoes'));
     }
 
@@ -60,9 +61,10 @@ class IndicadorController extends Controller
     {
         $request->validate([
             'dimensao_id' => 'required|exists:dimensaos,id',
-            'descricao'   => 'required|string|max:255',
+            'descricao' => 'required|string|max:255',
         ]);
         Indicador::create($request->only('dimensao_id', 'descricao'));
+
         return redirect()->route('indicadors.index')
             ->with('success', 'Indicador criado com sucesso!');
     }
@@ -75,6 +77,7 @@ class IndicadorController extends Controller
     public function edit(Indicador $indicador)
     {
         $dimensoes = Dimensao::orderBy('descricao')->pluck('descricao', 'id');
+
         return view('indicadors.edit', compact('indicador', 'dimensoes'));
     }
 
@@ -82,9 +85,10 @@ class IndicadorController extends Controller
     {
         $request->validate([
             'dimensao_id' => 'required|exists:dimensaos,id',
-            'descricao'   => 'required|string|max:255',
+            'descricao' => 'required|string|max:255',
         ]);
         $indicador->update($request->only('dimensao_id', 'descricao'));
+
         return redirect()->route('indicadors.index')
             ->with('success', 'Indicador atualizado com sucesso!');
     }
@@ -92,6 +96,7 @@ class IndicadorController extends Controller
     public function destroy(Indicador $indicador)
     {
         $indicador->delete();
+
         return redirect()->route('indicadors.index')
             ->with('success', 'Indicador removido com sucesso!');
     }

@@ -1,9 +1,19 @@
 <?php
 
 use App\Exceptions\TemplateEmUsoException;
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\CheckPerfilCompleto;
+use App\Http\Middleware\EnsureCartasVerified;
+use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\EnsureSistemaAccess;
+use App\Http\Middleware\ProfilePhotoPromptMiddleware;
+use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,18 +23,21 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'auth' => Authenticate::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'cartas.verified' => EnsureCartasVerified::class,
         ]);
-        
+
         $middleware->appendToGroup('web', [
-            \App\Http\Middleware\CheckPerfilCompleto::class,
-            \App\Http\Middleware\ProfilePhotoPromptMiddleware::class,
-            \App\Http\Middleware\EnsurePasswordChanged::class,
+            EnsureSistemaAccess::class,
+            CheckPerfilCompleto::class,
+            ProfilePhotoPromptMiddleware::class,
+            EnsurePasswordChanged::class,
         ]);
-      
-        $middleware->prepend([App\Http\Middleware\TrustProxies::class]);
+
+        $middleware->prepend([TrustProxies::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (TemplateEmUsoException $exception) {

@@ -55,7 +55,7 @@
             :indicador-absoluto="'ANALFABETISMO_QTDE'"
             :ano="$anoAtual"
             :titulo="$tituloRankingAnalfabetismo"
-            :cor="'--engaja-purple'"
+            :cor="'--engaja-blue'"
             :key="'ranking-analfabetismo-'.$anoAtual" />
 
         <livewire:graficos.ranking-municipios

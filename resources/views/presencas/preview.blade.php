@@ -11,6 +11,19 @@
     </small>
   </h1>
 
+  @if($errors->any())
+  <div class="alert alert-danger" role="alert">
+    <strong>Importação bloqueada. Corrija os problemas abaixo e salve cada página antes de continuar.</strong>
+    <ul class="mb-0 mt-2">
+      @foreach($errors->all() as $message)
+      <li>{{ $message }}</li>
+      @endforeach
+    </ul>
+  </div>
+  @endif
+
+  <p class="text-muted"><strong>Nome e status são obrigatórios. Informe e-mail ou CPF em cada registro. Salve as alterações da página antes de confirmar.</strong></p>
+
   <form method="POST" action="{{ route('atividades.presencas.savepage', $atividade) }}" class="mb-3">
     @csrf
     <input type="hidden" name="session_key" value="{{ $sessionKey }}">
@@ -28,6 +41,8 @@
             <th>Tipo de Organização</th>
             <th>Organização</th>
             <th>Tag</th>
+            <th style="min-width:180px;">Data de nascimento</th>
+            <th style="min-width:180px;">Sexo</th>
             <th style="min-width:150px;">Status</th>
             <!-- <th>Justificativa</th> -->
             <!-- <th>Data entrada</th> -->
@@ -37,10 +52,10 @@
           @foreach($rows as $i => $r)
           @php $gi = $globalOffset + $i; @endphp
           <tr>
-            <td><input name="rows[{{ $gi }}][nome]" class="form-control form-control-sm" value="{{ $r['nome'] }}"></td>
-            <td><input name="rows[{{ $gi }}][email]" class="form-control form-control-sm" value="{{ $r['email'] }}"></td>
-            <td><input name="rows[{{ $gi }}][cpf]" class="form-control form-control-sm" value="{{ $r['cpf'] }}"></td>
-            <td><input name="rows[{{ $gi }}][telefone]" class="form-control form-control-sm" value="{{ $r['telefone'] }}"></td>
+            <td><input name="rows[{{ $gi }}][nome]" class="form-control form-control-sm" value="{{ old('rows.'.$gi.'.nome', $r['nome']) }}" required maxlength="255"></td>
+            <td><input name="rows[{{ $gi }}][email]" class="form-control form-control-sm" value="{{ old('rows.'.$gi.'.email', $r['email']) }}" type="email" maxlength="255"></td>
+            <td><input name="rows[{{ $gi }}][cpf]" class="form-control form-control-sm" value="{{ old('rows.'.$gi.'.cpf', $r['cpf']) }}" maxlength="255"></td>
+            <td><input name="rows[{{ $gi }}][telefone]" class="form-control form-control-sm" value="{{ old('rows.'.$gi.'.telefone', $r['telefone']) }}" maxlength="255"></td>
             <td>
               <select name="rows[{{ $gi }}][municipio_id]"
                 class="form-select form-select-sm">
@@ -90,12 +105,44 @@
               @endif
             </td>
             <td>
-              <select name="rows[{{ $gi }}][status]" class="form-select form-select-sm">
-                <option value="">— Selecionar —</option>
-                <option value="presente" @selected($r['status']==='presente' )>Presente</option>
-                <option value="ausente" @selected($r['status']==='ausente' )>Ausente</option>
-                <option value="justificado" @selected($r['status']==='justificado' )>Justificado</option>
+              <input type="date"
+                class="form-control form-control-sm @error("rows.$gi.data_nascimento") is-invalid @enderror"
+                name="rows[{{ $gi }}][data_nascimento]"
+                value="{{ old("rows.$gi.data_nascimento", $r['data_nascimento'] ?? '') }}"
+                max="{{ now()->toDateString() }}">
+              @error("rows.$gi.data_nascimento") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+            <td>
+              <select class="form-select form-select-sm @error("rows.$gi.sexo") is-invalid @enderror"
+                name="rows[{{ $gi }}][sexo]">
+                <option value="">Selecione...</option>
+                @foreach(\App\Models\Participante::SEXOS as $sexo)
+                <option value="{{ $sexo }}" @selected(old("rows.$gi.sexo", $r['sexo'] ?? null) === $sexo)>{{ $sexo }}</option>
+                @endforeach
               </select>
+              @error("rows.$gi.sexo") <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </td>
+            <td>
+              @php
+                $statusKey = 'rows.'.$gi.'.status';
+                $statusValue = old($statusKey, $r['status'] ?? null);
+                $statusHasError = !in_array($statusValue, ['presente', 'ausente', 'justificado'], true) || $errors->has($statusKey);
+              @endphp
+              <select name="rows[{{ $gi }}][status]"
+                class="form-select form-select-sm {{ $statusHasError ? 'is-invalid' : '' }}"
+                aria-invalid="{{ $statusHasError ? 'true' : 'false' }}"
+                @if($statusHasError) aria-describedby="status-error-{{ $gi }}" @endif
+                required>
+                <option value="">— Selecionar —</option>
+                <option value="presente" @selected($statusValue==='presente')>Presente</option>
+                <option value="ausente" @selected($statusValue==='ausente')>Ausente</option>
+                <option value="justificado" @selected($statusValue==='justificado')>Justificado</option>
+              </select>
+              @if($statusHasError)
+              <div class="invalid-feedback" id="status-error-{{ $gi }}">
+                {{ $errors->first($statusKey) ?: 'Selecione o status da presença.' }}
+              </div>
+              @endif
             </td>
             <!-- <td><input name="rows[{{ $gi }}][justificativa]" class="form-control form-control-sm" value="{{ $r['justificativa'] }}"></td> -->
             <!-- <td><input type="date" name="rows[{{ $gi }}][data_entrada]" class="form-control form-control-sm" value="{{ $r['data_entrada'] }}"></td> -->

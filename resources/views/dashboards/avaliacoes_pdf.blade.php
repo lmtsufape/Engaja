@@ -38,17 +38,6 @@
     .report-subtitle { color: #6b7280; font-size: 11px; }
     .report-generated { text-align: right; color: #9ca3af; font-size: 10px; }
 
-    .card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 18px; background: #fff; }
-    .intro-box { padding: 10px 12px; background: #fcfaff; border-left: 4px solid #421944; }
-    .intro-box p { margin: 0 0 4px 0; }
-    .intro-box p:last-child { margin-bottom: 0; }
-    .intro-box strong { color: #421944; }
-
-    .filters-applied { border: 1px dashed #d8c3f7; background: #fcfaff; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 11px; }
-    .filters-applied .title { display: block; font-weight: 700; color: #421944; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; font-size: 10px; }
-    .filters-applied .chip { display: inline-block; margin: 0 6px 6px 0; padding: 4px 8px; border-radius: 4px; border: 1px solid #edd7fc; background: #fff; color: #4a1768; font-size: 11px; }
-    .filters-applied .chip strong { margin-right: 4px; }
-
     .metrics { width: 100%; border-collapse: collapse; margin-bottom: 14px; table-layout: fixed; }
     .metrics td { border: 1px solid #edd7fc; background: #fcfaff; padding: 8px 10px; width: 25%; vertical-align: top; }
     .metric-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.35px; color: #6b7a99; display: block; margin-bottom: 2px; }
@@ -76,29 +65,30 @@
 @section('content')
     <div class="sheet">
         <div class="content">
-            <table class="title-row">
-                <tr>
-                    <td>
-                        <h1 class="report-title">{{ $titulo }}</h1>
-                        <div class="report-subtitle">Relatório de respostas · {{ $tipo === 'universal' ? 'Avaliação universal' : 'Avaliação anônima' }}</div>
-                    </td>
-                    <td class="report-generated">Gerado em {{ $geradoEm->format('d/m/Y H:i') }}</td>
-                </tr>
-            </table>
-
-            <div class="card">
-                <div class="intro-box">
-                    <p><strong>{{ $tipo === 'universal' ? 'Avaliação:' : 'Ação Pedagógica:' }}</strong> {{ $subtitulo }}</p>
-                    @if($atividade)
-                        <p><strong>Data:</strong> {{ $atividade->dia ? Carbon::parse($atividade->dia)->format('d/m/Y') : '—' }} &nbsp;·&nbsp; <strong>Município(s):</strong> {{ $atividade->municipios->map(fn($m) => $m->nome_com_estado ?? $m->nome)->join(', ') ?: '—' }}</p>
-                    @elseif($evento)
-                        <p><strong>Ação Pedagógica:</strong> {{ $evento->nome }}</p>
-                    @endif
-                    @if($de || $ate)
-                        <p><strong>Período:</strong> {{ $de ?? 'Início' }} até {{ $ate ?? 'Hoje' }}</p>
-                    @endif
-                </div>
-            </div>
+            @php
+                $partesContexto = [];
+                $rotuloPrincipal = $tipo === 'universal' ? 'a avaliação' : 'a ação pedagógica';
+                $partesContexto[] = 'Respostas coletadas para ' . $rotuloPrincipal . ' <strong>' . e($subtitulo) . '</strong>';
+                if ($atividade) {
+                    $dataMomento = $atividade->dia ? Carbon::parse($atividade->dia)->format('d/m/Y') : null;
+                    $municipiosMomento = $atividade->municipios->map(fn($m) => $m->nome_com_estado ?? $m->nome)->join(', ');
+                    if ($dataMomento) {
+                        $partesContexto[] = 'realizada em <strong>' . $dataMomento . '</strong>';
+                    }
+                    if ($municipiosMomento) {
+                        $partesContexto[] = 'no(s) município(s) de <strong>' . e($municipiosMomento) . '</strong>';
+                    }
+                }
+                if ($de || $ate) {
+                    $partesContexto[] = 'no período de <strong>' . ($de ?? 'início') . '</strong> a <strong>' . ($ate ?? 'hoje') . '</strong>';
+                }
+            @endphp
+            <x-pdf.header
+                :title="$titulo"
+                :subtitle="'Relatório de respostas · ' . ($tipo === 'universal' ? 'Avaliação universal' : 'Avaliação anônima')"
+            >
+                {!! implode(', ', $partesContexto) !!}.
+            </x-pdf.header>
 
             <table class="metrics">
                 <tr>

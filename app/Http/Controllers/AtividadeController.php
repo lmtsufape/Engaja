@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrigemAutorizacaoImagem;
+use App\Http\Requests\AgendarPresencaRequest;
 use App\Models\Atividade;
 use App\Models\Evento;
 use App\Models\Inscricao;
@@ -10,6 +12,8 @@ use App\Models\Participante;
 use App\Models\Presenca;
 use App\Pdf\AutorizacaoDeImagem\ListaAutorizacaoImagem;
 use App\Pdf\ListaDePresenca\ListaPresencaFactory;
+use App\Services\AutorizacaoImagemContexto;
+use App\Support\AgendamentoPresenca;
 use App\Support\CargaHoraria;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -22,20 +26,45 @@ class AtividadeController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Evento $evento)
+    public function index(Request $request, Evento $evento)
     {
+        $filtros = $request->validate([
+            'municipio_id' => ['nullable', 'string'],
+            'de' => ['nullable', 'date_format:Y-m-d'],
+            'ate' => ['nullable', 'date_format:Y-m-d'],
+            'descricao' => ['nullable', 'string', 'max:255'],
+        ]);
         $userId = auth()->id();
 
+        $municipiosDisponiveis = Municipio::whereHas('atividades', fn ($q) => $q->where('evento_id', $evento->id))
+            ->with('estado')
+            ->orderBy('nome')
+            ->get();
+
+        $temAbrangenciaNacional = $evento->atividades()
+            ->where('abrangencia_nacional', true)
+            ->exists();
+
         $atividades = $evento->atividades()
+            ->withCount('presencas')
             ->with([
                 'municipios.estado',
                 'avaliacaoAtividades' => fn ($rel) => $rel->when($userId, fn ($query) => $query->where('user_id', $userId)),
             ])
+            ->when(($filtros['municipio_id'] ?? null) === 'brasil', fn ($q) => $q->where('abrangencia_nacional', true))
+            ->when(! empty($filtros['municipio_id']) && $filtros['municipio_id'] !== 'brasil', fn ($q) => $q->whereHas(
+                'municipios',
+                fn ($q2) => $q2->where('municipios.id', $filtros['municipio_id'])
+            ))
+            ->when(! empty($filtros['de']), fn ($q) => $q->whereDate('dia', '>=', $filtros['de']))
+            ->when(! empty($filtros['ate']), fn ($q) => $q->whereDate('dia', '<=', $filtros['ate']))
+            ->when(! empty($filtros['descricao']), fn ($q) => $q->where('descricao', 'like', '%'.addcslashes($filtros['descricao'], '%_\\').'%'))
             ->orderByDesc('dia')
             ->orderByDesc('hora_inicio')
-            ->paginate(12);
+            ->paginate(12)
+            ->appends($request->query());
 
-        return view('atividades.index', compact('evento', 'atividades'));
+        return view('atividades.index', compact('evento', 'atividades', 'municipiosDisponiveis', 'temAbrangenciaNacional'));
     }
 
     public function create(Evento $evento)
@@ -97,6 +126,7 @@ class AtividadeController extends Controller
         $dados = $request->validate([
             'municipios' => 'nullable|array',
             'municipios.*' => 'exists:municipios,id',
+            'abrangencia_nacional' => 'nullable|boolean',
             'descricao' => 'required|string',
             'dia' => 'required|date',
             'hora_inicio' => 'required|date_format:H:i',
@@ -109,7 +139,7 @@ class AtividadeController extends Controller
             'checklist_planejamento.*' => 'integer|min:0',
             'checklist_encerramento' => 'nullable|array',
             'checklist_encerramento.*' => 'integer|min:0',
-        ]);
+        ] + $this->regrasAgendamentoFormulario($request), AgendamentoPresenca::mensagens());
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
@@ -126,10 +156,26 @@ class AtividadeController extends Controller
         $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
 
+        $dados['abrangencia_nacional'] = $request->boolean('abrangencia_nacional');
+        if ($dados['abrangencia_nacional']) {
+            $municipiosSelecionados = [];
+        }
+
         // Mantém o campo legado municipio_id preenchido com o primeiro selecionado (para compatibilidade).
         $dados['municipio_id'] = $municipiosSelecionados[0] ?? null;
 
-        $atividade = $evento->atividades()->create($dados);
+        $dadosAtividade = $this->converterAgendamentoFormulario($request, $dados);
+
+        // Se o agendamento de abertura estiver vazio/não preenchido (ou já estiver no passado),
+        // o momento deve ser criado com a confirmação de presença ABERTA (presenca_ativa = true).
+        // Se houver um horário de abertura agendado no futuro, inicia com presença fechada (false).
+        $abreEm = $dadosAtividade['presenca_abre_em'] ?? null;
+        $temAberturaFutura = $abreEm?->isFuture() ?? false;
+        $dadosAtividade['presenca_ativa'] = ! $temAberturaFutura;
+
+        $atividade = $evento->atividades()->make($dadosAtividade);
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->save();
         $atividade->municipios()->sync($municipiosSelecionados);
         $copiados = $this->copiarInscritos($copiarDe, $atividade);
 
@@ -165,6 +211,9 @@ class AtividadeController extends Controller
 
         $municipiosJson = $this->municipiosParaSelecaoJson($municipios);
 
+        // Apenas para exibição: horários vencidos não aparecem no formulário.
+        $atividade->consolidarAgendamentoPresenca();
+
         return view('atividades.edit', compact('evento', 'atividade', 'municipios', 'municipiosJson', 'atividadesCopiaveis'));
     }
 
@@ -176,6 +225,7 @@ class AtividadeController extends Controller
         $dados = $request->validate([
             'municipios' => 'nullable|array',
             'municipios.*' => 'exists:municipios,id',
+            'abrangencia_nacional' => 'nullable|boolean',
             'descricao' => 'required|string',
             'dia' => 'required|date',
             'hora_inicio' => 'required|date_format:H:i',
@@ -188,7 +238,7 @@ class AtividadeController extends Controller
             'checklist_planejamento.*' => 'integer|min:0',
             'checklist_encerramento' => 'nullable|array',
             'checklist_encerramento.*' => 'integer|min:0',
-        ]);
+        ] + $this->regrasAgendamentoFormulario($request), AgendamentoPresenca::mensagens());
 
         $copiarDe = $dados['copiar_inscritos_de'] ?? null;
         unset($dados['copiar_inscritos_de']);
@@ -205,9 +255,19 @@ class AtividadeController extends Controller
         $municipiosSelecionados = $dados['municipios'] ?? [];
         unset($dados['municipios']);
 
+        $dados['abrangencia_nacional'] = $request->boolean('abrangencia_nacional');
+        if ($dados['abrangencia_nacional']) {
+            $municipiosSelecionados = [];
+        }
+
         $dados['municipio_id'] = $municipiosSelecionados[0] ?? null;
 
-        $atividade->update($dados);
+        // Consolida o agendamento atual antes de sobrescrever (preserva aberturas/fechamentos já ocorridos)
+        // e de novo depois (horários informados no passado valem imediatamente).
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->fill($this->converterAgendamentoFormulario($request, $dados));
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->save();
         $atividade->municipios()->sync($municipiosSelecionados);
         $copiados = $this->copiarInscritos($copiarDe, $atividade);
 
@@ -216,20 +276,81 @@ class AtividadeController extends Controller
             ->with('success', $this->mensagemSucesso('Momento atualizado com sucesso!', $copiados));
     }
 
+    /**
+     * Regras dos campos de agendamento da presença no formulário do momento
+     * (somente para quem pode abrir/fechar presença).
+     */
+    private function regrasAgendamentoFormulario(Request $request): array
+    {
+        if (! $request->user()?->can('presenca.abrir')) {
+            return [];
+        }
+
+        $ativo = $request->boolean('agendamento_presenca_ativo');
+        $regras = ['agendamento_presenca_ativo' => ['sometimes', 'boolean']];
+        foreach (AgendamentoPresenca::regras(exigirAoMenosUm: $ativo) as $campo => $validacoes) {
+            $regras[$campo] = ['exclude_if:agendamento_presenca_ativo,0', ...$validacoes];
+        }
+
+        return $regras;
+    }
+
+    /**
+     * Converte os campos de agendamento validados (horário de Brasília) para UTC.
+     * Sem a permissão `presenca.abrir`, os campos são descartados e o agendamento atual é preservado.
+     */
+    private function converterAgendamentoFormulario(Request $request, array $dados): array
+    {
+        unset($dados['agendamento_presenca_ativo']);
+
+        if (! $request->user()?->can('presenca.abrir')) {
+            unset($dados['presenca_abre_em'], $dados['presenca_fecha_em']);
+
+            return $dados;
+        }
+
+        if ($request->exists('agendamento_presenca_ativo') && ! $request->boolean('agendamento_presenca_ativo')) {
+            $dados['presenca_abre_em'] = null;
+            $dados['presenca_fecha_em'] = null;
+
+            return $dados;
+        }
+
+        foreach (['presenca_abre_em', 'presenca_fecha_em'] as $campo) {
+            if ($request->exists($campo)) {
+                $dados[$campo] = AgendamentoPresenca::paraUtc($dados[$campo] ?? null);
+            } else {
+                unset($dados[$campo]);
+            }
+        }
+
+        return $dados;
+    }
+
     public function destroy(Atividade $atividade)
     {
         $this->authorize('atividade.excluir');
 
+        $totalPresencas = $atividade->presencas()->count();
+
+        if ($totalPresencas > 0) {
+            $msg = $totalPresencas === 1
+                ? 'Não é possível excluir este momento porque ele possui 1 presença associada. Remova a presença antes de excluir.'
+                : "Não é possível excluir este momento porque ele possui {$totalPresencas} presenças associadas. Remova as presenças antes de excluir.";
+
+            return back()->with('error', $msg);
+        }
+
         $atividade->delete();
 
-        return back()->with('success', 'Momento removida.');
+        return back()->with('success', 'Momento removido com sucesso.');
     }
 
     /**
      * Dados dos municípios para o seletor: apenas o nome no município; UF e região por associação.
      *
      * @param  Collection<int, Municipio>  $municipios
-     * @return array<int, array{id: string, nome: string, estado: array{sigla: string, nome: string}, regiao: array{nome: string}}>
+     * @return array<int, array{id: string, nome: string, prioritario: bool, estado: array{sigla: string, nome: string}, regiao: array{nome: string}}>
      */
     private function municipiosParaSelecaoJson($municipios): array
     {
@@ -237,6 +358,7 @@ class AtividadeController extends Controller
             return [
                 'id' => (string) $m->id,
                 'nome' => $m->nome,
+                'prioritario' => $m->isPrioritario(),
                 'estado' => [
                     'sigla' => $m->estado->sigla ?? '',
                     'nome' => $m->estado->nome ?? '',
@@ -274,22 +396,56 @@ class AtividadeController extends Controller
 
     public function togglePresenca(Atividade $atividade)
     {
-        $atividade->presenca_ativa = ! $atividade->presenca_ativa;
+        // Aplica horários agendados já vencidos antes de inverter, para o toggle
+        // partir do estado que o usuário está vendo na tela.
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->presenca_ativa = ! $atividade->presencaEstaAberta();
         $atividade->save();
 
-        return back()->with(
-            'success',
-            $atividade->presenca_ativa ? 'Presença aberta para este momento.' : 'Presença fechada para este momento.'
-        );
+        $mensagem = $atividade->presenca_ativa ? 'Presença aberta para este momento.' : 'Presença fechada para este momento.';
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'aberta' => (bool) $atividade->presenca_ativa,
+                'message' => $mensagem,
+            ]);
+        }
+
+        return back()->with('success', $mensagem);
+    }
+
+    public function agendarPresenca(AgendarPresencaRequest $request, Atividade $atividade)
+    {
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->fill($request->horariosUtc());
+        // Um horário de abertura no passado significa "abrir agora".
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->save();
+
+        return back()->with('success', 'Agendamento da presença salvo. Status: '.$atividade->status_presenca_label.'.');
+    }
+
+    public function limparAgendamentoPresenca(Atividade $atividade)
+    {
+        $atividade->consolidarAgendamentoPresenca();
+        $atividade->presenca_abre_em = null;
+        $atividade->presenca_fecha_em = null;
+        $atividade->save();
+
+        return back()->with('success', 'Agendamento da presença removido.');
     }
 
     public function checkin(Atividade $atividade)
     {
-        if (! $atividade->presenca_ativa) {
+        if (! $atividade->presencaEstaAberta()) {
             return back()->withErrors(['checkin' => 'Presença não está aberta para este momento.']);
         }
 
         $user = auth()->user();
+
+        if (! $user->demograficosCompletos()) {
+            return back()->with('erro_demograficos', 'Para confirmar sua presença, é necessário preencher seus dados demográficos no Engaja. Por favor, preencha o formulário acima e tente novamente.');
+        }
 
         // 1) Garante Participante para o usuário
         $participante = Participante::firstOrCreate(['user_id' => $user->id], []);
@@ -329,12 +485,13 @@ class AtividadeController extends Controller
         }
 
         // 3) Marca presenca (idempotente)
-        Presenca::updateOrCreate(
+        $presenca = Presenca::updateOrCreate(
             ['inscricao_id' => $inscricao->id, 'atividade_id' => $atividade->id],
             ['status' => 'presente', 'justificativa' => null]
         );
 
-        return back()->with('success', 'Presença confirmada com sucesso!');
+        return back()->with('success', 'Presença confirmada com sucesso!')
+            ->with(AutorizacaoImagemContexto::FLASH_KEY, app(AutorizacaoImagemContexto::class)->paraPresenca($presenca, session()->driver(), OrigemAutorizacaoImagem::PresencaAutenticada, $user));
     }
 
     private function listarAtividadesCopiaveis(?Atividade $ignorar = null)
@@ -409,8 +566,10 @@ class AtividadeController extends Controller
     {
         $this->authorize('presenca.abrir');
 
-        // o default para evitar erros é assessoria
-        $tipoTemplate = $request->query('tipo', 'assessoria');
+        $dados = $request->validate([
+            'tipo' => 'sometimes|string|in:assessoria,oficina,escuta_territorial,feira_pedagogica',
+        ]);
+        $tipoTemplate = $dados['tipo'] ?? 'assessoria';
 
         // puxa os dados
         $inscritos = $atividade->inscricoes()->with([
@@ -454,6 +613,7 @@ class AtividadeController extends Controller
         $inscricoes = $atividade->inscricoes()->with([
             'participante.user',
             'participante.municipio.estado',
+            'presencas' => fn ($q) => $q->where('atividade_id', $atividade->id),
         ])->get()->sortBy(function ($inscricao) {
             return Str::ascii(mb_strtolower($inscricao->participante->user->name ?? ''));
         })->values();

@@ -7,7 +7,7 @@
     .sheet { background: #ffffff; border: 0; border-radius: 0; overflow: hidden; }
     .content { padding: 20px 18px 16px 18px; }
 
-    .report-header { background: #963d79; color: #ffffff; padding: 14px 18px; }
+    .report-header { background: #421944; color: #ffffff; padding: 14px 18px; }
     .report-header-title { font-size: 24px; font-weight: 700; margin: 0; }
     .report-header-subtitle { font-size: 11px; opacity: 0.92; margin-top: 4px; }
 
@@ -19,15 +19,15 @@
     .card { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; margin-bottom: 18px; }
     .table-clean { width: 100%; border-collapse: collapse; }
     .table-clean td, .table-clean th { border: 1px solid #e5e7eb; padding: 10px 12px; vertical-align: top; }
-    .table-clean th { text-align: left; background: #963d79; color: #ffffff; font-weight: 700; }
+    .table-clean th { text-align: left; background: #421944; color: #ffffff; font-weight: 700; }
     .table-clean .value { background: #ffffff; color: #4b5563; }
-    .table-clean .value-number { text-align: right; color: #963d79; font-weight: 700; background: #f8fafc; width: 90px; }
+    .table-clean .value-number { text-align: right; color: #421944; font-weight: 700; background: #f8fafc; width: 90px; }
 
-    .section-title { font-size: 18px; font-weight: 700; color: #111827; margin: 0 0 10px 0; border-left: 6px solid #963d79; padding-left: 10px; }
+    .section-title { font-size: 18px; font-weight: 700; color: #111827; margin: 0 0 10px 0; border-left: 6px solid #421944; padding-left: 10px; }
     .section-subtitle { color: #6b7280; margin: 0 0 10px 0; }
     .qa-item { margin-bottom: 14px; }
     .qa-question { font-size: 12px; font-weight: 700; color: #111827; margin: 0 0 6px 2px; }
-    .answer { border: 1px solid #e5e7eb; border-left: 4px solid #963d79; background: #f8fafc; border-radius: 0 10px 10px 3px; padding: 10px; color: #374151; word-break: break-word; overflow-wrap: break-word; }
+    .answer { border: 1px solid #e5e7eb; border-left: 4px solid #421944; background: #f8fafc; border-radius: 0 10px 10px 3px; padding: 10px; color: #374151; word-break: break-word; overflow-wrap: break-word; }
     .answer-meta { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
     .separator { margin: 14px 0; border-top: 1px dashed #cbd5e1; }
     .muted { color: #6b7280; }
@@ -39,24 +39,15 @@
 @endphp
 
 <div class="sheet">
-    <div class="report-header">
-        <h1 class="report-header-title">Relatórios do Momento</h1>
-        <div class="report-header-subtitle">Documento institucional consolidado</div>
-    </div>
+    <x-pdf.header
+        title="Relatórios do Momento"
+        subtitle="Documento institucional consolidado · Todos os relatórios pós-ação do mesmo momento"
+    >
+        @php $totalRelatorios = $relatorios->count(); @endphp
+        Consolidando <strong>{{ $totalRelatorios }}</strong> {{ $totalRelatorios === 1 ? 'relatório' : 'relatórios' }} deste momento.
+    </x-pdf.header>
 
     <div class="content">
-        <table class="title-row">
-            <tr>
-                <td>
-                    <h1 class="report-title">Dados Consolidados do Momento</h1>
-                    <div class="author">Todos os relatórios pós-ação para o mesmo momento.</div>
-                </td>
-                <td style="text-align: right; color: #9ca3af; font-size: 10px;">
-                    {{ now()->format('d/m/Y H:i') }} | Total: {{ $relatorios->count() }} relatório(s)
-                </td>
-            </tr>
-        </table>
-
         <div class="card">
             <table class="table-clean">
                 <tr>
@@ -107,7 +98,7 @@
                                     | <strong>Enviado em:</strong> {{ $resposta['atualizado_em']->format('d/m/Y') }}
                                 @endif
                             </div>
-                            <div>{!! nl2br(e($resposta['resposta'])) !!}</div>
+                            <div>{!! $resposta['resposta'] !!}</div>
                         </div>
                     @endforeach
                 @endif

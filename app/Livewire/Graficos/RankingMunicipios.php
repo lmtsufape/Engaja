@@ -17,7 +17,7 @@ class RankingMunicipios extends Component
     public string $tipoValor = 'PERCENTUAL';
     public string $labelIndicadorPercentual = 'Taxa';
     public string $labelIndicadorAbsoluto = 'Quantidade';
-    public string $cor = '--engaja-purple';
+    public string $cor = '--engaja-blue';
     public array $resumo = [
         'total_absoluto' => 0.0,
         'media_percentual' => 0.0,

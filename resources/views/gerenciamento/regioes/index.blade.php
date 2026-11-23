@@ -11,35 +11,20 @@
     <button class="btn btn-engaja" data-bs-toggle="modal" data-bs-target="#modalCreateRegiao">Nova região</button>
   </div>
 
-  <div class="table-responsive shadow-sm rounded-3 bg-white">
-    <table class="table align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($regioes as $regiao)
-          <tr>
-            <td>{{ $regiao->nome }}</td>
-            <td class="text-end">
-              <button
-                class="btn btn-outline-secondary btn-sm btn-edit-regiao"
-                data-id="{{ $regiao->id }}"
-                data-nome="{{ $regiao->nome }}"
-                data-action="{{ route('regioes.update', $regiao) }}"
-                data-delete="{{ route('regioes.destroy', $regiao) }}"
-                data-bs-toggle="modal"
-                data-bs-target="#modalEditRegiao"
-              >Editar</button>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="2" class="text-center text-muted py-4">Nenhuma região cadastrada.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+          ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true, 'align' => 'end'],
+      ];
+
+      $rows = $regioes->map(fn ($regiao) => [
+          'nome' => $regiao->nome,
+          'acoes' => '<button class="btn btn-outline-secondary btn-sm btn-edit-regiao" data-id="' . $regiao->id . '" data-nome="' . e($regiao->nome) . '" data-action="' . route('regioes.update', $regiao) . '" data-delete="' . route('regioes.destroy', $regiao) . '" data-bs-toggle="modal" data-bs-target="#modalEditRegiao">Editar</button>',
+      ])->values();
+  @endphp
+
+  <div class="card shadow-sm">
+      <x-data-table id="grid-regioes" :columns="$columns" :rows="$rows" :pagination="false" />
   </div>
 </div>
 
@@ -110,20 +95,21 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const editButtons = document.querySelectorAll('.btn-edit-regiao');
   const formEdit = document.getElementById('formEditRegiao');
   const formDelete = document.getElementById('formDeleteRegiao');
   const inputNome = document.getElementById('editRegiaoNome');
-  editButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const action = btn.dataset.action;
-      const del = btn.dataset.delete;
-      const nome = btn.dataset.nome;
-      formEdit.setAttribute('action', action);
-      formDelete.setAttribute('action', del);
-      inputNome.value = nome || '';
-    });
+
+  // Delegação de evento: os botões .btn-edit-regiao são renderizados pelo
+  // AG Grid de forma assíncrona (depois do DOMContentLoaded).
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('.btn-edit-regiao');
+    if (!btn) return;
+
+    formEdit.setAttribute('action', btn.dataset.action);
+    formDelete.setAttribute('action', btn.dataset.delete);
+    inputNome.value = btn.dataset.nome || '';
   });
+
   const btnDelete = document.getElementById('btnDeleteRegiao');
   if (btnDelete && formDelete) {
     btnDelete.addEventListener('click', () => {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\MatrizPresencaExport;
 use App\Models\Atividade;
 use App\Models\Avaliacao;
 use App\Models\Evento;
@@ -11,9 +12,19 @@ use App\Models\RespostaAvaliacao;
 use App\Models\SubmissaoAvaliacao;
 use App\Models\TemplateAvaliacao;
 use App\Services\AvaliacaoRespostasDashboardService;
+use App\Services\LimeSurvey\LimeSurveyClient;
+use App\Services\LimeSurvey\LimeSurveyDashboardService;
+use App\Word\MatrizPresencaWordBuilder;
+use App\Word\WordDocument;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 use Spatie\LaravelPdf\Facades\Pdf;
 
 class DashboardController extends Controller
@@ -39,6 +50,45 @@ class DashboardController extends Controller
     public function bi()
     {
         return view('dashboards.bi');
+    }
+
+    public function leituraMundo()
+    {
+        $surveys = collect();
+        $erro = null;
+
+        try {
+            $client = app(LimeSurveyClient::class);
+            $raw = $client->listSurveys();
+
+            $surveys = collect($raw)
+                ->filter(fn ($item) => is_array($item) && ! empty($item['sid']))
+                ->map(function (array $item) {
+                    $sid = (int) ($item['sid'] ?? 0);
+                    $titulo = trim((string) ($item['surveyls_title'] ?? "Survey {$sid}"));
+                    $ativo = strtoupper((string) ($item['active'] ?? 'N')) === 'Y';
+
+                    $start = $this->formatSurveyDate($item['startdate'] ?? null);
+                    $expires = $this->formatSurveyDate($item['expires'] ?? null);
+
+                    $cachedAt = Cache::get("limesurvey:{$sid}:cached_at");
+
+                    return [
+                        'sid' => $sid,
+                        'titulo' => $titulo !== '' ? $titulo : "Survey {$sid}",
+                        'ativo' => $ativo,
+                        'startdate' => $start,
+                        'expires' => $expires,
+                        'cached_at' => $cachedAt ? $cachedAt->format('d/m/Y H:i') : null,
+                    ];
+                })
+                ->sortBy('titulo', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
+        } catch (\Throwable $exception) {
+            $erro = $exception->getMessage();
+        }
+
+        return view('dashboards.leitura-mundo', compact('surveys', 'erro'));
     }
 
     public function index(Request $request)
@@ -162,7 +212,9 @@ class DashboardController extends Controller
         $inscricoes = $atividade->inscricoes()
             ->whereNull('deleted_at')
             ->with('participante.user')
-            ->get();
+            ->get()
+            ->sortBy(fn ($i) => strtolower($i->participante?->user?->name ?? ''))
+            ->values();
 
         $presentesIds = $presentes->pluck('inscricao_id')->filter()->unique();
         $ausentes = $inscricoes->filter(fn ($i) => ! $presentesIds->contains($i->id))->values();
@@ -172,7 +224,8 @@ class DashboardController extends Controller
 
         return view('dashboards._presencas_detalhes', compact(
             'presentes', 'ausentes', 'atividade',
-            'inscritosCount', 'presentesCount', 'ausentesCount'
+            'inscritosCount', 'presentesCount', 'ausentesCount',
+            'inscricoes', 'presentesIds'
         ));
     }
 
@@ -191,48 +244,35 @@ class DashboardController extends Controller
             ->orderByDesc('created_at')
             ->get(['id', 'template_avaliacao_id', 'descricao_universal', 'created_at']);
 
-        return view('dashboards.avaliacoes', compact('templates', 'eventos', 'atividades', 'avaliacoesUniversais'));
+        $cachedAt = null;
+        if ($request->query('fonte') === 'limesurvey') {
+            $surveyId = (int) ($request->integer('survey_id') ?: config('services.limesurvey.survey_id'));
+            if ($surveyId > 0) {
+                $ts = Cache::get("limesurvey:{$surveyId}:cached_at");
+                $cachedAt = $ts ? $ts->format('d/m/Y H:i') : null;
+            }
+        }
+
+        return view('dashboards.avaliacoes', compact('templates', 'eventos', 'atividades', 'avaliacoesUniversais', 'cachedAt'));
     }
 
     public function avaliacoesData(Request $request, AvaliacaoRespostasDashboardService $avaliacaoRespostas)
     {
         $this->authorizeAvaliacoesDashboardRequest($request);
 
-        $request->validate([
-            'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        // Se não houver filtros específicos, pegamos a data da última resposta como padrão
-        if (! $request->filled('evento_id') && ! $request->filled('atividade_id') && ! $request->filled('avaliacao_id') && ! $request->filled('de') && ! $request->filled('ate')) {
-            $ultimaResposta = RespostaAvaliacao::latest('created_at')->first();
-            if ($ultimaResposta) {
-                $dataFiltro = $ultimaResposta->created_at->format('Y-m-d');
-                $request->merge([
-                    'de' => $dataFiltro,
-                    'ate' => $dataFiltro,
-                ]);
-            }
+        if ($request->query('fonte') === 'limesurvey') {
+            return $this->avaliacoesDataLimeSurvey($request);
         }
+
+        $this->validateAvaliacoesDashboardFilters($request);
 
         return response()->json($avaliacaoRespostas->buildDashboardPayload($request));
     }
 
     public function avaliacoesPdf(Request $request, AvaliacaoRespostasDashboardService $avaliacaoRespostas)
     {
+        $this->validateAvaliacoesDashboardFilters($request);
         $this->authorizeAvaliacoesDashboardRequest($request);
-
-        // Se não houver filtros específicos, pegamos a data da última resposta como padrão
-        if (! $request->filled('evento_id') && ! $request->filled('atividade_id') && ! $request->filled('avaliacao_id') && ! $request->filled('de') && ! $request->filled('ate')) {
-            $ultimaResposta = RespostaAvaliacao::latest('created_at')->first();
-            if ($ultimaResposta) {
-                $dataFiltro = $ultimaResposta->created_at->format('Y-m-d');
-                $request->merge([
-                    'de' => $dataFiltro,
-                    'ate' => $dataFiltro,
-                ]);
-            }
-        }
 
         // Para o PDF, queremos todas as questões, sem paginação
         $request->merge(['per_page' => 1000]);
@@ -271,6 +311,53 @@ class DashboardController extends Controller
     /**
      * Garante que filtros por momento ou ação pedagógica só devolvem dados se o utilizador puder editar esse evento.
      */
+    private function validateAvaliacoesDashboardFilters(Request $request): array
+    {
+        $tipo = (string) $request->query('tipo', 'momento');
+
+        $validator = Validator::make($request->all(), [
+            'tipo' => ['required', 'string', Rule::in(['momento', 'transcricao', 'universal'])],
+            'evento_id' => [
+                Rule::requiredIf(fn () => in_array($tipo, ['momento', 'transcricao'], true)),
+                'nullable',
+                'integer',
+                'exists:eventos,id',
+            ],
+            'atividade_id' => ['nullable', 'integer', 'exists:atividades,id'],
+            'avaliacao_id' => [
+                Rule::requiredIf(fn () => $tipo === 'universal'),
+                'nullable',
+                'integer',
+                'exists:avaliacaos,id',
+            ],
+            'de' => ['nullable', 'date'],
+            'ate' => ['nullable', 'date', 'after_or_equal:de'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $eventoId = $request->integer('evento_id');
+            $atividadeId = $request->integer('atividade_id');
+
+            if ($eventoId && $atividadeId) {
+                $atividadePertenceAoEvento = Atividade::query()
+                    ->whereKey($atividadeId)
+                    ->where('evento_id', $eventoId)
+                    ->exists();
+
+                if (! $atividadePertenceAoEvento) {
+                    $validator->errors()->add(
+                        'atividade_id',
+                        'O momento selecionado não pertence à ação pedagógica escolhida.'
+                    );
+                }
+            }
+        });
+
+        return $validator->validate();
+    }
+
     private function authorizeAvaliacoesDashboardRequest(Request $request): void
     {
         $atividadeId = $request->integer('atividade_id');
@@ -289,6 +376,97 @@ class DashboardController extends Controller
             if ($evento) {
                 $this->authorize('update', $evento);
             }
+        }
+    }
+
+    private function avaliacoesDataLimeSurvey(Request $request)
+    {
+        try {
+            $surveyId = (int) ($request->integer('survey_id') ?: config('services.limesurvey.survey_id'));
+
+            if ($request->query('debug_lime') === 'export_responses') {
+                $client = app(LimeSurveyClient::class);
+
+                return response()->json($client->exportResponses($surveyId));
+            }
+
+            if (! Cache::has("limesurvey:{$surveyId}:questions") || ! Cache::has("limesurvey:{$surveyId}:responses")) {
+                return response()->json([
+                    'sem_dados' => true,
+                    'mensagem' => 'Este survey ainda não possui dados importados. Execute o importador de dados ou aguarde a atualização automática diária.',
+                ]);
+            }
+
+            $service = app(LimeSurveyDashboardService::class);
+            $payload = $service->buildPayload($request);
+
+            if ($request->boolean('debug_lime')) {
+                return response()->json([
+                    'debug' => true,
+                    'payload' => $payload,
+                ]);
+            }
+
+            return response()->json($payload);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'totais' => [
+                    'submissoes' => 0,
+                    'atividades' => 0,
+                    'eventos' => 0,
+                    'respostas' => 0,
+                    'questoes' => 0,
+                    'ultima' => null,
+                ],
+                'perguntas' => [],
+                'recentes' => [],
+                'erro' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function limesurveyListQuestions(Request $request)
+    {
+        try {
+            $surveyId = (int) ($request->integer('survey_id') ?: config('services.limesurvey.survey_id'));
+            $client = app(LimeSurveyClient::class);
+
+            return response()->json($client->listQuestions($surveyId));
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'erro' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function limesurveyListParticipants(Request $request)
+    {
+        try {
+            $surveyId = (int) ($request->integer('survey_id') ?: config('services.limesurvey.survey_id'));
+            $start = max(0, (int) $request->integer('start', 0));
+            $limit = max(1, min(10000, (int) $request->integer('limit', 1000)));
+            $unused = $request->boolean('unused', false);
+
+            $client = app(LimeSurveyClient::class);
+
+            return response()->json($client->listParticipants($surveyId, $start, $limit, $unused));
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'erro' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    private function formatSurveyDate(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '' || $value === '0000-00-00 00:00:00') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->format('d/m/Y H:i');
+        } catch (\Throwable) {
+            return null;
         }
     }
 
@@ -422,6 +600,41 @@ class DashboardController extends Controller
             'Período' => $periodo,
         ]);
 
+        if ($request->get('formato') === 'docx') {
+            $doc = new WordDocument('landscape');
+            $doc->addTitle('Relatório de Presenças');
+            $doc->addFiltersSummary(array_map(
+                fn ($chave, $valor) => $chave.': '.$valor,
+                array_keys($filtroResumo),
+                array_values($filtroResumo),
+            ));
+
+            if ($truncado) {
+                $doc->addParagraph(
+                    "Resultado parcial: exibindo {$maxAtividades} de {$totalAtividades} momentos.",
+                    ['italic' => true, 'color' => '856404']
+                );
+            }
+
+            $rows = $atividades->map(fn ($a) => [
+                $a->dia ? Carbon::parse($a->dia)->format('d/m/Y') : '—',
+                substr((string) $a->hora_inicio, 0, 5) ?: '—',
+                $a->descricao ?? '—',
+                $a->evento_nome ?? '—',
+                $a->municipio?->nome_com_estado ?? '—',
+                (int) $a->inscritos_count,
+                (int) $a->presentes_count,
+                (int) $a->ausentes_count,
+            ])->all();
+
+            $doc->addTable(
+                ['Data', 'Hora', 'Momento', 'Ação', 'Município', 'Inscritos', 'Presentes', 'Ausentes'],
+                $rows
+            );
+
+            return $doc->download('dashboard-presencas-'.now()->format('Ymd_His').'.docx');
+        }
+
         return Pdf::view('dashboard_pdf', [
             'atividades' => $atividades,
             'filtroResumo' => $filtroResumo,
@@ -433,5 +646,25 @@ class DashboardController extends Controller
             ->format('a4')
             ->withAlfaEjaBrand()
             ->download('dashboard-presencas-'.now()->format('Ymd_His').'.pdf');
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $request->validate([
+            'evento_id' => 'required|exists:eventos,id',
+        ]);
+
+        $eventoId = $request->integer('evento_id');
+        $evento = Evento::findOrFail($eventoId);
+
+        if ($request->get('formato') === 'docx') {
+            $doc = MatrizPresencaWordBuilder::build($eventoId);
+
+            return $doc->download('Matriz_Presenca_'.Str::slug($evento->nome).'_'.now()->format('Ymd_Hi').'.docx');
+        }
+
+        $fileName = 'Matriz_Presenca_'.Str::slug($evento->nome).'_'.now()->format('Ymd_Hi').'.xlsx';
+
+        return Excel::download(new MatrizPresencaExport($eventoId), $fileName);
     }
 }

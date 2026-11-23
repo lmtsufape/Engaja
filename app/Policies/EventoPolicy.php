@@ -33,6 +33,15 @@ class EventoPolicy
     }
 
     /**
+     * Determine whether the user can duplicate the model.
+     * Reuses the same permission as create, since duplicating is essentially creating.
+     */
+    public function duplicate(User $user, Evento $evento): bool
+    {
+        return $user->can('evento.criar');
+    }
+
+    /**
      * Determine whether the user can update the model.
      */
     public function update(User $user, Evento $evento): bool

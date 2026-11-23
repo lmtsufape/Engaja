@@ -115,8 +115,10 @@
 
             @foreach($camposPerguntas as $campo => $pergunta)
             <div class="mb-3">
-                <span class="text-muted small d-block">{{ $pergunta }}</span>
-                <div class="border rounded p-2 bg-light" style="white-space: pre-wrap;">{{ $relatorio->$campo ?: '—' }}</div>
+                <span class="text-muted small d-block mb-1">{{ $pergunta }}</span>
+                <div class="border rounded p-3 bg-white shadow-sm">
+                    {!! $relatorio->$campo ?: '<span class="text-muted">—</span>' !!}
+                </div>
             </div>
             @endforeach
         </div>

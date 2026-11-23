@@ -100,16 +100,18 @@
 
     {{-- ── 3. Avaliação Geral da Atividade ────────────────────────── --}}
     <div class="col-12">
-        <label class="form-label fw-semibold">Avaliação Geral do Momento (Acolhimento, Atuação da equipe, Destaques, Logística,  Planejamento e  Recursos).</label>
+        <label class="form-label fw-semibold">Relatório Geral do Momento (Acolhimento, Atuação da equipe, Destaques, Logística,  Planejamento e  Recursos).</label>
         <div class="form-text mb-3 fw-semibold">
             Olá! Utilize o campo abaixo para compartilhar o seu relatório sobre essa ação, destacando as informações que nos ajudem a avaliar a qualidade e o impacto dela. É fundamental que traga o máximo de detalhes possível, podendo se valer, para isso, dos aspectos listados a seguir:
         </div>
         <div class="form-text mb-4" style="text-align: justify">
             <strong>a) Planejamento desta ação</strong> - O planejamento fez sentido para esse município? Dialogou com a realidade local (Leitura do Mundo)? As atividades foram adequadas ao público? O tempo foi suficiente? Foi possível adaptar quando necessário? Considerar nesta sua análise as situações desafiadoras da Leitura do Mundo, a Matriz de Aprendizagens e os ODS associados a essa ação; <strong>b) Destaques importantes</strong> - Momentos marcantes do encontro; Reações dos participantes; Aprendizagens percebidas; Falas ou situações significativas; Algo inesperado que vale registrar; <strong>c) Acolhimento e apoio da SME</strong> - A SME ajudou na organização e mobilização? Esteve presente nos momentos importantes? Foi ágil para resolver problemas? Houve diálogo e parceria com a equipe? Avalie o nível de compromisso da SME com a ação; <strong>d) Atuação da Equipe do IPF</strong> - A equipe foi acolhedora e respeitosa? Houve diálogo e escuta dos participantes? A condução foi clara e bem organizada? A equipe conseguiu lidar bem com imprevistos? Demonstrou sensibilidade ao contexto local? Analise se a prática e conduta da equipe refletiu os princípios institucionais do IPF; <strong>e) Os recursos materiais utilizados</strong> - Os materiais ajudaram na aprendizagem? Foram adequados ao público? Foram suficientes? Foram bem utilizados durante a ação? Os participantes conseguiram acessar os QR Codes? Houve problemas de internet? A adesão foi boa? Foi fácil orientar o uso? Indique se a estratégia digital funcionou no território; <strong>f) Logística</strong> - O local era adequado? (espaço, conforto, iluminação, som); Os materiais e equipamentos funcionaram bem? Como foi transporte, alimentação e organização geral? Houve problemas? Como foram resolvidos? A logística ajudou ou atrapalhou a ação?
         </div>
-        <textarea name="questao_unificada" rows="12"
-            class="form-control @error('questao_unificada') is-invalid @enderror "
-            placeholder="Sua avaliação geral...">{{ old('questao_unificada', $avaliacao->questao_unificada) }}</textarea>
+        <x-quill-editor 
+            name="questao_unificada" 
+            :value="$avaliacao->questao_unificada" 
+            placeholder="Seu relatório geral do momento..." 
+        />
         @error('questao_unificada')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 

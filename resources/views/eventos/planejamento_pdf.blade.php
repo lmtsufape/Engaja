@@ -14,20 +14,6 @@
 
     .content { padding: 24px 16px 32px; }
 
-    .doc-title {
-        font-size: 14px;
-        font-weight: bold;
-        color: #421944;
-        margin-bottom: 2px;
-    }
-    .doc-subtitle {
-        font-size: 9.5px;
-        color: #6b7280;
-        border-bottom: 2px solid #421944;
-        padding-bottom: 8px;
-        margin-bottom: 20px;
-    }
-
     .section { margin-bottom: 18px; }
     .section-title {
         font-size: 10px;
@@ -79,8 +65,10 @@
 @section('content')
 <div class="content">
 
-    <div class="doc-title">Planejamento de Ação Pedagógica</div>
-    <div class="doc-subtitle">Projeto Engaja &middot; Gerado em {{ now()->format('d/m/Y \à\s H:i') }}</div>
+    <x-pdf.header
+        title="Planejamento de Ação Pedagógica"
+        subtitle="Projeto Engaja"
+    />
 
     <div class="section">
         <div class="section-title">Dados da Ação</div>

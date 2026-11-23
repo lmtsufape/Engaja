@@ -2,35 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\UserManagementRequest;
-use App\Models\Regiao;
-use App\Models\Estado;
-use App\Models\Municipio;
-use App\Models\Participante;
-use App\Models\User;
-use App\Models\ModeloCertificado;
-use App\Imports\ParticipantesPreviewImport;
+use App\Exports\UsersExport;
 use App\Exports\UsuariosNaoCadastradosExport;
 use App\Exports\UsuariosVerificacaoCompletaExport;
-use Illuminate\Http\Request;
+use App\Http\Requests\UserManagementRequest;
+use App\Imports\ParticipantesPreviewImport;
+use App\Models\Estado;
+use App\Models\ModeloCertificado;
+use App\Models\Municipio;
+use App\Models\Participante;
+use App\Models\Regiao;
+use App\Models\User;
+use App\Services\UserDeletionService;
+use App\Word\WordDocument;
+use App\Word\WordTableExport;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
-use Spatie\Permission\Models\Role;
-use App\Exports\UsersExport;
+use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
     private const PROTECTED_ROLES = ['administrador'];
+
     private const LEGACY_ROLES = ['gestor', 'formador'];
+
     private const CREATOR_ROLES = ['administrador', 'gerente', 'eq_pedagogica', 'articulador'];
+
+    private const DELETER_ROLES = ['administrador', 'gerente'];
+
     private const EMAIL_SIMILARITY_THRESHOLD = 0.85;
 
     public function index(Request $request): View
@@ -48,37 +56,37 @@ class UserManagementController extends Controller
             'participante.inscricoes.atividade.evento',
             'participante.inscricoes.presencas.atividade.evento',
         ])
-            ->when(!auth()->user()->hasRole('administrador'), function ($q) {
-                //nao sendo administrador, oculta os administradores
-                $q->whereDoesntHave('roles', fn($sub) => $sub->whereIn('name', self::PROTECTED_ROLES));
+            ->when(! auth()->user()->hasRole('administrador'), function ($q) {
+                // nao sendo administrador, oculta os administradores
+                $q->whereDoesntHave('roles', fn ($sub) => $sub->whereIn('name', self::PROTECTED_ROLES));
             })
             ->when($search !== '', function ($q) use ($search, $searchCpf) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'ilike', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 })
-                ->when($searchCpf !== '', function ($sub) use ($searchCpf) {
-                    $sub->orWhereHas('participante', function ($participanteQuery) use ($searchCpf) {
-                        $participanteQuery->whereRaw("regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') like ?", ["%{$searchCpf}%"]);
+                    ->when($searchCpf !== '', function ($sub) use ($searchCpf) {
+                        $sub->orWhereHas('participante', function ($participanteQuery) use ($searchCpf) {
+                            $participanteQuery->whereRaw("regexp_replace(coalesce(cpf, ''), '[^0-9]', '', 'g') like ?", ["%{$searchCpf}%"]);
+                        });
                     });
-                });
             })
             ->when($municipioId, function ($q) use ($municipioId) {
-                $q->whereHas('participante', fn($sub) => $sub->where('municipio_id', $municipioId));
+                $q->whereHas('participante', fn ($sub) => $sub->where('municipio_id', $municipioId));
             })
-            ->when($estadoId && !$municipioId, function ($q) use ($estadoId) {
-                $q->whereHas('participante.municipio', fn($sub) => $sub->where('estado_id', $estadoId));
+            ->when($estadoId && ! $municipioId, function ($q) use ($estadoId) {
+                $q->whereHas('participante.municipio', fn ($sub) => $sub->where('estado_id', $estadoId));
             })
-            ->when($regiaoId && !$estadoId && !$municipioId, function ($q) use ($regiaoId) {
-                $q->whereHas('participante.municipio.estado', fn($sub) => $sub->where('regiao_id', $regiaoId));
+            ->when($regiaoId && ! $estadoId && ! $municipioId, function ($q) use ($regiaoId) {
+                $q->whereHas('participante.municipio.estado', fn ($sub) => $sub->where('regiao_id', $regiaoId));
             })
             ->orderBy('name')
             ->paginate(12)
             ->appends([
                 'q' => $search,
-                'regiao'    => $regiaoId,
-                'estado'    => $estadoId,
-                'municipio' => $municipioId
+                'regiao' => $regiaoId,
+                'estado' => $estadoId,
+                'municipio' => $municipioId,
             ]);
 
         $regioes = Regiao::orderBy('nome')->get(['id', 'nome']);
@@ -88,12 +96,12 @@ class UserManagementController extends Controller
         return view('usuarios.index', [
             'users' => $users,
             'search' => $search,
-            'regiao_id'          => $regiaoId,
-            'estado_id'          => $estadoId,
-            'municipio_id'       => $municipioId,
-            'regioes'            => $regioes,
-            'estados'            => $estados,
-            'municipios'         => $municipios,
+            'regiao_id' => $regiaoId,
+            'estado_id' => $estadoId,
+            'municipio_id' => $municipioId,
+            'regioes' => $regioes,
+            'estados' => $estados,
+            'municipios' => $municipios,
             'modelosCertificado' => ModeloCertificado::orderBy('nome')->get(['id', 'nome']),
         ]);
     }
@@ -111,12 +119,12 @@ class UserManagementController extends Controller
         $roles = $this->assignableRoles();
 
         return view('usuarios.create', [
-            'user'             => new User(),
-            'municipios'       => $municipios,
-            'organizacoes'     => $organizacoes,
+            'user' => new User,
+            'municipios' => $municipios,
+            'organizacoes' => $organizacoes,
             'participanteTags' => $participanteTags,
-            'roles'            => $roles,
-            'currentRole'      => 'participante',
+            'roles' => $roles,
+            'currentRole' => 'participante',
         ]);
     }
 
@@ -128,29 +136,31 @@ class UserManagementController extends Controller
 
         DB::transaction(function () use ($data) {
             $user = User::create([
-                'name'                          => $data['name'],
-                'email'                         => $data['email'],
-                'password'                      => Hash::make($data['password']),
-                'identidade_genero'            => $data['identidade_genero'] ?? null,
-                'identidade_genero_outro'      => $data['identidade_genero_outro'] ?? null,
-                'raca_cor'                     => $data['raca_cor'] ?? null,
-                'comunidade_tradicional'       => $data['comunidade_tradicional'] ?? null,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'identidade_genero' => $data['identidade_genero'] ?? null,
+                'identidade_genero_outro' => $data['identidade_genero_outro'] ?? null,
+                'raca_cor' => $data['raca_cor'] ?? null,
+                'comunidade_tradicional' => $data['comunidade_tradicional'] ?? null,
                 'comunidade_tradicional_outro' => $data['comunidade_tradicional_outro'] ?? null,
-                'faixa_etaria'                 => $data['faixa_etaria'] ?? null,
-                'pcd'                          => $data['pcd'] ?? null,
-                'orientacao_sexual'            => $data['orientacao_sexual'] ?? null,
-                'orientacao_sexual_outra'      => $data['orientacao_sexual_outra'] ?? null,
+                'faixa_etaria' => $data['faixa_etaria'] ?? null,
+                'pcd' => $data['pcd'] ?? null,
+                'orientacao_sexual' => $data['orientacao_sexual'] ?? null,
+                'orientacao_sexual_outra' => $data['orientacao_sexual_outra'] ?? null,
             ]);
 
             $user->participante()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'cpf'              => $data['cpf'] ?? null,
-                    'telefone'         => $data['telefone'] ?? null,
-                    'municipio_id'     => $data['municipio_id'] ?? null,
-                    'escola_unidade'   => $data['escola_unidade'] ?? null,
+                    'cpf' => $data['cpf'] ?? null,
+                    'telefone' => $data['telefone'] ?? null,
+                    'municipio_id' => $data['municipio_id'] ?? null,
+                    'escola_unidade' => $data['escola_unidade'] ?? null,
                     'tipo_organizacao' => $data['tipo_organizacao'] ?? null,
-                    'tag'              => $data['tag'] ?? null,
+                    'tag' => $data['tag'] ?? null,
+                    'sexo' => $data['sexo'] ?? 'Não preenchido',
+                    'data_nascimento' => $data['data_nascimento'] ?? null,
                     'autorizacao_imagem' => $data['autorizacao_imagem'] ?? false,
                 ]
             );
@@ -171,7 +181,7 @@ class UserManagementController extends Controller
     {
         abort_unless(auth()->user()?->can('user.editar'), 403);
 
-        if ($this->isProtected($managedUser) && !auth()->user()->hasRole('administrador')) {
+        if ($this->isProtected($managedUser) && ! auth()->user()->hasRole('administrador')) {
             return redirect()
                 ->route('usuarios.index')
                 ->with('error', 'Este usuario nao pode ser editado.');
@@ -188,12 +198,12 @@ class UserManagementController extends Controller
         $roles = $this->assignableRoles();
 
         return view('usuarios.edit', [
-            'user'             => $managedUser,
-            'municipios'       => $municipios,
-            'organizacoes'     => $organizacoes,
+            'user' => $managedUser,
+            'municipios' => $municipios,
+            'organizacoes' => $organizacoes,
             'participanteTags' => $participanteTags,
-            'roles'            => $roles,
-            'currentRole'      => $managedUser->roles->first()?->name,
+            'roles' => $roles,
+            'currentRole' => $managedUser->roles->first()?->name,
         ]);
     }
 
@@ -201,7 +211,7 @@ class UserManagementController extends Controller
     {
         abort_unless(auth()->user()?->can('user.editar'), 403);
 
-        if ($this->isProtected($managedUser) && !auth()->user()->hasRole('administrador')) {
+        if ($this->isProtected($managedUser) && ! auth()->user()->hasRole('administrador')) {
             return redirect()
                 ->route('usuarios.index')
                 ->with('error', 'Este usuario nao pode ser editado.');
@@ -211,19 +221,19 @@ class UserManagementController extends Controller
 
         $oldEmail = $managedUser->email;
         $managedUser->fill([
-            'name'  => $data['name'],
+            'name' => $data['name'],
             'email' => $data['email'],
 
-            //campos demograficos
-            'identidade_genero'            => $data['identidade_genero'] ?? null,
-            'identidade_genero_outro'      => $data['identidade_genero_outro'] ?? null,
-            'raca_cor'                     => $data['raca_cor'] ?? null,
-            'comunidade_tradicional'       => $data['comunidade_tradicional'] ?? null,
+            // campos demograficos
+            'identidade_genero' => $data['identidade_genero'] ?? null,
+            'identidade_genero_outro' => $data['identidade_genero_outro'] ?? null,
+            'raca_cor' => $data['raca_cor'] ?? null,
+            'comunidade_tradicional' => $data['comunidade_tradicional'] ?? null,
             'comunidade_tradicional_outro' => $data['comunidade_tradicional_outro'] ?? null,
-            'faixa_etaria'                 => $data['faixa_etaria'] ?? null,
-            'pcd'                          => $data['pcd'] ?? null,
-            'orientacao_sexual'            => $data['orientacao_sexual'] ?? null,
-            'orientacao_sexual_outra'      => $data['orientacao_sexual_outra'] ?? null,
+            'faixa_etaria' => $data['faixa_etaria'] ?? null,
+            'pcd' => $data['pcd'] ?? null,
+            'orientacao_sexual' => $data['orientacao_sexual'] ?? null,
+            'orientacao_sexual_outra' => $data['orientacao_sexual_outra'] ?? null,
         ]);
 
         if ($oldEmail !== $data['email']) {
@@ -235,18 +245,20 @@ class UserManagementController extends Controller
         $managedUser->participante()->updateOrCreate(
             ['user_id' => $managedUser->id],
             [
-                'cpf'              => $data['cpf']              ?? null,
-                'telefone'         => $data['telefone']         ?? null,
-                'municipio_id'     => $data['municipio_id']     ?? null,
-                'escola_unidade'   => $data['escola_unidade']   ?? null,
+                'cpf' => $data['cpf'] ?? null,
+                'telefone' => $data['telefone'] ?? null,
+                'municipio_id' => $data['municipio_id'] ?? null,
+                'escola_unidade' => $data['escola_unidade'] ?? null,
                 'tipo_organizacao' => $data['tipo_organizacao'] ?? null,
-                'tag'              => $data['tag']              ?? null,
+                'tag' => $data['tag'] ?? null,
+                'sexo' => $data['sexo'] ?? 'Não preenchido',
+                'data_nascimento' => $data['data_nascimento'] ?? null,
                 'autorizacao_imagem' => $data['autorizacao_imagem'] ?? false,
             ]
         );
 
         if (auth()->user()->hasRole('administrador')) {
-            //se a role vier preenchida no request, aplica. Se vier vazia, remove os acessos.
+            // se a role vier preenchida no request, aplica. Se vier vazia, remove os acessos.
             $roleToApply = $data['role'] ?? null;
 
             if ($roleToApply) {
@@ -301,6 +313,31 @@ class UserManagementController extends Controller
             ->with('success', "Senha de {$managedUser->name} redefinida com sucesso. O usuario devera troca-la no proximo acesso.");
     }
 
+    public function destroy(Request $request, User $managedUser, UserDeletionService $userDeletionService): RedirectResponse
+    {
+        abort_unless($request->user()?->hasAnyRole(self::DELETER_ROLES), 403);
+
+        if ($managedUser->is($request->user())) {
+            return redirect()
+                ->route('usuarios.index')
+                ->with('error', 'Você não pode excluir o próprio usuário.');
+        }
+
+        if ($this->isProtected($managedUser) && ! $request->user()->hasRole('administrador')) {
+            return redirect()
+                ->route('usuarios.index')
+                ->with('error', 'Este usuário não pode ser excluído.');
+        }
+
+        $userName = $managedUser->name;
+
+        $userDeletionService->delete($managedUser);
+
+        return redirect()
+            ->route('usuarios.index')
+            ->with('success', "Usuário {$userName} excluído com sucesso.");
+    }
+
     private function assignableRoles()
     {
         $rolesToExclude = self::LEGACY_ROLES;
@@ -321,10 +358,17 @@ class UserManagementController extends Controller
         $estadoId = $request->query('estado');
         $municipioId = $request->query('municipio');
 
-        return Excel::download(
-            new UsersExport($regiaoId, $estadoId, $municipioId),
-            'usuarios.xlsx'
-        );
+        $export = new UsersExport($regiaoId, $estadoId, $municipioId);
+
+        if ($request->query('formato') === 'docx') {
+            $doc = new WordDocument;
+            $doc->addTitle('Usuários cadastrados');
+            WordTableExport::render($doc, $export);
+
+            return $doc->download('usuarios.docx');
+        }
+
+        return Excel::download($export, 'usuarios.xlsx');
     }
 
     public function verificarIndex(Request $request): View|RedirectResponse
@@ -336,7 +380,7 @@ class UserManagementController extends Controller
 
         if ($sessionKey !== '') {
             $payload = session($sessionKey);
-            if (!is_array($payload) || !array_key_exists('rows', $payload)) {
+            if (! is_array($payload) || ! array_key_exists('rows', $payload)) {
                 return redirect()
                     ->route('usuarios.verificar.index')
                     ->withErrors(['arquivo' => 'Sessao de verificacao expirada. Envie o arquivo novamente.']);
@@ -344,7 +388,7 @@ class UserManagementController extends Controller
 
             $rows = collect($payload['rows'] ?? [])->values();
             $perPage = (int) $request->query('per_page', 50);
-            if (!in_array($perPage, [25, 50, 100, 200], true)) {
+            if (! in_array($perPage, [25, 50, 100, 200], true)) {
                 $perPage = 50;
             }
 
@@ -360,17 +404,17 @@ class UserManagementController extends Controller
                     'path' => route('usuarios.verificar.index'),
                     'query' => [
                         'session_key' => $sessionKey,
-                        'per_page'    => $perPage,
+                        'per_page' => $perPage,
                     ],
                 ]
             );
 
             $resumo = [
-                'total_importacao'      => (int) ($payload['total_count'] ?? 0),
-                'usuarios_existentes'   => (int) ($payload['existing_count'] ?? 0),
+                'total_importacao' => (int) ($payload['total_count'] ?? 0),
+                'usuarios_existentes' => (int) ($payload['existing_count'] ?? 0),
                 'usuarios_nao_cadastrados' => (int) ($payload['new_count'] ?? 0),
-                'usuarios_duplicados'   => (int) ($payload['duplicate_count'] ?? 0),
-                'gerado_em'             => $payload['generated_at'] ?? null,
+                'usuarios_duplicados' => (int) ($payload['duplicate_count'] ?? 0),
+                'gerado_em' => $payload['generated_at'] ?? null,
             ];
         }
 
@@ -388,21 +432,21 @@ class UserManagementController extends Controller
         ]);
 
         try {
-            $import = new ParticipantesPreviewImport();
+            $import = new ParticipantesPreviewImport;
             Excel::import($import, $request->file('arquivo'));
 
             $rows = collect($import->rows ?? [])->values();
             $resumo = $this->montarResumoVerificacao($rows);
 
-            $sessionKey = 'user_verification_' . Str::uuid();
+            $sessionKey = 'user_verification_'.Str::uuid();
             session([$sessionKey => [
-                'rows'          => $resumo['rows_nao_cadastrados']->values()->all(),
-                'rows_completos'=> $resumo['rows_verificacao_completa']->values()->all(),
-                'existing_count'=> $resumo['usuarios_existentes'],
-                'new_count'     => $resumo['usuarios_nao_cadastrados'],
+                'rows' => $resumo['rows_nao_cadastrados']->values()->all(),
+                'rows_completos' => $resumo['rows_verificacao_completa']->values()->all(),
+                'existing_count' => $resumo['usuarios_existentes'],
+                'new_count' => $resumo['usuarios_nao_cadastrados'],
                 'duplicate_count' => $resumo['usuarios_duplicados'],
-                'total_count'   => $resumo['total_importacao'],
-                'generated_at'  => now()->toDateTimeString(),
+                'total_count' => $resumo['total_importacao'],
+                'generated_at' => now()->toDateTimeString(),
             ]]);
 
             return redirect()
@@ -410,39 +454,49 @@ class UserManagementController extends Controller
                 ->with('success', 'Verificacao concluida com sucesso.');
         } catch (\Throwable $e) {
             return back()
-                ->withErrors(['arquivo' => 'Falha ao processar o arquivo: ' . $e->getMessage()])
+                ->withErrors(['arquivo' => 'Falha ao processar o arquivo: '.$e->getMessage()])
                 ->withInput();
         }
     }
 
     public function verificarExportar(Request $request, string $format)
     {
-        if (!in_array($format, ['csv', 'xlsx'], true)) {
+        if (! in_array($format, ['csv', 'xlsx', 'docx'], true)) {
             abort(404);
         }
 
         $sessionKey = (string) $request->query('session_key', '');
         $payload = session($sessionKey);
 
-        if (!is_array($payload) || !array_key_exists('rows', $payload)) {
+        if (! is_array($payload) || ! array_key_exists('rows', $payload)) {
             return redirect()
                 ->route('usuarios.verificar.index')
                 ->withErrors(['arquivo' => 'Sessao de verificacao expirada. Envie o arquivo novamente.']);
         }
 
         $modelo = (string) $request->query('modelo', 'nao_cadastrados');
-        if (!in_array($modelo, ['nao_cadastrados', 'completo'], true)) {
+        if (! in_array($modelo, ['nao_cadastrados', 'completo'], true)) {
             abort(404);
         }
 
         if ($modelo === 'completo') {
             $rows = collect($payload['rows_completos'] ?? [])->values();
             $export = new UsuariosVerificacaoCompletaExport($rows);
-            $filename = 'usuarios-verificacao-completa-' . now()->format('Ymd_His') . '.' . $format;
+            $filename = 'usuarios-verificacao-completa-'.now()->format('Ymd_His').'.'.$format;
         } else {
             $rows = collect($payload['rows'] ?? [])->values();
             $export = new UsuariosNaoCadastradosExport($rows);
-            $filename = 'usuarios-nao-cadastrados-' . now()->format('Ymd_His') . '.' . $format;
+            $filename = 'usuarios-nao-cadastrados-'.now()->format('Ymd_His').'.'.$format;
+        }
+
+        if ($format === 'docx') {
+            $doc = new WordDocument;
+            $doc->addTitle($modelo === 'completo'
+                ? 'Verificação de usuários — completa'
+                : 'Usuários não cadastrados');
+            WordTableExport::render($doc, $export);
+
+            return $doc->download($filename);
         }
 
         $writerType = $format === 'csv'
@@ -477,21 +531,21 @@ class UserManagementController extends Controller
 
         $nomesExistentes = $usuariosBase
             ->pluck('name')
-            ->map(fn($nome) => $this->normalizarNome($nome))
+            ->map(fn ($nome) => $this->normalizarNome($nome))
             ->filter()
             ->unique()
             ->values();
 
         $emailsExistentes = $usuariosBase
             ->pluck('email')
-            ->map(fn($email) => $this->normalizarEmail((string) $email))
+            ->map(fn ($email) => $this->normalizarEmail((string) $email))
             ->filter()
             ->unique()
             ->values();
 
         $cpfsExistentes = $usuariosBase
             ->pluck('cpf')
-            ->map(fn($cpf) => $this->normalizarCpf($cpf))
+            ->map(fn ($cpf) => $this->normalizarCpf($cpf))
             ->filter()
             ->unique()
             ->values();
@@ -506,7 +560,7 @@ class UserManagementController extends Controller
             if ($dominio === null) {
                 continue;
             }
-            if (!array_key_exists($dominio, $emailsPorDominio)) {
+            if (! array_key_exists($dominio, $emailsPorDominio)) {
                 $emailsPorDominio[$dominio] = [];
             }
             $emailsPorDominio[$dominio][] = $emailExistente;
@@ -535,7 +589,7 @@ class UserManagementController extends Controller
             $matchDbPorEmailExato = $emailNormalizado && isset($emailsExistentesLookup[$emailNormalizado]);
             $matchDbPorEmailSimilar = false;
 
-            if (!$matchDbPorNome && !$matchDbPorCpf && !$matchDbPorEmailExato && $emailNormalizado) {
+            if (! $matchDbPorNome && ! $matchDbPorCpf && ! $matchDbPorEmailExato && $emailNormalizado) {
                 [, $dominio] = $this->splitEmail($emailNormalizado);
                 $candidatos = ($dominio && isset($emailsPorDominio[$dominio]))
                     ? $emailsPorDominio[$dominio]
@@ -606,7 +660,7 @@ class UserManagementController extends Controller
                 $emailsPlanilhaArray[] = $emailNormalizado;
                 [, $dominioEmail] = $this->splitEmail($emailNormalizado);
                 if ($dominioEmail) {
-                    if (!array_key_exists($dominioEmail, $emailsPlanilhaPorDominio)) {
+                    if (! array_key_exists($dominioEmail, $emailsPlanilhaPorDominio)) {
                         $emailsPlanilhaPorDominio[$dominioEmail] = [];
                     }
                     $emailsPlanilhaPorDominio[$dominioEmail][] = $emailNormalizado;
@@ -641,12 +695,12 @@ class UserManagementController extends Controller
     private function normalizarEmail(string $email): ?string
     {
         $email = trim(mb_strtolower($email));
-        if ($email === '' || !str_contains($email, '@')) {
+        if ($email === '' || ! str_contains($email, '@')) {
             return null;
         }
 
         [$local, $dominio] = array_pad(explode('@', $email, 2), 2, null);
-        if (!$local || !$dominio) {
+        if (! $local || ! $dominio) {
             return null;
         }
 
@@ -718,11 +772,12 @@ class UserManagementController extends Controller
 
     private function splitEmail(string $email): array
     {
-        if (!str_contains($email, '@')) {
+        if (! str_contains($email, '@')) {
             return [null, null];
         }
 
         [$local, $dominio] = array_pad(explode('@', $email, 2), 2, null);
+
         return [$local, $dominio];
     }
 

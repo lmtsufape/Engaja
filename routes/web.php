@@ -2,12 +2,22 @@
 
 use App\Http\Controllers\AgendamentoController;
 use App\Http\Controllers\AgendamentoEfetivacaoController;
+use App\Http\Controllers\AgendamentoNotificacaoController;
 use App\Http\Controllers\AgendamentoParticipanteController;
 use App\Http\Controllers\AtividadeAcaoController;
 use App\Http\Controllers\AtividadeController;
+use App\Http\Controllers\AtualizacaoCadastralController;
+use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\AutorizacaoImagemController;
 use App\Http\Controllers\AutorizacaoImagemImportController;
 use App\Http\Controllers\AvaliacaoAtividadeController;
+use App\Http\Controllers\AvaliacaoConsolidadaController;
 use App\Http\Controllers\AvaliacaoController;
+use App\Http\Controllers\Cartas\AuthController as CartasAuthController;
+use App\Http\Controllers\Cartas\CartaController as CartasCartaController;
+use App\Http\Controllers\Cartas\CartaViewerDiagnosticController as CartasViewerDiagnosticController;
+use App\Http\Controllers\Cartas\RelatorioController as CartasRelatorioController;
+use App\Http\Controllers\Cartas\UserManagementController as CartasUserManagementController;
 use App\Http\Controllers\CertificadoController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DimensaoController;
@@ -19,8 +29,11 @@ use App\Http\Controllers\IndicadorController;
 use App\Http\Controllers\InscricaoController;
 use App\Http\Controllers\ModeloCertificadoController;
 use App\Http\Controllers\MunicipioController;
+use App\Http\Controllers\PainelGerencialController;
 use App\Http\Controllers\ParticipantesExclusivosController;
+use App\Http\Controllers\PresencaAutorizacaoImagemController;
 use App\Http\Controllers\PresencaController;
+use App\Http\Controllers\PresencaGerenciamentoController;
 use App\Http\Controllers\PresencaImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestaoController;
@@ -29,10 +42,91 @@ use App\Http\Controllers\RelatorioQuantitativoController;
 use App\Http\Controllers\TemplateAvaliacaoController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\UsuariosSemVinculoController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::prefix('cartas')->name('cartas.')->group(function () {
+    Route::get('/localidades/estados', [CartasAuthController::class, 'estados'])->name('localidades.estados');
+    Route::get('/localidades/estados/{estadoId}/municipios', [CartasAuthController::class, 'municipios'])->whereNumber('estadoId')->name('localidades.municipios');
+    Route::get('/termos', [CartasAuthController::class, 'terms'])->name('terms');
+    Route::post('/termos', [CartasAuthController::class, 'acceptTerms'])->name('terms.accept');
+
+    Route::get('/', [CartasAuthController::class, 'apresentacao'])->name('apresentacao');
+
+    Route::get('/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');
+    Route::post('/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'responderFormulario'])->name('avaliacao.formulario.responder');
+    Route::get('/formulario-avaliacao/{avaliacao}/obrigado', [AvaliacaoController::class, 'formularioAvaliacaoObrigado'])->name('avaliacao.formulario.obrigado');
+
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [CartasAuthController::class, 'login'])->name('login');
+        Route::post('/login', [CartasAuthController::class, 'authenticate'])->name('login.store');
+        Route::get('/cadastro', [CartasAuthController::class, 'register'])->name('register');
+        Route::post('/cadastro', [CartasAuthController::class, 'storeRegister'])
+            ->middleware('throttle:6,1')
+            ->name('register.store');
+        Route::get('/cadastro/verificar-reativacao', [CartasAuthController::class, 'reactivationPending'])
+            ->name('register.reactivate.pending');
+        Route::get('/recuperar-senha', [CartasAuthController::class, 'forgotPassword'])->name('password.request');
+        Route::post('/recuperar-senha', [CartasAuthController::class, 'sendResetLink'])->name('password.email');
+        Route::get('/resetar-senha/{token}', [CartasAuthController::class, 'resetPassword'])->name('password.reset');
+        Route::post('/resetar-senha', [CartasAuthController::class, 'storeNewPassword'])->name('password.store');
+    });
+
+    /*
+     * Fora dos grupos 'guest' e 'auth': o link enviado por e-mail costuma ser
+     * aberto em outro navegador/celular, sem sessão. A identidade vem da URL
+     * assinada (id + sha1 do e-mail), validada pelo middleware 'signed'.
+     */
+    Route::get('/verificar-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+
+    /*
+     * Confirmação de reativação de conta desativada (ver AuthController::
+     * requestReactivation). Aberta e sem sessão pelo mesmo motivo da rota
+     * acima: a identidade vem só da assinatura da URL.
+     */
+    Route::get('/cadastro/reativar/{user}', [CartasAuthController::class, 'confirmReactivation'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('register.reactivate');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/verificar-email', [CartasAuthController::class, 'verificationNotice'])->name('verification.notice');
+        Route::post('/verificar-email/reenviar', [CartasAuthController::class, 'resendVerification'])
+            ->middleware('throttle:6,1')
+            ->name('verification.send');
+        Route::middleware('cartas.verified')->group(function () {
+            Route::post('/welcome-seen', [CartasAuthController::class, 'markWelcomeSeen'])->name('welcome.seen');
+            Route::get('/dashboard', [CartasCartaController::class, 'dashboard'])->name('dashboard');
+            Route::get('/relatorios', [CartasRelatorioController::class, 'index'])
+                ->middleware('can:cartas.ver-relatorios')
+                ->name('relatorios.index');
+            Route::get('/usuarios', [CartasUserManagementController::class, 'index'])->name('usuarios.index');
+            Route::get('/usuarios/{managedUser}/editar', [CartasUserManagementController::class, 'edit'])->name('usuarios.edit');
+            Route::put('/usuarios/{managedUser}', [CartasUserManagementController::class, 'update'])->name('usuarios.update');
+            Route::post('/cartas', [CartasCartaController::class, 'store'])->name('cartas.store');
+            Route::post('/voluntario/cartas', [CartasCartaController::class, 'storeVolunteerLetter'])->name('voluntario.cartas.store');
+            Route::get('/cartas/download-lote', [CartasCartaController::class, 'downloadBatch'])->name('download-batch');
+            Route::get('/cartas/{carta}', [CartasCartaController::class, 'show'])->name('cartas.show');
+            Route::post('/cartas/{carta}/mensagens', [CartasCartaController::class, 'storeMessage'])->name('cartas.mensagens.store');
+            Route::post('/cartas/{carta}/responder', [CartasCartaController::class, 'respond'])->name('cartas.respond');
+            Route::delete('/cartas/{carta}', [CartasCartaController::class, 'destroy'])->name('cartas.destroy');
+            Route::post('/mensagens/aprovar-lote', [CartasCartaController::class, 'approveBatch'])->name('mensagens.approve-batch');
+            Route::post('/mensagens/{mensagem}/aprovar', [CartasCartaController::class, 'approveMessage'])->name('mensagens.approve');
+            Route::post('/mensagens/{mensagem}/solicitar-ajuste', [CartasCartaController::class, 'requestMessageAdjustment'])->name('mensagens.adjustment');
+            Route::put('/mensagens/{mensagem}/ajustar', [CartasCartaController::class, 'updateAdjustedMessage'])->name('mensagens.update-adjustment');
+            Route::get('/mensagens/{mensagem}/preview', [CartasCartaController::class, 'preview'])->name('mensagens.preview');
+            Route::get('/mensagens/{mensagem}/download', [CartasCartaController::class, 'download'])->name('mensagens.download');
+            Route::get('/mensagens/{mensagem}/download-original', [CartasCartaController::class, 'downloadOriginal'])->name('mensagens.download-original');
+            Route::put('/mensagens/{mensagem}', [CartasCartaController::class, 'updateSentMessage'])->name('mensagens.update');
+            Route::post('/diagnostico/visualizador', [CartasViewerDiagnosticController::class, 'store'])->name('diagnostico.visualizador');
+            Route::post('/usuarios/{managedUser}/enviar-avaliacao', [CartasUserManagementController::class, 'enviarAvaliacao'])->name('usuarios.enviar-avaliacao');
+        });
+    });
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
@@ -40,13 +134,27 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     Route::get('/dashboards/presencas', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboards.presencas');
     Route::get('/dashboards/presencas/{atividade}/detalhes', [DashboardController::class, 'presencasDetalhes'])->middleware(['auth', 'verified'])->name('dashboards.presencas.detalhes');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])->middleware(['auth', 'verified'])->name('dashboard.export');
+    Route::get('/dashboard/export-excel', [DashboardController::class, 'exportExcel'])->middleware(['auth', 'verified'])->name('dashboard.export.excel');
     Route::get('/dashboards/avaliacoes', [DashboardController::class, 'avaliacoes'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes');
     Route::get('/dashboards/avaliacoes/dados', [DashboardController::class, 'avaliacoesData'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes.data');
     Route::get('/dashboards/avaliacoes/pdf', [DashboardController::class, 'avaliacoesPdf'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes.pdf');
+    Route::get('/dashboards/avaliacoes/dados/limesurvey/list-questions', [DashboardController::class, 'limesurveyListQuestions'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes.limesurvey.list-questions');
+    Route::get('/dashboards/avaliacoes/dados/limesurvey/list-participants', [DashboardController::class, 'limesurveyListParticipants'])->middleware(['auth', 'verified'])->name('dashboards.avaliacoes.limesurvey.list-participants');
+    Route::get('/dashboards/leitura-mundo', [DashboardController::class, 'leituraMundo'])->middleware(['auth', 'verified'])->name('dashboards.leitura-mundo');
     Route::get('/dashboards/bi', [DashboardController::class, 'bi'])->middleware(['auth', 'verified'])->name('dashboards.bi');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/gerador-qr-code', function (Request $request) {
+        $dados = $request->validate([
+            'link' => ['nullable', 'string', 'max:2048', 'url:http,https'],
+        ]);
+
+        return view('qrcode.gerador', [
+            'link' => $dados['link'] ?? null,
+        ]);
+    })->name('qrcode.gerador');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -62,7 +170,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'permission:presenca.abrir'])->group(function () {
+    Route::get('/operacoes/presencas', [PresencaGerenciamentoController::class, 'index'])->name('presencas.gerenciamento');
     Route::patch('/atividades/{atividade}/presenca/toggle', [AtividadeController::class, 'togglePresenca'])->name('atividades.presenca.toggle');
+    Route::patch('/atividades/{atividade}/presenca/agendamento', [AtividadeController::class, 'agendarPresenca'])->name('atividades.presenca.agendamento');
+    Route::delete('/atividades/{atividade}/presenca/agendamento', [AtividadeController::class, 'limparAgendamentoPresenca'])->name('atividades.presenca.agendamento.limpar');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
@@ -211,6 +322,14 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         Route::get('cadastrar', [UserManagementController::class, 'create'])->name('create');
         Route::post('/', [UserManagementController::class, 'store'])->name('store');
         Route::get('verificar', [UserManagementController::class, 'verificarIndex'])->name('verificar.index');
+        Route::prefix('atualizacao-cadastral')->name('atualizacao-cadastral.')->middleware('role:administrador')->controller(AtualizacaoCadastralController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/modelo', 'template')->name('modelo');
+            Route::post('/', 'upload')->name('upload');
+            Route::get('/preview', 'preview')->name('preview');
+            Route::post('/preview', 'savePage')->name('save');
+            Route::post('/confirmar', 'confirm')->name('confirmar');
+        });
         Route::post('verificar', [UserManagementController::class, 'verificarProcessar'])->name('verificar.processar');
         Route::get('verificar/exportar/{format}', [UserManagementController::class, 'verificarExportar'])->name('verificar.exportar');
         Route::middleware('role:administrador|gerente')->group(function () {
@@ -220,12 +339,21 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
             Route::get('sem-vinculo', [UsuariosSemVinculoController::class, 'index'])->name('sem-vinculo.index');
             Route::get('sem-vinculo/exportar', [UsuariosSemVinculoController::class, 'exportar'])->name('sem-vinculo.exportar');
         });
+        Route::middleware('role:administrador')->group(function () {
+            Route::get('notificacoes-agendamento', [AgendamentoNotificacaoController::class, 'index'])->name('notificacoes-agendamento.index');
+            Route::post('{managedUser}/notificacoes-agendamento', [AgendamentoNotificacaoController::class, 'toggle'])->name('notificacoes-agendamento.toggle');
+        });
         Route::get('{managedUser}/editar', [UserManagementController::class, 'edit'])->name('edit');
         Route::put('{managedUser}', [UserManagementController::class, 'update'])->name('update');
+        Route::delete('{managedUser}', [UserManagementController::class, 'destroy'])
+            ->middleware('role:administrador|gerente')
+            ->name('destroy');
         Route::post('{managedUser}/redefinir-senha', [UserManagementController::class, 'resetPassword'])
             ->middleware('role:administrador')
             ->name('password.reset');
-        Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])->name('certificados.emitir');
+        Route::post('certificados/emitir', [CertificadoController::class, 'emitirPorParticipantes'])
+            ->middleware('role:administrador|gerente')
+            ->name('certificados.emitir');
         Route::get('exportar', [UserManagementController::class, 'export'])->name('export');
         Route::get('autorizacoes-imagem/importar', [AutorizacaoImagemImportController::class, 'import'])->name('autorizacoes.import');
         Route::post('autorizacoes-imagem/importar', [AutorizacaoImagemImportController::class, 'upload'])->name('autorizacoes.upload');
@@ -234,6 +362,10 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
+    Route::get('/avaliacoes-consolidadas', [AvaliacaoConsolidadaController::class, 'index'])
+        ->name('avaliacoes-consolidadas.index');
+    Route::get('/avaliacoes-consolidadas/pdf', [AvaliacaoConsolidadaController::class, 'pdf'])
+        ->name('avaliacoes-consolidadas.pdf');
     Route::get('/eventos/{evento}/relatorios', [EventoController::class, 'relatorios'])
         ->name('eventos.relatorios');
     Route::get('/eventos/{evento}/avaliacoes/consolidado', [EventoController::class, 'avaliacoesConsolidadas'])
@@ -260,6 +392,9 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
     Route::get('/relatorios-avaliacao', [AvaliacaoAtividadeController::class, 'index'])
         ->name('avaliacao-atividade.index');
 
+    Route::get('/relatorios-avaliacao/pdf-consolidado-geral', [AvaliacaoAtividadeController::class, 'baixarConsolidadoFiltro'])
+        ->name('avaliacao-atividade.download-consolidated');
+
     Route::get('/relatorios-avaliacao/{relatorio}', [AvaliacaoAtividadeController::class, 'show'])
         ->name('avaliacao-atividade.show');
 
@@ -276,12 +411,23 @@ Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador
         ->name('relatorio-quantitativo.exportar-momento');
     Route::get('/relatorio-quantitativo/exportar-total-geral', [RelatorioQuantitativoController::class, 'exportarTotalGeral'])
         ->name('relatorio-quantitativo.exportar-total-geral');
+
+    Route::get('/painel-gerencial', [PainelGerencialController::class, 'index'])
+        ->name('painel-gerencial.index');
+    Route::get('/painel-gerencial/dados', [PainelGerencialController::class, 'dados'])
+        ->name('painel-gerencial.dados');
+    Route::get('/painel-gerencial/momentos', [PainelGerencialController::class, 'momentos'])
+        ->name('painel-gerencial.momentos');
+    Route::get('/painel-gerencial/exportar', [PainelGerencialController::class, 'exportar'])
+        ->name('painel-gerencial.exportar');
 });
 
 Route::middleware(['auth', 'role:administrador|gerente|eq_pedagogica|articulador'])->group(function () {
     Route::resource('eventos', EventoController::class);
     Route::get('eventos/{evento}', [EventoController::class, 'show'])->name('eventos.show');
     Route::get('eventos/{evento}/planejamento/pdf', [EventoController::class, 'gerarPdfPlanejamento'])->name('eventos.planejamento.pdf');
+    Route::get('eventos/{evento}/cronograma/pdf', [EventoController::class, 'gerarPdfCronograma'])->name('eventos.cronograma.pdf');
+    Route::post('eventos/{evento}/duplicate', [EventoController::class, 'duplicate'])->name('eventos.duplicate');
 });
 
 Route::resource('eventos.atividades', AtividadeController::class)
@@ -291,8 +437,22 @@ Route::resource('eventos.atividades', AtividadeController::class)
 Route::get('/eventos/{evento_id}/{atividade_id}/cadastro-e-inscricao', [EventoController::class, 'cadastro_inscricao'])->name('evento.cadastro_inscricao');
 Route::post('/eventos/cadastro-e-inscricao/store', [EventoController::class, 'store_cadastro_inscricao'])->name('evento.store_cadastro_inscricao');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/minhas-autorizacoes-imagem', [AutorizacaoImagemController::class, 'minhas'])->name('profile.autorizacoes-imagem');
+    Route::post('/minhas-autorizacoes-imagem/{evento}', [AutorizacaoImagemController::class, 'salvarMinha'])->name('profile.autorizacoes-imagem.salvar');
+
+    Route::get('/autorizacoes-imagem', [AutorizacaoImagemController::class, 'index'])->name('autorizacoes-imagem.index');
+    Route::get('/autorizacoes-imagem/exportar', [AutorizacaoImagemController::class, 'exportar'])->name('autorizacoes-imagem.export');
+    Route::post('/eventos/{evento}/participantes/{participante}/autorizacao-imagem', [AutorizacaoImagemController::class, 'registrar'])->name('autorizacoes-imagem.registrar');
+});
+Route::post('/presenca/{atividade}/autorizacao-imagem', [PresencaAutorizacaoImagemController::class, 'store'])
+    ->middleware('throttle:autorizacao-imagem-publica')->name('presenca.autorizacao-imagem');
+
+Route::post('/presenca/{atividade}/identificar', [PresencaController::class, 'identificar'])
+    ->middleware('throttle:autorizacao-imagem-publica')->name('presenca.identificar');
 Route::get('/presenca/{atividade}/confirmar', [PresencaController::class, 'confirmarPresenca'])->name('presenca.confirmar');
 Route::post('/presenca/{atividade}/confirmar', [PresencaController::class, 'store'])->name('presenca.store');
+Route::post('/presenca/{atividade}/demograficos', [PresencaController::class, 'salvarDemograficosEConfirmar'])->name('presenca.demograficos');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/meus-certificados', [ProfileController::class, 'certificados'])->name('profile.certificados');
@@ -306,14 +466,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/minhas-presencas', [ProfileController::class, 'presencas'])->name('profile.presencas');
 });
 
-Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
+Route::middleware(['auth', 'permission:certificado.baixar'])->group(function () {
     Route::get('/certificados/emitidos', [CertificadoController::class, 'emitidos'])->name('certificados.emitidos');
+    Route::get('/certificados/emitidos/zip', [CertificadoController::class, 'downloadZipEmitidos'])->name('certificados.emitidos.zip');
+});
+
+Route::middleware(['auth', 'role:administrador|gerente'])->group(function () {
     Route::get('/certificados/{certificado}/edit', [CertificadoController::class, 'edit'])
         ->whereNumber('certificado')
         ->name('certificados.edit');
     Route::put('/certificados/{certificado}', [CertificadoController::class, 'update'])
         ->whereNumber('certificado')
         ->name('certificados.update');
+
 });
 
 Route::get('/formulario-avaliacao/{avaliacao}', [AvaliacaoController::class, 'formularioAvaliacao'])->name('avaliacao.formulario');

@@ -21,7 +21,7 @@ class AgendamentoController extends Controller
             ->withCount('participantesClonados')
             ->where('user_id', auth()->id())
             ->orderBy('data_horario')
-            ->paginate(15);
+            ->get();
 
         return view('agendamentos.index', compact('agendamentos'));
     }
@@ -51,7 +51,7 @@ class AgendamentoController extends Controller
         $agendamento = Agendamento::create($dados);
         $agendamento->load('atividadeAcao', 'municipio');
 
-        User::role(['administrador', 'gerente', 'eq_pedagogica'])
+        User::permission('agendamento.notificar')
             ->whereNotNull('email')
             ->each(fn (User $user) => Mail::to($user->email)->queue(new AgendamentoCriadoMail($agendamento)));
 

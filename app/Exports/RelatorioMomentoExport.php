@@ -2,41 +2,40 @@
 
 namespace App\Exports;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use App\Models\Atividade;
 use App\Models\Evento;
-use App\Models\Regiao;
 use App\Models\Municipio;
+use App\Models\Regiao;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\BeforeSheet;
 
-class RelatorioMomentoExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithEvents
+class RelatorioMomentoExport implements FromCollection, ShouldAutoSize, WithEvents, WithHeadings, WithMapping
 {
-    public function __construct(private Request $request)
-    {
-    }
+    public function __construct(private Request $request) {}
 
     public function registerEvents(): array
     {
         return [
-            BeforeSheet::class => function(BeforeSheet $event) {
+            BeforeSheet::class => function (BeforeSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
                 $filtros = $this->getFiltersSummary();
                 $row = 1;
 
                 if (count($filtros) > 0) {
-                    $sheet->setCellValue('A' . $row, 'Filtros Aplicados:');
-                    $sheet->getStyle('A' . $row)->getFont()->setBold(true);
+                    $sheet->setCellValue('A'.$row, 'Filtros Aplicados:');
+                    $sheet->getStyle('A'.$row)->getFont()->setBold(true);
                     $row++;
 
                     foreach ($filtros as $filtro) {
-                        $sheet->setCellValue('A' . $row, $filtro);
+                        $sheet->setCellValue('A'.$row, $filtro);
                         $row++;
                     }
 
@@ -46,44 +45,50 @@ class RelatorioMomentoExport implements FromCollection, WithHeadings, WithMappin
                     // Inserir 3 linhas vazias antes dos dados
                     $sheet->insertNewRowBefore($row, 3);
                 }
-            }
+            },
         ];
     }
 
-    private function getFiltersSummary(): array
+    public function getFiltersSummary(): array
     {
         $filtros = [];
 
         if ($this->request->integer('evento_id')) {
             $evento = Evento::find($this->request->integer('evento_id'));
-            if ($evento) $filtros[] = "Ação: " . $evento->nome;
+            if ($evento) {
+                $filtros[] = 'Ação: '.$evento->nome;
+            }
         }
 
         if ($this->request->integer('regiao_id')) {
             $regiao = Regiao::find($this->request->integer('regiao_id'));
-            if ($regiao) $filtros[] = "Região: " . $regiao->nome;
+            if ($regiao) {
+                $filtros[] = 'Região: '.$regiao->nome;
+            }
         }
 
         if ($this->request->integer('municipio_id')) {
             $municipio = Municipio::find($this->request->integer('municipio_id'));
-            if ($municipio) $filtros[] = "Município: " . $municipio->nome;
+            if ($municipio) {
+                $filtros[] = 'Município: '.$municipio->nome;
+            }
         }
 
         if (trim((string) $this->request->get('descricao', ''))) {
-            $filtros[] = "Momento: " . $this->request->get('descricao');
+            $filtros[] = 'Momento: '.$this->request->get('descricao');
         }
 
         if ($this->request->get('de') || $this->request->get('ate')) {
-            $de = $this->request->get('de') ? \Carbon\Carbon::parse($this->request->get('de'))->format('d/m/Y') : '';
-            $ate = $this->request->get('ate') ? \Carbon\Carbon::parse($this->request->get('ate'))->format('d/m/Y') : '';
+            $de = $this->request->get('de') ? Carbon::parse($this->request->get('de'))->format('d/m/Y') : '';
+            $ate = $this->request->get('ate') ? Carbon::parse($this->request->get('ate'))->format('d/m/Y') : '';
             $intervalo = ($de && $ate) ? "$de até $ate" : ($de ? "a partir de $de" : "até $ate");
-            $filtros[] = "Período: " . $intervalo;
+            $filtros[] = 'Período: '.$intervalo;
         }
 
         if ($this->request->get('periodo')) {
             $periodos = ['manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite'];
             $periodo_label = $periodos[$this->request->get('periodo')] ?? $this->request->get('periodo');
-            $filtros[] = "Período do dia: " . $periodo_label;
+            $filtros[] = 'Período do dia: '.$periodo_label;
         }
 
         return $filtros;
@@ -104,6 +109,7 @@ class RelatorioMomentoExport implements FromCollection, WithHeadings, WithMappin
                 'atividades.id',
                 'atividades.evento_id',
                 'atividades.municipio_id',
+                'atividades.abrangencia_nacional',
                 'atividades.descricao',
                 'atividades.dia',
                 'atividades.hora_inicio',
@@ -130,16 +136,13 @@ class RelatorioMomentoExport implements FromCollection, WithHeadings, WithMappin
         $query->when($descricao, fn ($q) => $q->where('atividades.descricao', $descricao));
 
         $query->when($de && $ate, fn ($q) => $q->whereBetween('atividades.dia', [$de, $ate]));
-        $query->when($de && !$ate, fn ($q) => $q->where('atividades.dia', '>=', $de));
-        $query->when(!$de && $ate, fn ($q) => $q->where('atividades.dia', '<=', $ate));
+        $query->when($de && ! $ate, fn ($q) => $q->where('atividades.dia', '>=', $de));
+        $query->when(! $de && $ate, fn ($q) => $q->where('atividades.dia', '<=', $ate));
 
-        $query->when($periodo === 'manha', fn ($q) =>
-            $q->whereRaw("CAST(atividades.hora_inicio AS time) < '12:00:00'"));
-        $query->when($periodo === 'tarde', fn ($q) =>
-            $q->whereRaw("CAST(atividades.hora_inicio AS time) >= '12:00:00'")
-                ->whereRaw("CAST(atividades.hora_inicio AS time) < '18:00:00'"));
-        $query->when($periodo === 'noite', fn ($q) =>
-            $q->whereRaw("CAST(atividades.hora_inicio AS time) >= '18:00:00'"));
+        $query->when($periodo === 'manha', fn ($q) => $q->whereRaw("CAST(atividades.hora_inicio AS time) < '12:00:00'"));
+        $query->when($periodo === 'tarde', fn ($q) => $q->whereRaw("CAST(atividades.hora_inicio AS time) >= '12:00:00'")
+            ->whereRaw("CAST(atividades.hora_inicio AS time) < '18:00:00'"));
+        $query->when($periodo === 'noite', fn ($q) => $q->whereRaw("CAST(atividades.hora_inicio AS time) >= '18:00:00'"));
 
         $query->orderBy('eventos.nome', 'asc')
             ->orderBy('atividades.dia', 'asc')
@@ -180,14 +183,14 @@ class RelatorioMomentoExport implements FromCollection, WithHeadings, WithMappin
         return [
             $row->evento_nome ?? '—',
             $row->descricao ?? '—',
-            $row->municipio_nome ?? '—',
-            $row->dia ? \Carbon\Carbon::parse($row->dia)->format('d/m/Y') : '—',
-            $horaStr ? $periodoLabel . ' (' . $horaStr . ')' : '—',
+            $row->abrangencia_nacional ? 'Brasil' : ($row->municipio_nome ?? '—'),
+            $row->dia ? Carbon::parse($row->dia)->format('d/m/Y') : '—',
+            $horaStr ? $periodoLabel.' ('.$horaStr.')' : '—',
             $previstas ?: '—',
             $presentes,
-            $previstas > 0 ? $propPres . '%' : '—',
+            $previstas > 0 ? $propPres.'%' : '—',
             $avaliacoes,
-            $presentes > 0 ? $propAval . '%' : '—',
+            $presentes > 0 ? $propAval.'%' : '—',
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Participante;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -39,7 +40,7 @@ class CadastroParticipanteStoreRequest extends FormRequest
             'name'  => ['required', 'string', 'max:255'],
             'email' => [
                 'required', 'email', 'max:255',
-                Rule::unique('users', 'email'),
+                Rule::unique('users', 'email')->where('sistema_origem', User::SISTEMA_ENGAJA),
             ],
 
             'cpf'              => ['required', 'digits:11'],
@@ -88,6 +89,7 @@ class CadastroParticipanteStoreRequest extends FormRequest
 
         return Participante::query()
             ->whereNotNull('cpf')
+            ->whereHas('user', fn ($query) => $query->where('sistema_origem', User::SISTEMA_ENGAJA))
             ->whereRaw("regexp_replace(cpf, '[^0-9]', '', 'g') = ?", [$cpf])
             ->exists();
     }

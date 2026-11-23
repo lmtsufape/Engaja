@@ -26,19 +26,7 @@
 
             @unless($universal)
             <div class="col-md-6">
-              <label for="atividade_id" class="form-label">Atividade</label>
-              <select id="atividade_id" name="atividade_id"
-                class="form-select @error('atividade_id') is-invalid @enderror" required>
-                <option value="">Selecione...</option>
-                @foreach ($atividades as $atividade)
-                <option value="{{ $atividade->id }}" @selected(old('atividade_id') == $atividade->id)>
-                  {{ $atividade->descricao }} — {{ $atividade->evento->nome ?? 'Sem evento' }}
-                </option>
-                @endforeach
-              </select>
-              @error('atividade_id')
-              <div class="invalid-feedback">{{ $message }}</div>
-              @enderror
+              <x-momento-select id="atividade_id" name="atividade_id" :momentos="$atividades" required />
             </div>
             @endunless
 
@@ -82,7 +70,20 @@
             </div>
             @else
             <div class="col-md-6 d-flex align-items-center">
-              <div class="form-text mt-4">
+              <div class="form-check mt-4">
+                <input class="form-check-input @error('is_cartas') is-invalid @enderror" type="checkbox"
+                  value="1" id="is_cartas" name="is_cartas" @checked(old('is_cartas'))>
+                <label class="form-check-label" for="is_cartas">
+                  Avaliação para o Cartas para Esperançar
+                </label>
+                <div class="form-text">O link público será gerado no domínio do Cartas.</div>
+                @error('is_cartas')
+                <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-text">
                 Avaliações universais são sempre anônimas e não ficam vinculadas a um momento.
               </div>
             </div>

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Escala;
-use App\Models\Indicador;
 use App\Models\Evidencia;
 use App\Models\Questao;
 use App\Models\TemplateAvaliacao;
@@ -16,7 +15,7 @@ class QuestaoController extends Controller
     {
         $questaos = Questao::with(['indicador.dimensao', 'evidencia.indicador', 'escala', 'template'])
             ->orderBy('texto')
-            ->paginate(15);
+            ->get();
 
         return view('questaos.index', compact('questaos'));
     }
@@ -81,12 +80,12 @@ class QuestaoController extends Controller
     {
         $dados = $request->validate([
             'template_avaliacao_id' => ['required', Rule::exists('template_avaliacaos', 'id')],
-            'evidencia_id'          => ['required', Rule::exists('evidencias', 'id')],
-            'escala_id'             => ['nullable', Rule::exists('escalas', 'id')],
-            'texto'                 => ['required', 'string', 'max:1000'],
-            'tipo'                  => ['required', 'string', Rule::in(['texto', 'escala', 'numero', 'boolean'])],
-            'ordem'                 => ['nullable', 'integer', 'min:1', 'max:999'],
-            'fixa'                  => ['nullable', 'boolean'],
+            'evidencia_id' => ['required', Rule::exists('evidencias', 'id')],
+            'escala_id' => ['nullable', Rule::exists('escalas', 'id')],
+            'texto' => ['required', 'string', 'max:1000'],
+            'tipo' => ['required', 'string', Rule::in(['texto', 'escala', 'numero', 'boolean'])],
+            'ordem' => ['nullable', 'integer', 'min:1', 'max:999'],
+            'fixa' => ['nullable', 'boolean'],
         ]);
 
         $dados['fixa'] = $request->boolean('fixa');
@@ -102,7 +101,7 @@ class QuestaoController extends Controller
         }
 
         // Derive indicador_id from evidencia for consistency/back-compat
-        if (!empty($dados['evidencia_id'])) {
+        if (! empty($dados['evidencia_id'])) {
             $evidencia = Evidencia::find($dados['evidencia_id']);
             if ($evidencia) {
                 $dados['indicador_id'] = $evidencia->indicador_id;
@@ -126,8 +125,8 @@ class QuestaoController extends Controller
             ->get()
             ->mapWithKeys(fn ($evidencia) => [
                 $evidencia->id => ($evidencia->indicador && $evidencia->indicador->dimensao
-                    ? $evidencia->indicador->dimensao->descricao . ' - '
-                    : '') . ($evidencia->indicador->descricao ?? '') . ' | ' . $evidencia->descricao,
+                    ? $evidencia->indicador->dimensao->descricao.' - '
+                    : '').($evidencia->indicador->descricao ?? '').' | '.$evidencia->descricao,
             ]);
 
         $escalas = Escala::orderBy('descricao')->pluck('descricao', 'id');

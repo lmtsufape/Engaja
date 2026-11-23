@@ -50,8 +50,10 @@
             </div>
           </div>
         </div>
+      @endhasanyrole
 
-        @php($operacoesOpen = request()->routeIs('eventos.*') || request()->routeIs('agendamentos.*') || request()->routeIs('atividade-acoes.*'))
+      @hasanyrole('administrador|gerente|eq_pedagogica|articulador|SME')
+        @php($operacoesOpen = request()->routeIs('eventos.*') || request()->routeIs('agendamentos.*') || request()->routeIs('atividade-acoes.*') || request()->routeIs('presencas.*'))
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingOperacoes">
             <button class="accordion-button admin-accordion-button {{ $operacoesOpen ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarOperacoes" aria-expanded="{{ $operacoesOpen ? 'true' : 'false' }}" aria-controls="sidebarOperacoes">
@@ -65,9 +67,16 @@
           </h2>
           <div id="sidebarOperacoes" class="accordion-collapse collapse {{ $operacoesOpen ? 'show' : '' }}" aria-labelledby="headingOperacoes" data-bs-parent="#sidebarAccordion">
             <div class="accordion-body">
-              <a class="admin-nav-link {{ request()->routeIs('eventos.*') ? 'active' : '' }}" href="{{ route('eventos.index') }}">
-                Ações pedagógicas
-              </a>
+              @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
+                <a class="admin-nav-link {{ request()->routeIs('eventos.*') ? 'active' : '' }}" href="{{ route('eventos.index') }}">
+                  Ações pedagógicas
+                </a>
+              @endhasanyrole
+              @can('presenca.abrir')
+                <a class="admin-nav-link {{ request()->routeIs('presencas.*') ? 'active' : '' }}" href="{{ route('presencas.gerenciamento') }}">
+                  Controle de presenças
+                </a>
+              @endcan
               <a class="admin-nav-link {{ request()->routeIs('agendamentos.*') && !request()->routeIs('agendamentos.efetivacoes.*') ? 'active' : '' }}" href="{{ route('agendamentos.index') }}">
                 Agendamentos
               </a>
@@ -82,8 +91,10 @@
             </div>
           </div>
         </div>
+      @endhasanyrole
 
-        @php($avaliacoesOpen = request()->routeIs('avaliacoes.*') || request()->routeIs('avaliacoes-universais.*') || request()->routeIs('templates-avaliacao.*') || request()->routeIs('dimensaos.*') || request()->routeIs('indicadors.*') || request()->routeIs('evidencias.*') || request()->routeIs('escalas.*'))
+      @hasanyrole('administrador|gerente|eq_pedagogica|articulador')
+        @php($avaliacoesOpen = request()->routeIs('avaliacoes.*') || request()->routeIs('avaliacoes-universais.*') || request()->routeIs('avaliacoes-consolidadas.*') || request()->routeIs('templates-avaliacao.*') || request()->routeIs('dimensaos.*') || request()->routeIs('indicadors.*') || request()->routeIs('evidencias.*') || request()->routeIs('escalas.*'))
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingAvaliacoes">
             <button class="accordion-button admin-accordion-button {{ $avaliacoesOpen ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarAvaliacoes" aria-expanded="{{ $avaliacoesOpen ? 'true' : 'false' }}" aria-controls="sidebarAvaliacoes">
@@ -103,6 +114,11 @@
               <a class="admin-nav-link {{ request()->routeIs('avaliacoes-universais.*') ? 'active' : '' }}" href="{{ route('avaliacoes-universais.index') }}">
                 Avaliações universais
               </a>
+              @hasanyrole('administrador|gerente|eq_pedagogica')
+              <a class="admin-nav-link {{ request()->routeIs('avaliacoes-consolidadas.*') ? 'active' : '' }}" href="{{ route('avaliacoes-consolidadas.index') }}">
+                Consolidação de avaliações
+              </a>
+              @endhasanyrole
               <div class="admin-subsection__label">Configurações</div>
               <a class="admin-nav-link {{ request()->routeIs('templates-avaliacao.*') ? 'active' : '' }}" href="{{ route('templates-avaliacao.index') }}">
                 Modelos de avaliação
@@ -123,7 +139,7 @@
           </div>
         </div>
 
-        @php($relatoriosOpen = request()->routeIs('avaliacao-atividade.*') || request()->routeIs('relatorio-quantitativo.*'))
+        @php($relatoriosOpen = request()->routeIs('avaliacao-atividade.*') || request()->routeIs('relatorio-quantitativo.*') || request()->routeIs('painel-gerencial.*'))
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingRelatorios">
             <button class="accordion-button admin-accordion-button {{ $relatoriosOpen ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarRelatorios" aria-expanded="{{ $relatoriosOpen ? 'true' : 'false' }}" aria-controls="sidebarRelatorios">
@@ -143,6 +159,10 @@
               <a class="admin-nav-link {{ request()->routeIs('relatorio-quantitativo.*') ? 'active' : '' }}" href="{{ route('relatorio-quantitativo.index') }}">
                 Relatório Quantitativo
               </a>
+
+              <a class="admin-nav-link {{ request()->routeIs('painel-gerencial.*') ? 'active' : '' }}" href="{{ route('painel-gerencial.index') }}">
+                Painel Gerencial
+              </a>
             </div>
           </div>
         </div>
@@ -161,11 +181,13 @@
           </h2>
           <div id="sidebarPessoas" class="accordion-collapse collapse {{ $pessoasOpen ? 'show' : '' }}" aria-labelledby="headingPessoas" data-bs-parent="#sidebarAccordion">
             <div class="accordion-body">
+              @role('administrador')
+                <a class="admin-nav-link {{ request()->routeIs('usuarios.atualizacao-cadastral.*') ? 'active' : '' }}" href="{{ route('usuarios.atualizacao-cadastral.index') }}">
+                  Atualização de dados cadastrais
+                </a>
+              @endrole
               <a class="admin-nav-link {{ request()->routeIs('usuarios.index') || request()->routeIs('usuarios.edit') || request()->routeIs('usuarios.update') ? 'active' : '' }}" href="{{ route('usuarios.index') }}">
                 Gerenciar usuários
-              </a>
-              <a class="admin-nav-link {{ request()->routeIs('usuarios.verificar.*') ? 'active' : '' }}" href="{{ route('usuarios.verificar.index') }}">
-                Verificar usuário
               </a>
               @hasanyrole('administrador|gerente')
                 <a class="admin-nav-link {{ request()->routeIs('usuarios.participantes-exclusivos.*') ? 'active' : '' }}" href="{{ route('usuarios.participantes-exclusivos.index') }}">
@@ -174,13 +196,18 @@
                 <a class="admin-nav-link {{ request()->routeIs('usuarios.sem-vinculo.*') ? 'active' : '' }}" href="{{ route('usuarios.sem-vinculo.index') }}">
                   Usuários sem vínculo
                 </a>
+
+
               @endhasanyrole
+              <a class="admin-nav-link {{ request()->routeIs('usuarios.verificar.*') ? 'active' : '' }}" href="{{ route('usuarios.verificar.index') }}">
+                Verificar usuário
+              </a>
             </div>
           </div>
         </div>
       @endhasanyrole
 
-      @hasanyrole('administrador|gerente|eq_pedagogica|articulador|participante')
+      @hasanyrole('administrador|gerente|eq_pedagogica|articulador|participante|SME')
         @php($certificadosOpen = request()->routeIs('profile.certificados') || request()->routeIs('certificados.*'))
         <div class="accordion-item">
           <h2 class="accordion-header" id="headingCertificados">
@@ -202,10 +229,12 @@
                 <a class="admin-nav-link {{ request()->routeIs('certificados.modelos.*') ? 'active' : '' }}" href="{{ route('certificados.modelos.index') }}">
                   Modelos de certificados
                 </a>
+              @endhasanyrole
+              @can('certificado.baixar')
                 <a class="admin-nav-link {{ request()->routeIs('certificados.emitidos') ? 'active' : '' }}" href="{{ route('certificados.emitidos') }}">
                   Certificados emitidos
                 </a>
-              @endhasanyrole
+              @endcan
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SistemaContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Oferece o modal de foto de perfil nas telas iniciais (/, dashboard, eventos.index), sem foto cadastrada.
+ * Oferece o modal de foto de perfil em qualquer rota GET autenticada, sem foto cadastrada.
  * O aviso repete no máximo a cada {@see HOURS_BETWEEN_PROMPTS} horas (sessão longa sem logout).
  */
 class ProfilePhotoPromptMiddleware
@@ -20,6 +21,10 @@ class ProfilePhotoPromptMiddleware
 
     public function handle(Request $request, Closure $next): Response
     {
+        if (SistemaContext::isCartasRequest($request)) {
+            return $next($request);
+        }
+
         if (! auth()->check()) {
             return $next($request);
         }
@@ -38,10 +43,6 @@ class ProfilePhotoPromptMiddleware
         }
 
         if (! $request->isMethod('GET')) {
-            return $next($request);
-        }
-
-        if (! $this->isEntryHomeRoute($request)) {
             return $next($request);
         }
 
@@ -64,18 +65,5 @@ class ProfilePhotoPromptMiddleware
             : Carbon::parse($last);
 
         return $lastAt->copy()->addHours(self::HOURS_BETWEEN_PROMPTS)->isPast();
-    }
-
-    private function isEntryHomeRoute(Request $request): bool
-    {
-        if ($request->routeIs('dashboard')) {
-            return true;
-        }
-
-        if ($request->routeIs('eventos.index')) {
-            return true;
-        }
-
-        return $request->is('/');
     }
 }

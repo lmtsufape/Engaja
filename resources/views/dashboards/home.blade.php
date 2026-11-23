@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
 <div class="container py-4">
@@ -18,12 +18,15 @@
         <a class="btn btn-primary" href="{{ route('dashboards.presencas') }}">
           Presenças e inscrições
         </a>
+        <a class="btn btn-outline-dark" href="{{ route('dashboards.leitura-mundo') }}">
+          Leitura do mundo
+        </a>
       </div>
     </div>
   </div>
 
   <div class="row g-3 mb-4">
-    <div class="col-lg-4">
+    <div class="col-lg-3">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex">
           <div class="d-flex flex-column w-100">
@@ -40,7 +43,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-3">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex">
           <div class="d-flex flex-column w-100">
@@ -57,7 +60,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-3">
       <div class="card h-100 shadow-sm border-0">
         <div class="card-body d-flex">
           <div class="d-flex flex-column w-100">
@@ -68,6 +71,22 @@
               </p>
               <a href="{{ route('dashboards.bi') }}" class="btn btn-secondary mt-auto align-self-start">
                 Abrir dashboard BI
+              </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body d-flex">
+          <div class="d-flex flex-column w-100">
+              <p class="text-uppercase small fw-semibold mb-1" style="color:#6c345e;">Leitura</p>
+              <h2 class="h5 fw-bold">Painel Leitura do mundo</h2>
+              <p class="text-muted mb-3">
+                Liste as leituras cadastradas no LimeSurvey e abra o dashboard por survey.
+              </p>
+              <a href="{{ route('dashboards.leitura-mundo') }}" class="btn btn-dark mt-auto align-self-start">
+                Abrir leitura do mundo
               </a>
           </div>
         </div>

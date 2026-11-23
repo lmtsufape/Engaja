@@ -2,14 +2,20 @@ import "./bootstrap";
 import "../css/graficos.css";
 import "./graficos-ranking-municipios";
 import "./graficos-distribuicao-dimensoes";
+import "./lib/ag-grid-table";
+import "../css/momento-select.css";
+import { initMomentoSelects } from "./components/momento-select";
 import "tom-select/dist/css/tom-select.bootstrap5.min.css";
 import TomSelect from "tom-select";
 
 // import bundle com Popper e exporta classes Bootstrap
 import * as bootstrap from "bootstrap";
+import Quill from "quill";
+import "quill/dist/quill.snow.css";
 
 window.bootstrap = bootstrap;
 window.TomSelect = TomSelect;
+window.Quill = Quill;
 
 const loadMultiSelectsIfNeeded = () => {
     document.querySelectorAll("[data-multiselect]").forEach((el) => {
@@ -95,7 +101,19 @@ const loadFabricIfNeeded = () => {
     });
 };
 
+// Carrega o pdf.js apenas nas telas de Cartas que exibem uma carta em PDF
+const loadCartasPdfIfNeeded = () => {
+    if (!document.querySelector(".cpe-letter-doc[data-pdf-src]")) {
+        return;
+    }
+
+    import("./cartas-pdf-viewer");
+};
+
 if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => initMomentoSelects(), {
+        once: true,
+    });
     document.addEventListener("DOMContentLoaded", loadMultiSelectsIfNeeded, {
         once: true,
     });
@@ -105,10 +123,15 @@ if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", loadFabricIfNeeded, {
         once: true,
     });
+    document.addEventListener("DOMContentLoaded", loadCartasPdfIfNeeded, {
+        once: true,
+    });
 } else {
+    initMomentoSelects();
     loadMultiSelectsIfNeeded();
     loadReportMomentSelectIfNeeded();
     loadFabricIfNeeded();
+    loadCartasPdfIfNeeded();
 }
 
 let confirmModalInstance;
@@ -196,3 +219,64 @@ document.addEventListener("submit", (event) => {
         pendingForm = null;
     }
 });
+
+let blockedDeleteModalInstance = null;
+let blockedDeleteTitleEl = null;
+let blockedDeleteMessageEl = null;
+
+const ensureBlockedDeleteModalSetup = () => {
+    if (blockedDeleteModalInstance || !bootstrap?.Modal) {
+        return;
+    }
+
+    const modalEl = document.getElementById("blockedDeleteModal");
+    if (!modalEl) {
+        return;
+    }
+
+    blockedDeleteModalInstance = new bootstrap.Modal(modalEl);
+    blockedDeleteTitleEl = modalEl.querySelector(".js-blocked-delete-title");
+    blockedDeleteMessageEl = modalEl.querySelector(".js-blocked-delete-message");
+};
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ensureBlockedDeleteModalSetup, {
+        once: true,
+    });
+} else {
+    ensureBlockedDeleteModalSetup();
+}
+
+document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-blocked-delete]");
+    if (!trigger) {
+        return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    ensureBlockedDeleteModalSetup();
+
+    const blockedMessage = trigger.dataset.blockedDelete;
+    const blockedTitle = trigger.dataset.blockedDeleteTitle;
+
+    if (blockedDeleteMessageEl && blockedMessage) {
+        blockedDeleteMessageEl.textContent = blockedMessage;
+    }
+    if (blockedDeleteTitleEl && blockedTitle) {
+        blockedDeleteTitleEl.textContent = blockedTitle;
+    }
+
+    if (blockedDeleteModalInstance) {
+        blockedDeleteModalInstance.show();
+    } else {
+        const modalEl = document.getElementById("blockedDeleteModal");
+        if (modalEl && window.bootstrap?.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else {
+            window.alert(blockedMessage || "Este momento possui presenças associadas e não pode ser excluído.");
+        }
+    }
+});
+

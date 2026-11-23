@@ -51,11 +51,14 @@ class LoginRequest extends FormRequest
         $errorKey = 'login';
 
         if ($isEmail) {
-            $user = \App\Models\User::where('email', $login)->first();
+            $user = \App\Models\User::where('email', $login)
+                ->where('sistema_origem', \App\Models\User::SISTEMA_ENGAJA)
+                ->first();
         } elseif (strlen($cpfDigits) === 11) {
-            $usuarios = \App\Models\User::whereHas('participante', function ($q) use ($cpfDigits) {
-                $q->whereRaw("regexp_replace(cpf, '[^0-9]', '', 'g') = ?", [$cpfDigits]);
-            })->get();
+            $usuarios = \App\Models\User::where('sistema_origem', \App\Models\User::SISTEMA_ENGAJA)
+                ->whereHas('participante', function ($q) use ($cpfDigits) {
+                    $q->whereRaw("regexp_replace(cpf, '[^0-9]', '', 'g') = ?", [$cpfDigits]);
+                })->get();
 
             if ($usuarios->count() > 1) {
                 RateLimiter::hit($this->throttleKey());
@@ -79,7 +82,18 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! Auth::attempt(['email' => $user->email, 'password' => $password], $this->boolean('remember'))) {
+        if ($user->isCartasUser()) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                $errorKey => 'Use a tela de acesso do Cartas para Esperançar.',
+            ]);
+        }
+
+        if (! Auth::attempt([
+            'email' => $user->email,
+            'password' => $password,
+            'sistema_origem' => \App\Models\User::SISTEMA_ENGAJA,
+        ], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

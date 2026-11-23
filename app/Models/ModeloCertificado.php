@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ModeloCertificado extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $table = 'modelo_certificados';
@@ -25,7 +27,7 @@ class ModeloCertificado extends Model
 
     protected $casts = [
         'layout_frente' => 'array',
-        'layout_verso'  => 'array',
+        'layout_verso' => 'array',
     ];
 
     public function eixo()

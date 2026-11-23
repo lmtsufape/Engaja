@@ -4,16 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Exports\RelatorioMomentoExport;
 use App\Exports\RelatorioTotalGeralExport;
+use App\Http\Controllers\Concerns\ResolvesPdfBrandMargin;
 use App\Models\Atividade;
 use App\Models\Evento;
 use App\Models\Municipio;
 use App\Models\Regiao;
+use App\Word\WordDocument;
+use App\Word\WordTableExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Spatie\LaravelPdf\Facades\Pdf;
 
 class RelatorioQuantitativoController extends Controller
 {
+    use ResolvesPdfBrandMargin;
+
     public function index(Request $request)
     {
         $eventoId = $request->integer('evento_id');
@@ -113,7 +118,6 @@ class RelatorioQuantitativoController extends Controller
     private function buildTotalGeralData(Request $request)
     {
         $eventoId = $request->integer('evento_id');
-        $municipioIdFiltro = $request->integer('municipio_id');
         $regiaoId = $request->integer('regiao_id');
         $de = $request->date('de');
         $ate = $request->date('ate');
@@ -121,24 +125,38 @@ class RelatorioQuantitativoController extends Controller
         $sort = $request->get('sort', 'regiao');
         $dir = $request->get('dir', 'asc') === 'asc' ? 'asc' : 'desc';
 
-        // Query 1: Previstos por município
-        $previstos = Atividade::query()
-            ->select('municipio_id')
+        // Query 1: Previstos por município, separando abrangência nacional
+        // (município nulo, mas intencional) de "sem município" (dado ausente).
+        $previstosRaw = Atividade::query()
+            ->select('municipio_id', 'abrangencia_nacional')
             ->selectRaw('SUM(publico_esperado) as previstos')
             ->when($eventoId, fn ($q) => $q->where('evento_id', $eventoId))
-            ->when($municipioIdFiltro, fn ($q) => $q->where('municipio_id', $municipioIdFiltro))
             ->when($de && $ate, fn ($q) => $q->whereBetween('dia', [$de, $ate]))
             ->when($de && ! $ate, fn ($q) => $q->where('dia', '>=', $de))
             ->when(! $de && $ate, fn ($q) => $q->where('dia', '<=', $ate))
             ->whereNull('deleted_at')
             ->whereNotNull('evento_id')
-            ->groupBy('municipio_id')
-            ->get()
-            ->keyBy('municipio_id');
+            ->groupBy('municipio_id', 'abrangencia_nacional')
+            ->get();
 
-        // Query 2: Contagens de CPF e métricas demográficas por município
-        $cpfCounts = \DB::table('presencas')
-            ->selectRaw('atividades.municipio_id')
+        $previstos = collect();  // municipio_id => previstos (município definido)
+        $previstosNacional = 0;  // atividades de abrangência nacional
+        $previstosNaoIdent = 0;  // sem município e sem abrangência nacional
+        foreach ($previstosRaw as $r) {
+            if ($r->abrangencia_nacional) {
+                $previstosNacional += (int) $r->previstos;
+            } elseif ($r->municipio_id === null) {
+                $previstosNaoIdent += (int) $r->previstos;
+            } else {
+                $previstos->put($r->municipio_id, (int) $r->previstos);
+            }
+        }
+
+        // Query 2: Contagens de CPF e métricas demográficas.
+        // A presença é atribuída ao município DO PARTICIPANTE (participantes.municipio_id),
+        // não ao do momento — igual às telas de ação, que exibem o município da pessoa.
+        $cpfCountsRaw = \DB::table('presencas')
+            ->selectRaw('participantes.municipio_id')
             ->selectRaw('COUNT(DISTINCT CASE WHEN participantes.cpf IS NOT NULL AND participantes.cpf != \'\' THEN participantes.id END) as com_cpf')
             ->selectRaw('COUNT(DISTINCT CASE WHEN participantes.cpf IS NULL OR participantes.cpf = \'\' THEN participantes.id END) as sem_cpf')
             ->selectRaw("COUNT(DISTINCT CASE WHEN users.raca_cor = 'Branca'   THEN participantes.id END) as raca_branca")
@@ -161,16 +179,32 @@ class RelatorioQuantitativoController extends Controller
             ->whereNull('atividades.deleted_at')
             ->whereNotNull('atividades.evento_id')
             ->when($eventoId, fn ($q) => $q->where('atividades.evento_id', $eventoId))
-            ->when($municipioIdFiltro, fn ($q) => $q->where('atividades.municipio_id', $municipioIdFiltro))
             ->when($de && $ate, fn ($q) => $q->whereBetween('atividades.dia', [$de, $ate]))
             ->when($de && ! $ate, fn ($q) => $q->where('atividades.dia', '>=', $de))
             ->when(! $de && $ate, fn ($q) => $q->where('atividades.dia', '<=', $ate))
-            ->groupBy('atividades.municipio_id')
-            ->get()
-            ->keyBy('municipio_id');
+            ->groupBy('participantes.municipio_id')
+            ->get();
 
-        // Aplicar filtro de região
-        $municipiosQuery = Municipio::query()->with('estado.regiao');
+        $cpfCounts = collect();  // municipio_id do participante => counts
+        $countsNaoIdent = null;  // presenças de participantes sem município cadastrado
+        foreach ($cpfCountsRaw as $r) {
+            if ($r->municipio_id === null) {
+                $countsNaoIdent = $r;
+            } else {
+                $cpfCounts->put($r->municipio_id, $r);
+            }
+        }
+
+        // Só carrega municípios que têm dado (previstos de momento OU presença de
+        // participante) — evita renderizar milhares de linhas zeradas, já que a
+        // tabela `municipios` cobre todo o Brasil.
+        $idsComDados = $previstos->keys()
+            ->merge($cpfCounts->keys())
+            ->filter(fn ($id) => $id !== null)
+            ->unique()
+            ->values();
+
+        $municipiosQuery = Municipio::query()->with('estado.regiao')->whereIn('id', $idsComDados);
         if ($regiaoId) {
             $municipiosQuery->whereHas('estado', fn ($q) => $q->where('regiao_id', $regiaoId));
         }
@@ -235,7 +269,7 @@ class RelatorioQuantitativoController extends Controller
                 continue;
             }
 
-            $prev = $previstos->get($mId)?->previstos ?? 0;
+            $prev = (int) ($previstos->get($mId) ?? 0);
             $counts = $cpfCounts->get($mId);
             $comCpf = (int) ($counts?->com_cpf ?? 0);
             $semCpf = (int) ($counts?->sem_cpf ?? 0);
@@ -266,44 +300,62 @@ class RelatorioQuantitativoController extends Controller
             $totais['tag_movimento_social'] += (int) ($counts?->tag_movimento_social ?? 0);
         }
 
-        // Linha "Municípios não identificados"
-        $prevNull = $previstos->get(null)?->previstos ?? 0;
-        $countsNull = $cpfCounts->get(null);
-        $comCpfNull = (int) ($countsNull?->com_cpf ?? 0);
-        $semCpfNull = (int) ($countsNull?->sem_cpf ?? 0);
+        // Linha "Brasil (abrangência nacional)": mostra os PREVISTOS dos momentos
+        // nacionais (atributo do momento). Os presentes desses momentos são contados
+        // na cidade de cada participante, então esta linha não tem métrica de presença.
+        if ($previstosNacional > 0) {
+            $rows[] = [
+                'municipio_id' => 'brasil',
+                'municipio_nome' => 'Brasil (abrangência nacional)',
+                'regiao' => '',
+                'previstos' => $previstosNacional,
+                'metricas' => $buildMetricas(0, null),
+                '_is_brasil' => true,
+            ];
+
+            $totais['previstos'] += $previstosNacional;
+        }
+
+        // Linha "Municípios não identificados": previstos de momentos sem município
+        // (e sem abrangência nacional) + presenças de participantes sem município cadastrado.
+        $comCpfNull = (int) ($countsNaoIdent?->com_cpf ?? 0);
+        $semCpfNull = (int) ($countsNaoIdent?->sem_cpf ?? 0);
         $tpNull = $comCpfNull + $semCpfNull;
 
-        if ($prevNull > 0 || $tpNull > 0) {
+        if ($previstosNaoIdent > 0 || $tpNull > 0) {
             $rows[] = [
                 'municipio_id' => null,
                 'municipio_nome' => 'Municípios não identificados',
                 'regiao' => '',
-                'previstos' => (int) $prevNull,
-                'metricas' => $buildMetricas($tpNull, $countsNull),
+                'previstos' => $previstosNaoIdent,
+                'metricas' => $buildMetricas($tpNull, $countsNaoIdent),
                 '_is_unidentified' => true,
             ];
 
-            $totais['previstos'] += $prevNull;
+            $totais['previstos'] += $previstosNaoIdent;
             $totais['com_cpf'] += $comCpfNull;
             $totais['sem_cpf'] += $semCpfNull;
-            $totais['raca_branca'] += (int) ($countsNull?->raca_branca ?? 0);
-            $totais['raca_parda'] += (int) ($countsNull?->raca_parda ?? 0);
-            $totais['raca_preta'] += (int) ($countsNull?->raca_preta ?? 0);
-            $totais['raca_amarela'] += (int) ($countsNull?->raca_amarela ?? 0);
-            $totais['raca_indigena'] += (int) ($countsNull?->raca_indigena ?? 0);
-            $totais['genero_mulheres'] += (int) ($countsNull?->genero_mulheres ?? 0);
-            $totais['genero_homens'] += (int) ($countsNull?->genero_homens ?? 0);
-            $totais['genero_outros'] += (int) ($countsNull?->genero_outros ?? 0);
-            $totais['pcd'] += (int) ($countsNull?->com_pcd ?? 0);
-            $totais['certificados'] += (int) ($countsNull?->certificados_emitidos ?? 0);
-            $totais['tag_rede_ensino'] += (int) ($countsNull?->tag_rede_ensino ?? 0);
-            $totais['tag_movimento_social'] += (int) ($countsNull?->tag_movimento_social ?? 0);
+            $totais['raca_branca'] += (int) ($countsNaoIdent?->raca_branca ?? 0);
+            $totais['raca_parda'] += (int) ($countsNaoIdent?->raca_parda ?? 0);
+            $totais['raca_preta'] += (int) ($countsNaoIdent?->raca_preta ?? 0);
+            $totais['raca_amarela'] += (int) ($countsNaoIdent?->raca_amarela ?? 0);
+            $totais['raca_indigena'] += (int) ($countsNaoIdent?->raca_indigena ?? 0);
+            $totais['genero_mulheres'] += (int) ($countsNaoIdent?->genero_mulheres ?? 0);
+            $totais['genero_homens'] += (int) ($countsNaoIdent?->genero_homens ?? 0);
+            $totais['genero_outros'] += (int) ($countsNaoIdent?->genero_outros ?? 0);
+            $totais['pcd'] += (int) ($countsNaoIdent?->com_pcd ?? 0);
+            $totais['certificados'] += (int) ($countsNaoIdent?->certificados_emitidos ?? 0);
+            $totais['tag_rede_ensino'] += (int) ($countsNaoIdent?->tag_rede_ensino ?? 0);
+            $totais['tag_movimento_social'] += (int) ($countsNaoIdent?->tag_movimento_social ?? 0);
         }
 
-        // Ordenação
-        usort($rows, function ($a, $b) use ($sort, $dir) {
-            if (isset($a['_is_unidentified']) || isset($b['_is_unidentified'])) {
-                return 0;
+        // Ordenação — linhas "Brasil" e "não identificados" ficam sempre ao fim
+        // (rank: normal 0 < Brasil 1 < não identificados 2).
+        $rankFixo = fn ($r) => isset($r['_is_unidentified']) ? 2 : (isset($r['_is_brasil']) ? 1 : 0);
+
+        usort($rows, function ($a, $b) use ($sort, $dir, $rankFixo) {
+            if ($rankFixo($a) || $rankFixo($b)) {
+                return $rankFixo($a) <=> $rankFixo($b);
             }
 
             $aVal = match ($sort) {
@@ -335,9 +387,9 @@ class RelatorioQuantitativoController extends Controller
 
         // Ordenação padrão: Região → Município
         if ($sort === 'regiao' || $sort === 'municipio') {
-            usort($rows, function ($a, $b) use ($dir) {
-                if (isset($a['_is_unidentified']) || isset($b['_is_unidentified'])) {
-                    return isset($a['_is_unidentified']) ? 1 : -1;
+            usort($rows, function ($a, $b) use ($dir, $rankFixo) {
+                if ($rankFixo($a) || $rankFixo($b)) {
+                    return $rankFixo($a) <=> $rankFixo($b);
                 }
 
                 $regCmp = strcmp($a['regiao'], $b['regiao']);
@@ -418,12 +470,23 @@ class RelatorioQuantitativoController extends Controller
 
         if ($formato === 'pdf') {
             $atividades = $this->getAtividadesData($request);
+            $marginTop = $this->brandImageMarginMm('images/Alfa-Eja Header.png', 297, 40);
 
             return Pdf::view('relatorio-quantitativo.pdf-momento', compact('atividades'))
                 ->format('a4')
                 ->landscape()
-                ->withAlfaEjaBrand(35, 10, 25, 10)
+                ->withAlfaEjaBrand($marginTop, 10, 25, 10)
                 ->download('relatorio-momento-'.now()->format('Ymd_His').'.pdf');
+        }
+
+        if ($formato === 'docx') {
+            $export = new RelatorioMomentoExport($request);
+            $doc = new WordDocument('landscape');
+            $doc->addTitle('Relatório Quantitativo por Momento');
+            $doc->addFiltersSummary($export->getFiltersSummary());
+            WordTableExport::render($doc, $export);
+
+            return $doc->download('relatorio-momento-'.now()->format('Ymd_His').'.docx');
         }
 
         return Excel::download(
@@ -439,12 +502,23 @@ class RelatorioQuantitativoController extends Controller
         if ($formato === 'pdf') {
             $totalGeral = $this->buildTotalGeralData($request);
             $dimensoes = $request->input('dimensoes', []);
+            $marginTop = $this->brandImageMarginMm('images/Alfa-Eja Header.png', 297, 40);
 
             return Pdf::view('relatorio-quantitativo.pdf-total-geral', compact('totalGeral', 'dimensoes'))
                 ->format('a4')
                 ->landscape()
-                ->withAlfaEjaBrand(35, 10, 25, 10)
+                ->withAlfaEjaBrand($marginTop, 10, 25, 10)
                 ->download('relatorio-total-geral-'.now()->format('Ymd_His').'.pdf');
+        }
+
+        if ($formato === 'docx') {
+            $export = new RelatorioTotalGeralExport($request);
+            $doc = new WordDocument('landscape');
+            $doc->addTitle('Relatório Quantitativo — Total Geral');
+            $doc->addFiltersSummary($export->getFiltersSummary());
+            WordTableExport::render($doc, $export);
+
+            return $doc->download('relatorio-total-geral-'.now()->format('Ymd_His').'.docx');
         }
 
         return Excel::download(

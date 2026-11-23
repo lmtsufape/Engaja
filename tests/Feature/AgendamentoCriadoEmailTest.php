@@ -32,12 +32,12 @@ class AgendamentoCriadoEmailTest extends TestCase
         $this->atividadeAcao = AtividadeAcao::create(['nome' => 'Formação de Professores', 'usa_turmas' => false]);
     }
 
-    public function test_criar_agendamento_envia_email_para_administradores(): void
+    public function test_criar_agendamento_envia_email_para_usuarios_com_permissao(): void
     {
         Mail::fake();
 
-        $admin = User::factory()->create(['email' => 'admin@test.local']);
-        $admin->assignRole('administrador');
+        $notificado = User::factory()->create(['email' => 'notificado@test.local']);
+        $notificado->givePermissionTo('agendamento.notificar');
 
         $criador = User::factory()->create(['email' => 'articulador@test.local']);
         $criador->assignRole('articulador');
@@ -50,18 +50,18 @@ class AgendamentoCriadoEmailTest extends TestCase
             'local_acao' => 'Escola Municipal Central',
         ]);
 
-        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('admin@test.local'));
+        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('notificado@test.local'));
     }
 
-    public function test_criar_agendamento_envia_email_para_gerentes_e_eq_pedagogica(): void
+    public function test_criar_agendamento_envia_email_para_varios_usuarios_marcados(): void
     {
         Mail::fake();
 
-        $gerente = User::factory()->create(['email' => 'gerente@test.local']);
-        $gerente->assignRole('gerente');
+        $primeiro = User::factory()->create(['email' => 'primeiro@test.local']);
+        $primeiro->givePermissionTo('agendamento.notificar');
 
-        $eq = User::factory()->create(['email' => 'eq@test.local']);
-        $eq->assignRole('eq_pedagogica');
+        $segundo = User::factory()->create(['email' => 'segundo@test.local']);
+        $segundo->givePermissionTo('agendamento.notificar');
 
         $criador = User::factory()->create(['email' => 'articulador2@test.local']);
         $criador->assignRole('articulador');
@@ -74,19 +74,18 @@ class AgendamentoCriadoEmailTest extends TestCase
             'local_acao' => 'Escola Municipal Central',
         ]);
 
-        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('gerente@test.local'));
-        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('eq@test.local'));
+        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('primeiro@test.local'));
+        Mail::assertQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('segundo@test.local'));
     }
 
-    public function test_criar_agendamento_nao_envia_email_para_roles_sem_permissao_efetivar(): void
+    public function test_criar_agendamento_nao_envia_email_para_usuarios_sem_permissao(): void
     {
         Mail::fake();
 
-        $participante = User::factory()->create(['email' => 'participante@test.local']);
-        $participante->assignRole('participante');
+        $semPermissao = User::factory()->create(['email' => 'sempermissao@test.local']);
 
-        $sme = User::factory()->create(['email' => 'sme@test.local']);
-        $sme->assignRole('SME');
+        $adminSemPermissao = User::factory()->create(['email' => 'admin@test.local']);
+        $adminSemPermissao->assignRole('administrador');
 
         $criador = User::factory()->create(['email' => 'articulador3@test.local']);
         $criador->assignRole('articulador');
@@ -99,7 +98,7 @@ class AgendamentoCriadoEmailTest extends TestCase
             'local_acao' => 'Escola Municipal Central',
         ]);
 
-        Mail::assertNotQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('participante@test.local'));
-        Mail::assertNotQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('sme@test.local'));
+        Mail::assertNotQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('sempermissao@test.local'));
+        Mail::assertNotQueued(AgendamentoCriadoMail::class, fn ($mail) => $mail->hasTo('admin@test.local'));
     }
 }

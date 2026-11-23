@@ -25,3 +25,6 @@ Thumbs.db
 
 # graphify
 graphify-out/
+
+# claude code (config pessoal, contem caminhos da maquina)
+.claude/settings.local.json

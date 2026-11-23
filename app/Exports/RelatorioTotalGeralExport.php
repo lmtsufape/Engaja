@@ -4,7 +4,6 @@ namespace App\Exports;
 
 use App\Http\Controllers\RelatorioQuantitativoController;
 use App\Models\Evento;
-use App\Models\Municipio;
 use App\Models\Regiao;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -49,7 +48,7 @@ class RelatorioTotalGeralExport implements FromCollection, ShouldAutoSize, WithE
         ];
     }
 
-    private function getFiltersSummary(): array
+    public function getFiltersSummary(): array
     {
         $filtros = [];
 
@@ -67,12 +66,8 @@ class RelatorioTotalGeralExport implements FromCollection, ShouldAutoSize, WithE
             }
         }
 
-        if ($this->request->integer('municipio_id')) {
-            $municipio = Municipio::find($this->request->integer('municipio_id'));
-            if ($municipio) {
-                $filtros[] = 'Município: '.$municipio->nome;
-            }
-        }
+        // O Total Geral não aplica filtro de município (é uma quebra por município);
+        // não listamos "Município" para não anunciar um filtro que não foi usado.
 
         if ($this->request->get('de') || $this->request->get('ate')) {
             $de = $this->request->get('de') ? Carbon::parse($this->request->get('de'))->format('d/m/Y') : '';
@@ -96,7 +91,7 @@ class RelatorioTotalGeralExport implements FromCollection, ShouldAutoSize, WithE
     {
         $dimensoes = $this->request->input('dimensoes', []);
 
-        $cols = ['Região', 'Município', 'Previstos', 'Total Presentes'];
+        $cols = ['Região', 'Município', 'Previstos', 'Participantes distintos'];
 
         if (in_array('cpf', $dimensoes)) {
             array_push($cols, 'Com CPF', 'Sem CPF', '% Com CPF');

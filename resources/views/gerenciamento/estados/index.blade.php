@@ -11,41 +11,36 @@
     <button class="btn btn-engaja btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateEstado">Novo estado</button>
   </div>
 
-  <div class="table-responsive shadow-sm rounded-3 bg-white">
-    <table class="table align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Região</th>
-          <th>Sigla</th>
-          <th class="text-end">Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($estados as $estado)
-          <tr>
-            <td>{{ $estado->nome }}</td>
-            <td>{{ $estado->regiao->nome ?? '-' }}</td>
-            <td>{{ $estado->sigla }}</td>
-            <td class="text-end">
-              <button
-                class="btn btn-outline-secondary btn-sm btn-edit-estado"
-                data-id="{{ $estado->id }}"
-                data-nome="{{ $estado->nome }}"
-                data-sigla="{{ $estado->sigla }}"
-                data-regiao="{{ $estado->regiao_id }}"
-                data-action="{{ route('estados.update', $estado) }}"
-                data-delete="{{ route('estados.destroy', $estado) }}"
-                data-bs-toggle="modal"
-                data-bs-target="#modalEditEstado"
-              >Editar</button>
-            </td>
-          </tr>
-        @empty
-          <tr><td colspan="4" class="text-center text-muted py-4">Nenhum estado cadastrado.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+          ['field' => 'regiao', 'headerName' => 'Região', 'flex' => 1],
+          ['field' => 'sigla', 'headerName' => 'Sigla', 'flex' => 1],
+          ['field' => 'acoes', 'headerName' => 'Ações', 'flex' => 1, 'html' => true],
+      ];
+
+      $rows = $estados->map(fn ($estado) => [
+          'nome' => $estado->nome,
+          'regiao' => $estado->regiao->nome ?? '-',
+          'sigla' => $estado->sigla,
+          'acoes' => '<button class="btn btn-outline-secondary btn-sm btn-edit-estado"'
+              . ' data-id="' . $estado->id . '"'
+              . ' data-nome="' . e($estado->nome) . '"'
+              . ' data-sigla="' . e($estado->sigla) . '"'
+              . ' data-regiao="' . $estado->regiao_id . '"'
+              . ' data-action="' . route('estados.update', $estado) . '"'
+              . ' data-delete="' . route('estados.destroy', $estado) . '"'
+              . ' data-bs-toggle="modal" data-bs-target="#modalEditEstado">Editar</button>',
+      ])->values();
+  @endphp
+
+  <div class="card shadow-sm">
+      <x-data-table
+          id="grid-estados"
+          :columns="$columns"
+          :rows="$rows"
+          :page-size="15"
+      />
   </div>
 </div>
 
@@ -140,21 +135,26 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const editBtns = document.querySelectorAll('.btn-edit-estado');
   const formEdit = document.getElementById('formEditEstado');
   const formDelete = document.getElementById('formDeleteEstado');
   const inputNome = document.getElementById('editEstadoNome');
   const inputSigla = document.getElementById('editEstadoSigla');
   const selectRegiao = document.getElementById('editEstadoRegiao');
-  editBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      formEdit.setAttribute('action', btn.dataset.action);
-      formDelete.setAttribute('action', btn.dataset.delete);
-      inputNome.value = btn.dataset.nome || '';
-      inputSigla.value = btn.dataset.sigla || '';
-      if (selectRegiao) selectRegiao.value = btn.dataset.regiao || '';
-    });
+
+  // Delegação de evento: os botões .btn-edit-estado são renderizados pelo
+  // AG Grid de forma assíncrona (depois do DOMContentLoaded), então um
+  // querySelectorAll+forEach direto não os encontraria.
+  document.addEventListener('click', (event) => {
+    const btn = event.target.closest('.btn-edit-estado');
+    if (!btn) return;
+
+    formEdit.setAttribute('action', btn.dataset.action);
+    formDelete.setAttribute('action', btn.dataset.delete);
+    inputNome.value = btn.dataset.nome || '';
+    inputSigla.value = btn.dataset.sigla || '';
+    if (selectRegiao) selectRegiao.value = btn.dataset.regiao || '';
   });
+
   const btnDelete = document.getElementById('btnDeleteEstado');
   if (btnDelete && formDelete) {
     btnDelete.addEventListener('click', () => {

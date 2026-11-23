@@ -15,6 +15,7 @@
 
   <style>
     :root {
+      --engaja-blue: #295184;
     }
 
     body {
@@ -33,6 +34,7 @@
     }
 
     .form-control:focus {
+      border-color: #421944 !important;
       /* roxo Engaja no foco */
       box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
       /* glow roxo no foco */
@@ -43,6 +45,7 @@
     }
 
     .form-select:focus {
+      border-color: #421944 !important;
       box-shadow: 0 0 0 0.2rem rgba(66, 25, 68, 0.25);
     }
   </style>
@@ -57,7 +60,7 @@
       flex: 0 0 auto;
       width: max-content;
       min-width: 300px;
-      background: linear-gradient(180deg, #295184 0%, #295184 100%);
+      background: linear-gradient(50deg, #295184 0%, #205e7e 100%);
       color: #f5f3ff;
       min-height: 100vh;
       height: 100vh;
@@ -171,7 +174,7 @@
 
     .admin-nav-link.active {
       background: #f8f7fb;
-      color: #2c1230;
+      color: #295184;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
     }
 
@@ -191,7 +194,7 @@
     }
 
     .admin-nav-link.active .admin-nav-icon {
-      background: linear-gradient(135deg, #295184, #295184);
+      background: linear-gradient(135deg, #2092c4, #295184);
       color: #fff;
     }
 
@@ -517,6 +520,7 @@
               <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                 <li><a class="dropdown-item" href="{{ route('profile.edit') }}">Meu perfil</a></li>
                 <li><a class="dropdown-item" href="{{ route('profile.certificados') }}">Meus certificados</a></li>
+                <li><a class="dropdown-item" href="{{ route('profile.autorizacoes-imagem') }}">Minhas autorizações de imagem</a></li>
                 <li>
                   <hr class="dropdown-divider">
                 </li>
@@ -947,5 +951,6 @@
   });
   </script>
 
+@include('autorizacoes-imagem.partials.presenca-modal')
 </body>
 </html>

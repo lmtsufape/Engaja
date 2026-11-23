@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Evento;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\Exportable;
@@ -37,8 +38,11 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
         return [
             'Ação pedagógica',
             'Momento',
+            'Data do momento',
+            'ID do usuário',
             'Nome',
             'Email',
+            'Data de cadastro',
             'CPF',
             'Telefone',
             'Município',
@@ -54,8 +58,11 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
         return [
             $this->evento->nome,
             $row->momento,
+            $row->data_momento ? Carbon::parse($row->data_momento)->format('d/m/Y') : null,
+            $row->usuario_id,
             $row->nome,
             $row->email,
+            $row->data_cadastro ? Carbon::parse($row->data_cadastro)->format('d/m/y') : null,
             $row->cpf,
             $row->telefone,
             $this->formatMunicipioEstado($row->municipio, $row->estado),
@@ -83,8 +90,11 @@ class EventoParticipantesPorMomentoExport implements FromCollection, WithHeading
             ->select([
                 'atividades.id as atividade_id',
                 'atividades.descricao as momento',
+                'atividades.dia as data_momento',
+                'users.id as usuario_id',
                 'users.name as nome',
                 'users.email',
+                'users.created_at as data_cadastro',
                 'participantes.cpf',
                 'participantes.telefone',
                 'municipios.nome as municipio',

@@ -19,9 +19,15 @@
       page-break-after: auto;
     }
     .bg {
+      /* Preenche a página inteira preservando proporção (cover). A folha do PDF é
+         alinhada ao @page via preferCSSPageSize (ver CertificadoController), o que
+         elimina a faixa branca de borda causada por arredondamento mm→folha. */
       position: absolute;
-      width: auto;
-      height: auto;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .text-layer {
       position: absolute;
@@ -36,6 +42,9 @@
 </head>
 <body>
   @php
+    $mmToPx = 96 / 25.4;
+    $pageW = 297 * $mmToPx; // largura A4 paisagem em px (96dpi)
+    $pageH = 210 * $mmToPx; // altura A4 paisagem em px (96dpi)
     $modelo = $certificado->modelo;
     $frenteFile = $modelo?->imagem_frente ? public_path('storage/'.$modelo->imagem_frente) : null;
     $versoFile  = $modelo?->imagem_verso ? public_path('storage/'.$modelo->imagem_verso) : null;
@@ -184,17 +193,12 @@
   @endphp
 
   <div class="page">
-    @if($frenteUrl)
-      <img src="{{ $frenteUrl }}" class="bg" alt="Frente">
-    @endif
     @php
       $imgW = max(1, (float)($frenteInfo[0] ?? 2000));
       $imgH = max(1, (float)($frenteInfo[1] ?? 1100));
       $cw = max(1, (float)($layoutFrente['canvas_w'] ?? $imgW));
       $ch = max(1, (float)($layoutFrente['canvas_h'] ?? $imgH));
-      $pageW = 1122.52;
-      $pageH = 793.70;
-      $scale = min($pageW / $imgW, $pageH / $imgH);
+      $scale = max($pageW / $imgW, $pageH / $imgH);
       $renderW = $imgW * $scale;
       $renderH = $imgH * $scale;
       $offsetX = ($pageW - $renderW) / 2;
@@ -260,7 +264,7 @@
       }
       if ($dateH > 0) $styleDateFront[] = "height:{$dateH}px";
     @endphp
-    <img src="{{ $frenteUrl }}" class="bg" alt="Frente" style="width:{{ $renderW }}px; height:{{ $renderH }}px; left:{{ $offsetX }}px; top:{{ $offsetY }}px;">
+    <img src="{{ $frenteUrl }}" class="bg" alt="Frente">
     <div class="text-layer" style="{{ implode(';', $styleFront) }}">{!! $renderStyled($textoFrente, $layoutFrente) !!}</div>
     @if(is_numeric($layoutFrente['date_x'] ?? null) && is_numeric($layoutFrente['date_y'] ?? null))
       <div class="text-layer" style="{{ implode(';', $styleDateFront) }}">{{ $textoDataEmissao }}</div>
@@ -274,9 +278,7 @@
       $imgH = max(1, (float)($versoInfo[1] ?? 1100));
       $cw = max(1, (float)($layoutVerso['canvas_w'] ?? $imgW));
       $ch = max(1, (float)($layoutVerso['canvas_h'] ?? $imgH));
-      $pageW = 1122.52;
-      $pageH = 793.70;
-      $scale = min($pageW / $imgW, $pageH / $imgH);
+      $scale = max($pageW / $imgW, $pageH / $imgH);
       $renderW = $imgW * $scale;
       $renderH = $imgH * $scale;
       $offsetX = ($pageW - $renderW) / 2;
@@ -319,7 +321,7 @@
       $qrS = ($layoutVerso['qr_size'] ?? 0) * min($scaleX, $scaleY);
     @endphp
     @if($versoUrl)
-      <img src="{{ $versoUrl }}" class="bg" alt="Verso" style="width:{{ $renderW }}px; height:{{ $renderH }}px; left:{{ $offsetX }}px; top:{{ $offsetY }}px;">
+      <img src="{{ $versoUrl }}" class="bg" alt="Verso">
     @endif
     @if($qrBase64 && ($layoutVerso['qr_size'] ?? null))
       <img src="{{ $qrBase64 }}" alt="QR" style="position:absolute; left:{{ $qrX }}px; top:{{ $qrY }}px; width:{{ $qrS }}px; height:{{ $qrS }}px; object-fit:contain;">

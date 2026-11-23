@@ -17,7 +17,7 @@ class DimensaoController extends Controller
 
         $searchTerm = trim((string) $request->query('search', ''));
         if ($searchTerm !== '') {
-            $query->where('descricao', 'like', '%' . $searchTerm . '%');
+            $query->where('descricao', 'like', '%'.$searchTerm.'%');
         }
 
         $hasIndicators = $request->query('has_indicators');
@@ -37,7 +37,7 @@ class DimensaoController extends Controller
             $query->orderBy('descricao', $direction);
         }
 
-        $dimensaos = $query->paginate(15)->appends($request->query());
+        $dimensaos = $query->get();
 
         return view('dimensaos.index', compact('dimensaos'));
     }

@@ -4,10 +4,12 @@
 <div class="container py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0">Inscritos — {{ $evento->nome }}</h1>
+    @hasanyrole('administrador|gerente|eq_pedagogica')
     <div class="d-flex gap-2">
       <a href="{{ route('inscricoes.import', $evento) }}" class="btn btn-sm btn-outline-primary">Importar inscrições</a>
       <a href="{{ route('inscricoes.moodle.import', $evento) }}" class="btn btn-sm btn-warning fw-semibold">Importação Moodle</a>
     </div>
+    @endhasrole
   </div>
 
   {{-- Filtros --}}
@@ -59,83 +61,53 @@
     Total: {{ $inscricoes->total() }} - Pagina {{ $inscricoes->currentPage() }} de {{ $inscricoes->lastPage() }}
   </div>
 
+  @php
+      $columns = [
+          ['field' => 'nome', 'headerName' => 'Nome', 'flex' => 2],
+          ['field' => 'email', 'headerName' => 'Email', 'flex' => 2],
+          ['field' => 'cpf', 'headerName' => 'CPF', 'flex' => 1],
+          ['field' => 'telefone', 'headerName' => 'Telefone', 'flex' => 1],
+          ['field' => 'municipio', 'headerName' => 'Município', 'flex' => 2],
+          ['field' => 'momento', 'headerName' => 'Momento', 'flex' => 2],
+          ['field' => 'inscrito_em', 'headerName' => 'Inscrito em', 'flex' => 1],
+      ];
+
+      $rows = collect($inscricoes->items())->map(function ($inscricao) {
+          $participante = $inscricao->participante;
+          $user = optional($participante?->user);
+          $municipio = optional($participante?->municipio);
+          $atividade = optional($inscricao->atividade);
+          $cpfValido = $participante?->cpf_valido;
+
+          $momento = '-';
+          if ($atividade->descricao !== null || $atividade->dia !== null) {
+              $momentoTexto = $atividade->descricao ?: 'Momento';
+              $dia = $atividade->dia ? \Carbon\Carbon::parse($atividade->dia)->format('d/m/Y') : null;
+              $hora = $atividade->hora_inicio ? \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i') : null;
+              $momento = trim($momentoTexto . ($dia ? " — {$dia}" : '') . ($hora ? " {$hora}" : ''));
+          }
+
+          return [
+              'nome' => $user->name ?? '-',
+              'email' => $user->email ?? '-',
+              'cpf' => ($participante && ! $cpfValido) ? ($participante->cpf . ' (inválido)') : ($participante?->cpf ?? '-'),
+              'telefone' => $participante?->telefone ?? '-',
+              'municipio' => $municipio ? $municipio->nome_com_estado : '-',
+              'momento' => $momento,
+              'inscrito_em' => optional($inscricao->created_at)->format('d/m/Y H:i') ?? '-',
+          ];
+      })->values();
+  @endphp
+
   {{-- Tabela --}}
-  <div class="table-responsive">
-    <table class="table table-sm align-middle table-bordered bg-white">
-      <thead class="table-light">
-        <tr>
-          <!-- <th style="width:70px;">#ID</th> -->
-          <th>Nome</th>
-          <th>Email</th>
-          <th style="min-width:120px;">CPF</th>
-          <th style="min-width:120px;">Telefone</th>
-          <th style="min-width:220px;">Municipio</th>
-          <th style="min-width:220px;">Momento</th>
-          <!-- <th style="min-width:140px;">Data entrada</th> -->
-          <th style="min-width:160px;">Inscrito em</th>
-          {{-- Opcional: ações (ver, remover, etc.) --}}
-          {{-- <th style="width:110px;">Ações</th> --}}
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($inscricoes as $inscricao)
-          @php
-            $participante = $inscricao->participante;
-            $user = optional($participante?->user);
-            $municipio = optional($participante?->municipio);
-            $atividade = optional($inscricao->atividade);
-            $cpfValido = $participante?->cpf_valido;
-          @endphp
-          <tr>
-            <!-- <td>{{ $inscricao->id }}</td> -->
-            <td>{{ $user->name ?? '-' }}</td>
-            <td>{{ $user->email ?? '-' }}</td>
-            <td>
-              @if($participante && !$cpfValido)
-                <span class="text-danger" data-bs-toggle="tooltip" title="CPF invalido">
-                  {{ $participante->cpf }}
-                </span>
-              @else
-                {{ $participante?->cpf ?? '-' }}
-              @endif
-            </td>
-            <td>{{ $participante?->telefone ?? '-' }}</td>
-            <td>
-              @if($municipio)
-                {{ $municipio->nome_com_estado }}
-              @else
-                -
-              @endif
-            </td>
-            <td>
-              @if($atividade)
-                <div>{{ $atividade->descricao ?: 'Momento' }}</div>
-                <div class="text-muted small">
-                  {{ \Carbon\Carbon::parse($atividade->dia)->format('d/m/Y') }}
-                  @if($atividade->hora_inicio)
-                    as {{ \Carbon\Carbon::parse($atividade->hora_inicio)->format('H:i') }}
-                  @endif
-                </div>
-              @else
-                -
-              @endif
-            </td>
-            <td>
-              {{ optional($inscricao->created_at)->format('d/m/Y H:i') ?? '-' }}
-            </td>
+  <x-data-table
+      id="grid-inscricoes"
+      :columns="$columns"
+      :rows="$rows"
+      :pagination="false"
+  />
 
-            {{-- Acoes futuras aqui --}}
-          </tr>
-        @empty
-          <tr>
-            <td colspan="7" class="text-center text-muted">Nenhum inscrito encontrado.</td>
-          </tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-
-  <div class="d-flex justify-content-between align-items-center">
+  <div class="d-flex justify-content-between align-items-center mt-3">
     <div class="small text-muted">Exibindo {{ $inscricoes->count() }} de {{ $inscricoes->total() }}</div>
     {{ $inscricoes->links() }}
   </div>

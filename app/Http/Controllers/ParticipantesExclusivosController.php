@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Exports\ParticipantesExclusivosExport;
 use App\Models\Evento;
 use App\Services\ParticipantesExclusivosService;
+use App\Word\WordDocument;
+use App\Word\WordTableExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -81,9 +83,17 @@ class ParticipantesExclusivosController extends Controller
                 ->withErrors(['eventos' => 'Uma ou mais ações pedagógicas selecionadas não foram encontradas.']);
         }
 
-        return Excel::download(
-            new ParticipantesExclusivosExport($eventoIds),
-            'participantes-exclusivos-' . now()->format('Ymd_His') . '.xlsx'
-        );
+        $export = new ParticipantesExclusivosExport($eventoIds);
+        $timestamp = now()->format('Ymd_His');
+
+        if ($request->query('formato') === 'docx') {
+            $doc = new WordDocument;
+            $doc->addTitle('Participantes exclusivos');
+            WordTableExport::render($doc, $export);
+
+            return $doc->download('participantes-exclusivos-'.$timestamp.'.docx');
+        }
+
+        return Excel::download($export, 'participantes-exclusivos-'.$timestamp.'.xlsx');
     }
 }

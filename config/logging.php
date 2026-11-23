@@ -73,6 +73,19 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+         * Canal dedicado ao diagnóstico do visualizador de cartas em PDF
+         * (servidor + eventos enviados pelo pdf.js no navegador).
+         * Arquivo separado para a equipe acompanhar sem ruído do laravel.log.
+         */
+        'cartas' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cartas.log'),
+            'level' => env('CARTAS_LOG_LEVEL', 'debug'),
+            'days' => env('CARTAS_LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

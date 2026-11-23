@@ -10,16 +10,27 @@
   </p>
 
   @if($errors->any())
-  <div class="alert alert-danger">{{ $errors->first() }}</div>
+  <div class="alert alert-danger" role="alert">
+    <strong>Importação interrompida. Corrija os problemas abaixo antes de continuar.</strong>
+    <ul class="mb-0 mt-2">
+      @foreach($errors->all() as $message)
+      <li>{{ $message }}</li>
+      @endforeach
+    </ul>
+  </div>
   @endif
 
   <form method="POST" action="{{ route('atividades.presencas.cadastro', $atividade) }}" enctype="multipart/form-data" class="card p-3 shadow-sm">
     @csrf
     <div class="mb-3">
       <label class="form-label">Arquivo Excel (.xlsx)</label>
-      <input type="file" name="your_file" class="form-control" accept=".xlsx,.xls" required>
+      <input type="file" name="your_file" class="form-control" accept=".xlsx,.xls,.csv" required>
       <div class="form-text">
-        Colunas: nome, email, cpf, telefone, municipio, tipo_de_organizacao, organização, tag, status, data_entrada
+        <strong>Cada registro de participante deve ter nome, além de pelo menos um identificador: E-mail ou CPF.</strong><br>
+        Colunas: nome, email, cpf, telefone, municipio, tipo_de_organizacao, organização, tag, data_nascimento, sexo, status, data_entrada<br>
+        Data de nascimento: use <code>DD/MM/AAAA</code>, <code>DD/MM/AA</code>, <code>AAAA-MM-DD</code> ou uma célula de data do Excel. Datas futuras não são aceitas.<br>
+        Ao utilizar anos com dois dígitos, valores até {{ now()->format('y') }} pertencem ao século atual; os demais, ao anterior. Para pessoas com 100 anos ou mais, é necessário informar o ano com quatro dígitos.<br>
+        Sexo é opcional: {{ implode(', ', \App\Models\Participante::SEXOS) }}. Campos opcionais vazios preservam os dados já cadastrados.
       </div>
       <div class="mt-2">
         <a href="{{ asset('modelos/modelo_presencas_engaja.xlsx') }}" class="btn btn-sm btn-outline-primary">

@@ -13,7 +13,7 @@ class AtividadeAcaoController extends Controller
         $atividadeAcoes = AtividadeAcao::query()
             ->withCount('agendamentos')
             ->orderBy('nome')
-            ->paginate(15);
+            ->get();
 
         return view('atividade-acoes.index', compact('atividadeAcoes'));
     }
@@ -97,4 +97,3 @@ class AtividadeAcaoController extends Controller
         return $dados;
     }
 }
-

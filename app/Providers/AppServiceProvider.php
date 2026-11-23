@@ -2,7 +2,17 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use App\Notifications\Cartas\CadastroRealizadoComSucessoNotification;
+use App\Support\SistemaContext;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Browsershot\Browsershot;
 use Spatie\LaravelPdf\Facades\Pdf;
@@ -24,6 +34,31 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        RateLimiter::for('autorizacao-imagem-publica', fn (Request $request) => [
+            Limit::perMinute(30)->by('imagem-sessao:'.$request->session()->getId()),
+            Limit::perMinute(120)->by('imagem-ip:'.$request->ip()),
+        ]);
+
+        Gate::define('cartas.ver-relatorios', fn (User $user): bool => $user->isCartasUser()
+            && $user->hasAnyRole(['cartas_admin', 'cartas_gestao'])
+            && $user->can('cartas.relatorio'));
+
+        Event::listen(Verified::class, function (Verified $event) {
+            if ($event->user instanceof User && $event->user->isCartasUser()) {
+                $event->user->notify(new CadastroRealizadoComSucessoNotification);
+            }
+        });
+
+        /*
+         * O middleware 'guest' padrão redireciona usuários já autenticados para
+         * route('dashboard') (a home do app principal). Um usuário do sistema
+         * Cartas já logado que acesse uma rota guest (ex: cartas.login,
+         * cartas.register via os links da apresentacao) cairia lá e seria
+         * barrado com 403 pelo EnsureSistemaAccess, por estar fora do prefixo
+         * /cartas. Redireciona para o dashboard correto conforme o sistema.
+         */
+        RedirectIfAuthenticated::redirectUsing(fn ($request) => SistemaContext::homeRoute($request->user()));
 
         $this->registerPdfMacros();
         $this->configureRemotePdfRendering();
