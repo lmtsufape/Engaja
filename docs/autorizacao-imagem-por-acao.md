@@ -26,12 +26,21 @@ O termo é somente o texto de `config/autorizacao_imagem.php`, chave `texto`. Po
 
 A planilha por ação diferencia pendência de recusa e exporta células como texto para preservar CPFs e evitar fórmulas. Importar presenças não cria autorização.
 
+## Importação em lote por ação
+
+Na tela de gestão por ação (`autorizacoes-imagem.index`), usuários com permissão `autorizacao-imagem.registrar` podem importar em lote as autorizações colhidas em lista física via `.xlsx`, `.xls` ou `.csv` contendo `nome` e `cpf` (há download de planilha modelo formatada como texto).
+
+- A prévia valida cada linha e **bloqueia a confirmação** enquanto houver CPF inválido, participante não encontrado no Engaja, cadastro excluído ou participante sem vínculo (inscrição/presença) com a ação. Nenhuma inscrição, presença ou novo cadastro é criado.
+- Na prévia paginada, é possível editar `nome`/`cpf`, remover linhas individualmente ou remover todas as linhas com pendência de uma vez.
+- Caso haja mais de um cadastro ativo com o mesmo CPF, a importação considera os vinculados à ação e, havendo mais de um vinculado, seleciona o cadastro mais recente.
+- CPFs duplicados na planilha são deduplicados automaticamente. Participantes já autorizados são preservados de forma idempotente (sem novo histórico); recusas anteriores (`Não autorizada`) são atualizadas para `Autorizada` preservando o histórico com origem `importacao_gestao` (`Importação em lote pela gestão`).
+
 ## Migrações e verificação
 
 A migração inicial já cria somente as autorizações e o histórico de respostas, sem catálogo de termos nem referências documentais. A segunda migração configura as permissões.
 
 ```powershell
-php vendor/bin/phpunit tests/Feature/AutorizacaoImagemServiceTest.php tests/Feature/AutorizacaoImagemFluxoTest.php tests/Feature/AutorizacaoImagemDocumentosTest.php
+php vendor/bin/phpunit tests/Feature/AutorizacaoImagemServiceTest.php tests/Feature/AutorizacaoImagemFluxoTest.php tests/Feature/AutorizacaoImagemDocumentosTest.php tests/Feature/AutorizacaoImagemImportAcaoTest.php
 $env:AUTORIZACAO_IMAGEM_QA_DIR = Join-Path $env:TEMP 'engaja-autorizacao-qa'
 php vendor/bin/phpunit tests/Feature/AutorizacaoImagemVisualTest.php
 ```

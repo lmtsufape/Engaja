@@ -8,6 +8,7 @@ use App\Http\Controllers\AtividadeAcaoController;
 use App\Http\Controllers\AtividadeController;
 use App\Http\Controllers\AtualizacaoCadastralController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\AutorizacaoImagemAcaoImportController;
 use App\Http\Controllers\AutorizacaoImagemController;
 use App\Http\Controllers\AutorizacaoImagemImportController;
 use App\Http\Controllers\AvaliacaoAtividadeController;
@@ -444,6 +445,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/autorizacoes-imagem', [AutorizacaoImagemController::class, 'index'])->name('autorizacoes-imagem.index');
     Route::get('/autorizacoes-imagem/exportar', [AutorizacaoImagemController::class, 'exportar'])->name('autorizacoes-imagem.export');
     Route::post('/eventos/{evento}/participantes/{participante}/autorizacao-imagem', [AutorizacaoImagemController::class, 'registrar'])->name('autorizacoes-imagem.registrar');
+    Route::prefix('/eventos/{evento}/autorizacoes-imagem/importar')
+        ->controller(AutorizacaoImagemAcaoImportController::class)
+        ->group(function () {
+            Route::get('/', 'import')->name('autorizacoes-imagem.import');
+            Route::get('/modelo', 'template')->name('autorizacoes-imagem.import.modelo');
+            Route::post('/', 'upload')->name('autorizacoes-imagem.import.upload');
+            Route::get('/preview', 'preview')->name('autorizacoes-imagem.import.preview');
+            Route::post('/preview', 'savePage')->name('autorizacoes-imagem.import.save');
+            Route::post('/remover-pendencias', 'removePending')->name('autorizacoes-imagem.import.remove-pending');
+            Route::post('/confirmar', 'confirm')->name('autorizacoes-imagem.import.confirmar');
+        });
 });
 Route::post('/presenca/{atividade}/autorizacao-imagem', [PresencaAutorizacaoImagemController::class, 'store'])
     ->middleware('throttle:autorizacao-imagem-publica')->name('presenca.autorizacao-imagem');

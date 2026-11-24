@@ -8,6 +8,7 @@ enum OrigemAutorizacaoImagem: string
     case PresencaAutenticada = 'presenca_autenticada';
     case Perfil = 'perfil';
     case Gestao = 'gestao';
+    case ImportacaoGestao = 'importacao_gestao';
 
     public function rotulo(): string
     {
@@ -16,6 +17,7 @@ enum OrigemAutorizacaoImagem: string
             self::PresencaAutenticada => 'Confirmação autenticada',
             self::Perfil => 'Perfil do participante',
             self::Gestao => 'Registro pela gestão',
+            self::ImportacaoGestao => 'Importação em lote pela gestão',
         };
     }
 }

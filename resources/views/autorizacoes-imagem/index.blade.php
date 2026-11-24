@@ -13,11 +13,16 @@
     <div class="d-flex flex-wrap gap-3 mb-3">
       @foreach(\App\Enums\SituacaoAutorizacaoImagem::cases() as $situacao)<span>{{ $situacao->rotulo() }}: <strong>{{ $totais[$situacao->value] }}</strong></span>@endforeach
     </div>
-    @can('export', \App\Models\AutorizacaoImagem::class)
+    @if(auth()->user()?->can('export', \App\Models\AutorizacaoImagem::class) || auth()->user()?->can('create', \App\Models\AutorizacaoImagem::class))
       <div class="d-flex flex-wrap gap-2 mb-3">
-        <a class="btn btn-engaja" href="{{ route('autorizacoes-imagem.export', request()->only('evento_id', 'situacao', 'busca')) }}">Baixar planilha desta consulta</a>
+        @can('export', \App\Models\AutorizacaoImagem::class)
+          <a class="btn btn-engaja" href="{{ route('autorizacoes-imagem.export', request()->only('evento_id', 'situacao', 'busca')) }}">Baixar planilha desta consulta</a>
+        @endcan
+        @can('create', \App\Models\AutorizacaoImagem::class)
+          <a class="btn btn-outline-primary" href="{{ route('autorizacoes-imagem.import', $evento) }}">Importar autorizações em lote</a>
+        @endcan
       </div>
-    @endcan
+    @endif
     <div class="table-responsive"><table class="table align-middle">
       <thead><tr><th>Participante</th><th>Resposta nesta ação</th>@can('create', \App\Models\AutorizacaoImagem::class)<th>Registrar resposta</th>@endcan</tr></thead>
       <tbody>@forelse($participantes as $participante)
